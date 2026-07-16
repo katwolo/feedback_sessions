@@ -1,8 +1,29 @@
+// URL raw de GitHub donde vive el frontend. Cambia la rama/ruta si mueves el archivo.
+var GITHUB_INDEX_URL = 'https://raw.githubusercontent.com/katwolo/feedback_sessions/claude/teacher-evaluation-code-gs-3mkzol/Index.html';
+
 function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
-      .evaluate()
+  var html = obtenerIndexDesdeGitHub();
+  return HtmlService.createHtmlOutput(html)
       .setTitle('Evaluador Docente')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+// Descarga Index.html desde GitHub, usando una caché corta para no pedirlo en cada carga
+function obtenerIndexDesdeGitHub() {
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'index_html';
+  var html = cache.get(cacheKey);
+
+  if (!html) {
+    var response = UrlFetchApp.fetch(GITHUB_INDEX_URL, { muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) {
+      throw new Error('No se pudo cargar Index.html desde GitHub (código ' + response.getResponseCode() + ')');
+    }
+    html = response.getContentText();
+    cache.put(cacheKey, html, 300); // 5 minutos
+  }
+
+  return html;
 }
 
 // Devuelve la lista de alumnos simulada (puedes adaptarla para que lea de una hoja de cálculo)
