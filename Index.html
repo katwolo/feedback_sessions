@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Evaluador</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-16">
+
+  <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50 px-4 py-3">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <h1 class="text-lg font-bold flex items-center gap-2">
+        <span class="material-icons">fact_check</span> Evaluador Móvil
+      </h1>
+      <span class="text-xs bg-indigo-500 px-2.5 py-1 rounded-full font-semibold">Fase de Diseño</span>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-4 space-y-4">
+
+    <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Configuración de Clase</h2>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Curso</label>
+          <input type="text" id="curso" value="26/27" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Módulo</label>
+          <input type="text" id="modulo" value="Socio-Deportivo" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Clase</label>
+          <select id="clase" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option value="1ºA">1º A</option>
+            <option value="2ºA">2º A</option>
+            <option value="1ºB">1º B</option>
+            <option value="2ºB">2º B</option>
+            <option value="1ºC">1º C</option>
+            <option value="2ºC">2º C</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Desdoblamiento</label>
+          <select id="desdoblamiento" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option value="General">General (Completo)</option>
+            <option value="Desdoble 1">Desdoblamiento 1</option>
+            <option value="Desdoble 2">Desdoblamiento 2</option>
+          </select>
+        </div>
+      </div>
+
+      <button onclick="cargarAlumnos()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
+        Cargar Alumnos
+      </button>
+    </section>
+
+    <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+      <div class="flex justify-between items-center">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Trabajo en Grupo (Temporal)</h2>
+        <span class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Opcional</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="crearGruposAleatorios()" class="border border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
+          <span class="material-icons text-xs">shuffle</span> Auto-Agrupar (Parejas)
+        </button>
+        <button onclick="limpiarGrupos()" class="border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
+          <span class="material-icons text-xs">clear</span> Deshacer Grupos
+        </button>
+      </div>
+    </section>
+
+    <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Panel de Calificación</h2>
+
+      <div id="lista-estudiantes" class="divide-y divide-slate-100">
+        <p class="text-sm text-slate-400 py-4 text-center">Pulsa en "Cargar Alumnos" para empezar.</p>
+      </div>
+    </section>
+
+    <section class="space-y-3">
+      <button onclick="exportarDatos()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
+        <span class="material-icons">trending_flat</span> Exportar a Google Sheets
+      </button>
+      <p id="status" class="text-xs text-center font-medium text-slate-500"></p>
+    </section>
+
+  </main>
+
+  <script>
+    let estudiantes = [];
+    let grupos = {}; // { alumnoId: grupoId }
+    let coordinadores = {}; // { grupoId: alumnoId }
+
+    // Carga los estudiantes del backend de Google Apps Script
+    function cargarAlumnos() {
+      const curso = document.getElementById('curso').value;
+      const modulo = document.getElementById('modulo').value;
+      const clase = document.getElementById('clase').value;
+      const desdoblamiento = document.getElementById('desdoblamiento').value;
+
+      document.getElementById('lista-estudiantes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Cargando...</p>';
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          estudiantes = data;
+          grupos = {};
+          coordinadores = {};
+          renderizarLista();
+        })
+        .getEstudiantes(curso, modulo, clase, desdoblamiento);
+    }
+
+    // Renderiza la lista de evaluación en la pantalla
+    function renderizarLista() {
+      const contenedor = document.getElementById('lista-estudiantes');
+      contenedor.innerHTML = '';
+
+      if (estudiantes.length === 0) {
+        contenedor.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">No hay alumnos cargados.</p>';
+        return;
+      }
+
+      estudiantes.forEach(alumno => {
+        const grupoId = grupos[alumno.id] || null;
+        const esCoordinador = grupoId && coordinadores[grupoId] === alumno.id;
+
+        const div = document.createElement('div');
+        div.className = "py-3 flex flex-col gap-2";
+
+        div.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-sm font-semibold text-slate-800">${alumno.nombre}</span>
+              ${grupoId ? `<span class="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grupo ${grupoId}</span>` : ''}
+            </div>
+
+            <input type="number" step="0.1" min="0" max="10"
+                   id="nota-${alumno.id}"
+                   oninput="manejarCambioNota(${alumno.id}, this.value)"
+                   class="w-16 bg-slate-100 border border-slate-200 rounded-lg p-1.5 text-center text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
+                   placeholder="-">
+          </div>
+
+          ${grupoId ? `
+            <div class="flex items-center gap-4 pl-2">
+              <label class="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                <input type="checkbox" name="coord-${grupoId}" ${esCoordinador ? 'checked' : ''}
+                       onchange="asignarCoordinador(${alumno.id}, ${grupoId}, this.checked)"
+                       class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                <span>Representante / Portavoz</span>
+              </label>
+              ${esCoordinador ? `<span class="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Líder del grupo (Propaga Nota)</span>` : ''}
+            </div>
+          ` : `
+            <div class="flex items-center gap-2 pl-2">
+              <span class="text-[10px] text-slate-400 uppercase font-semibold">Asignar Grupo:</span>
+              <select onchange="asignarGrupoManual(${alumno.id}, this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-600">
+                <option value="">Ninguno</option>
+                <option value="1">Grupo 1</option>
+                <option value="2">Grupo 2</option>
+                <option value="3">Grupo 3</option>
+                <option value="4">Grupo 4</option>
+              </select>
+            </div>
+          `}
+        `;
+        contenedor.appendChild(div);
+      });
+    }
+
+    // Gestiona los grupos manuales
+    function asignarGrupoManual(alumnoId, grupoVal) {
+      if (grupoVal === "") {
+        delete grupos[alumnoId];
+      } else {
+        grupos[alumnoId] = parseInt(grupoVal);
+      }
+      renderizarLista();
+    }
+
+    // Algoritmo rápido de agrupación aleatoria (en parejas para la simulación)
+    function crearGruposAleatorios() {
+      if (estudiantes.length === 0) return;
+      limpiarGrupos();
+
+      const idsMezclados = estudiantes.map(a => a.id).sort(() => Math.random() - 0.5);
+      let grupoActual = 1;
+
+      for (let i = 0; i < idsMezclados.length; i += 2) {
+        grupos[idsMezclados[i]] = grupoActual;
+        if (idsMezclados[i + 1]) {
+          grupos[idsMezclados[i + 1]] = grupoActual;
+        }
+        // Asignar por defecto al primero como coordinador temporal del subgrupo
+        coordinadores[grupoActual] = idsMezclados[i];
+        grupoActual++;
+      }
+      renderizarLista();
+    }
+
+    function limpiarGrupos() {
+      grupos = {};
+      coordinadores = {};
+      renderizarLista();
+    }
+
+    // Controla quién es el coordinador. Solo puede haber uno por ID de grupo.
+    function asignarCoordinador(alumnoId, grupoId, checked) {
+      if (checked) {
+        coordinadores[grupoId] = alumnoId;
+      } else {
+        if (coordinadores[grupoId] === alumnoId) {
+          delete coordinadores[grupoId];
+        }
+      }
+      renderizarLista();
+    }
+
+    // Lógica dinámica: Si cambia la nota del coordinador, se replica en sus compañeros
+    function manejarCambioNota(alumnoId, nota) {
+      const grupoId = grupos[alumnoId];
+
+      // Si el alumno es el coordinador de su grupo, propagamos su nota
+      if (grupoId && coordinadores[grupoId] === alumnoId) {
+        estudiantes.forEach(al => {
+          if (grupos[al.id] === grupoId && al.id !== alumnoId) {
+            document.getElementById(`nota-${al.id}`).value = nota;
+          }
+        });
+      }
+    }
+
+    // Prepara el paquete de datos y lo envía al backend para la hoja de cálculo
+    function exportarDatos() {
+      const statusText = document.getElementById('status');
+      statusText.innerText = "Exportando datos, por favor espera...";
+      statusText.className = "text-xs text-center font-medium text-indigo-600 animate-pulse";
+
+      const evaluaciones = estudiantes.map(al => {
+        return {
+          id: al.id,
+          nombre: al.nombre,
+          nota: document.getElementById(`nota-${al.id}`).value
+        };
+      });
+
+      const datos = {
+        curso: document.getElementById('curso').value,
+        modulo: document.getElementById('modulo').value,
+        clase: document.getElementById('clase').value,
+        desdoblamiento: document.getElementById('desdoblamiento').value,
+        evaluaciones: evaluaciones
+      };
+
+      google.script.run
+        .withSuccessHandler(function(response) {
+          statusText.innerHTML = `¡Guardado con éxito! <a href="${response.url}" target="_blank" class="underline text-green-600 font-bold">Abrir Google Sheets</a>`;
+          statusText.className = "text-xs text-center font-medium text-green-600";
+        })
+        .withFailureHandler(function(err) {
+          statusText.innerText = "Error al exportar: " + err.message;
+          statusText.className = "text-xs text-center font-medium text-red-600";
+        })
+        .exportarAGoogleSheets(datos);
+    }
+  </script>
+</body>
+</html>
