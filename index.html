@@ -13,7 +13,7 @@
       <h1 class="text-lg font-bold flex items-center gap-2">
         <span class="material-icons">fact_check</span> Evaluador Móvil
       </h1>
-      <span class="text-xs bg-indigo-500 px-2.5 py-1 rounded-full font-semibold">Classroom</span>
+      <span class="text-xs bg-indigo-500 px-2.5 py-1 rounded-full font-semibold">Fase de Diseño</span>
     </div>
   </header>
 
@@ -35,9 +35,9 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Clase (Classroom)</label>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Clase</label>
           <select id="clase" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-            <option value="">Cargando cursos...</option>
+            <option value="">Cargando clases...</option>
           </select>
         </div>
         <div>
@@ -89,47 +89,43 @@
   </main>
 
   <script>
-    let cursos = [];
     let estudiantes = [];
     let criterios = [];
     let notas = {};          // { alumnoId: { nombreCriterio: valorString } }
     let grupos = {};         // { alumnoId: grupoId }
     let coordinadores = {};  // { grupoId: alumnoId }
-    let claseActual = { id: null, nombre: '' };
+    let claseActual = '';
     let guardarBorradorTimeout = null;
 
-    // Puebla el desplegable de "Clase" con los cursos reales de Google Classroom
-    function cargarCursos() {
+    // Puebla el desplegable de "Clase" con las clases configuradas en la pestaña "👥 Alumnos" del Sheet
+    function cargarClases() {
       const claseSelect = document.getElementById('clase');
 
       google.script.run
-        .withSuccessHandler(function(data) {
-          cursos = data;
-          if (cursos.length === 0) {
-            claseSelect.innerHTML = '<option value="">No se encontraron cursos</option>';
+        .withSuccessHandler(function(clases) {
+          if (clases.length === 0) {
+            claseSelect.innerHTML = '<option value="">No hay clases configuradas</option>';
             return;
           }
-          claseSelect.innerHTML = cursos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+          claseSelect.innerHTML = clases.map(c => `<option value="${c}">${c}</option>`).join('');
         })
         .withFailureHandler(function(err) {
-          claseSelect.innerHTML = '<option value="">Error al cargar cursos</option>';
-          alert('No se pudieron cargar los cursos de Classroom: ' + err.message);
+          claseSelect.innerHTML = '<option value="">Error al cargar clases</option>';
+          alert('No se pudieron cargar las clases: ' + err.message);
         })
-        .listarCursosClassroom();
+        .listarClases();
     }
 
-    // Carga alumnos reales (Classroom) y los criterios de evaluación configurados para el módulo
+    // Carga los alumnos de la clase seleccionada y los criterios de evaluación configurados para el módulo
     function cargarAlumnos() {
-      const claseSelect = document.getElementById('clase');
-      const claseId = claseSelect.value;
-      const claseNombre = claseSelect.selectedOptions[0] ? claseSelect.selectedOptions[0].textContent : '';
+      const clase = document.getElementById('clase').value;
 
-      if (!claseId) {
-        alert('Selecciona una clase de Classroom primero.');
+      if (!clase) {
+        alert('Selecciona una clase primero.');
         return;
       }
 
-      claseActual = { id: claseId, nombre: claseNombre };
+      claseActual = clase;
 
       const modulo = document.getElementById('modulo').value;
       document.getElementById('lista-estudiantes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Cargando alumnos...</p>';
@@ -137,7 +133,7 @@
 
       Promise.all([
         new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getEstudiantes(claseId);
+          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getEstudiantes(clase);
         }),
         new Promise((resolve, reject) => {
           google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenerCriterios(modulo);
@@ -333,14 +329,14 @@
       const curso = document.getElementById('curso').value;
       const modulo = document.getElementById('modulo').value;
       const desdoblamiento = document.getElementById('desdoblamiento').value;
-      return `evaluador_borrador_${curso}_${modulo}_${claseActual.id}_${desdoblamiento}`;
+      return `evaluador_borrador_${curso}_${modulo}_${claseActual}_${desdoblamiento}`;
     }
 
     // Guarda en localStorage las notas y grupos en curso, con un pequeño debounce
     function guardarBorrador() {
       clearTimeout(guardarBorradorTimeout);
       guardarBorradorTimeout = setTimeout(() => {
-        if (!claseActual.id) return;
+        if (!claseActual) return;
         const borrador = { notas, grupos, coordinadores, guardadoEn: new Date().toISOString() };
         localStorage.setItem(claveBorrador(), JSON.stringify(borrador));
       }, 400);
@@ -369,14 +365,14 @@
     }
 
     function borrarBorrador() {
-      if (!claseActual.id) return;
+      if (!claseActual) return;
       localStorage.removeItem(claveBorrador());
     }
 
     // Prepara el paquete de datos y lo envía al backend para la hoja de cálculo.
     // Si el backend detecta que ya existe una exportación previa, pide confirmación antes de sobrescribir.
     function exportarDatos(confirmado) {
-      if (!claseActual.id || estudiantes.length === 0) {
+      if (!claseActual || estudiantes.length === 0) {
         alert('Carga primero los alumnos de una clase.');
         return;
       }
@@ -393,7 +389,7 @@
       const datos = {
         curso: document.getElementById('curso').value,
         modulo: document.getElementById('modulo').value,
-        clase: claseActual.nombre,
+        clase: claseActual,
         desdoblamiento: document.getElementById('desdoblamiento').value,
         evaluaciones: evaluaciones
       };
@@ -422,7 +418,7 @@
         .exportarAGoogleSheets(datos, confirmado === true);
     }
 
-    cargarCursos();
+    cargarClases();
   </script>
 </body>
 </html>

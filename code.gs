@@ -12,6 +12,7 @@ var CORREOS_AUTORIZADOS = ['ivanfoios@gmail.com'];
 var NOMBRE_INDICE = "📋 Índice";
 var NOMBRE_CONFIGURACION = "🔧 Configuración";
 var NOMBRE_HISTORIAL = "🗄 Historial";
+var NOMBRE_ALUMNOS = "👥 Alumnos";
 
 function doGet() {
   var email = Session.getActiveUser().getEmail();
@@ -45,46 +46,37 @@ function obtenerIndexDesdeGitHub() {
   return html;
 }
 
-// Lista los cursos activos de Google Classroom donde el usuario es profesor
-function listarCursosClassroom() {
-  var cursos = [];
-  var pageToken;
+// Lista las clases con alumnos configurados en la pestaña "👥 Alumnos" (valores únicos de la columna Clase)
+function listarClases() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = asegurarAlumnos(ss);
 
-  do {
-    var respuesta = Classroom.Courses.list({
-      teacherId: 'me',
-      courseStates: ['ACTIVE'],
-      pageToken: pageToken
-    });
-    (respuesta.courses || []).forEach(function(curso) {
-      cursos.push({ id: curso.id, nombre: curso.name });
-    });
-    pageToken = respuesta.nextPageToken;
-  } while (pageToken);
+  var filas = hoja.getDataRange().getValues();
+  var clases = {};
 
-  cursos.sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
-  return cursos;
+  for (var i = 1; i < filas.length; i++) { // fila 0 = cabecera
+    var clase = String(filas[i][0]).trim();
+    if (clase) clases[clase] = true;
+  }
+
+  return Object.keys(clases).sort(function(a, b) { return a.localeCompare(b); });
 }
 
-// Devuelve el alumnado real de un curso de Classroom (claseId = courseId)
-function getEstudiantes(claseId) {
-  var alumnos = [];
-  var pageToken;
+// Devuelve el alumnado de una clase, leído de la pestaña "👥 Alumnos" del Sheet
+function getEstudiantes(clase) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = asegurarAlumnos(ss);
 
-  do {
-    var respuesta = Classroom.Courses.Students.list(claseId, {
-      pageSize: 100,
-      pageToken: pageToken
-    });
-    (respuesta.students || []).forEach(function(alumno) {
-      var nombre = (alumno.profile && alumno.profile.name) || {};
-      var nombreCompleto = nombre.familyName
-          ? nombre.familyName + ', ' + nombre.givenName
-          : (nombre.fullName || 'Alumno sin nombre');
-      alumnos.push({ id: alumno.userId, nombre: nombreCompleto });
-    });
-    pageToken = respuesta.nextPageToken;
-  } while (pageToken);
+  var filas = hoja.getDataRange().getValues();
+  var alumnos = [];
+
+  for (var i = 1; i < filas.length; i++) { // fila 0 = cabecera
+    var claseFila = String(filas[i][0]).trim();
+    var nombre = String(filas[i][1]).trim();
+    if (claseFila === clase && nombre) {
+      alumnos.push({ id: i, nombre: nombre });
+    }
+  }
 
   alumnos.sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
   return alumnos;
@@ -127,6 +119,7 @@ function configurarRegistro() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   asegurarIndice(ss);
   asegurarConfiguracion(ss);
+  asegurarAlumnos(ss);
   asegurarHistorial(ss);
 }
 
@@ -292,6 +285,37 @@ function asegurarConfiguracion(ss) {
 
   hoja.setColumnWidths(1, 2, 180);
   hoja.setColumnWidth(3, 100);
+  hoja.setFrozenRows(1);
+
+  return hoja;
+}
+
+// Crea (si no existe) la pestaña donde el profesor mantiene el listado de alumnos por clase
+function asegurarAlumnos(ss) {
+  var hoja = ss.getSheetByName(NOMBRE_ALUMNOS);
+  if (hoja) return hoja;
+
+  hoja = ss.insertSheet(NOMBRE_ALUMNOS, 2);
+
+  var cabecera = ["Clase", "Alumno (Apellidos, Nombre)"];
+  hoja.getRange(1, 1, 1, cabecera.length).setValues([cabecera])
+      .setFontWeight("bold").setBackground("#4f46e5").setFontColor("#ffffff");
+
+  var ejemplo = [
+    ["1ºA", "Álvarez Gómez, María"],
+    ["1ºA", "Bernal Ruiz, Javier"],
+    ["1ºA", "Castro Peña, Sofía"],
+    ["2ºA", "Delgado Soler, Lucas"]
+  ];
+  hoja.getRange(2, 1, ejemplo.length, 2).setValues(ejemplo)
+      .setFontColor("#94a3b8").setFontStyle("italic");
+
+  hoja.getRange("D1").setValue(
+      "Añade una fila por cada alumno, con el nombre de su clase tal cual quieras que aparezca en la app.")
+      .setFontStyle("italic").setFontColor("#64748b");
+
+  hoja.setColumnWidths(1, 1, 100);
+  hoja.setColumnWidth(2, 220);
   hoja.setFrozenRows(1);
 
   return hoja;
