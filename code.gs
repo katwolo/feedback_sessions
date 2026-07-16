@@ -44,9 +44,19 @@ function getEstudiantes(curso, modulo, clase, desdoblamiento) {
   ];
 }
 
+var NOMBRE_INDICE = "📋 Índice";
+
+// Ejecuta esta función una vez manualmente desde el editor (Ejecutar > configurarRegistro)
+// para organizar la hoja de cálculo aunque todavía no se haya exportado ninguna clase.
+function configurarRegistro() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  asegurarIndice(ss);
+}
+
 // Exporta las notas a una nueva pestaña del Google Sheet vinculado (SPREADSHEET_ID)
 function exportarAGoogleSheets(datos) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  asegurarIndice(ss);
 
   var nombrePestaña = datos.clase + " - " + datos.modulo;
   if (datos.desdoblamiento && datos.desdoblamiento !== "General") {
@@ -88,5 +98,73 @@ function exportarAGoogleSheets(datos) {
   sheet.getRange("A1:D2").setFontWeight("bold");
   sheet.getRange("A4:B4").setFontWeight("bold").setBackground("#f3f4f6");
 
+  // Ajustar ancho de columnas y anclar la pestaña justo después del índice
+  sheet.autoResizeColumns(1, 2);
+  ss.setActiveSheet(sheet);
+  ss.moveActiveSheet(ss.getSheetByName(NOMBRE_INDICE).getIndex() + 1);
+
+  actualizarIndice(ss, nombrePestaña, datos);
+
   return { success: true, url: ss.getUrl() };
+}
+
+// Crea (si no existe) la pestaña de Índice con cabecera y formato, y limpia la
+// pestaña en blanco que Google Sheets crea por defecto ("Hoja 1" / "Sheet1").
+function asegurarIndice(ss) {
+  var indice = ss.getSheetByName(NOMBRE_INDICE);
+
+  if (!indice) {
+    indice = ss.insertSheet(NOMBRE_INDICE, 0);
+
+    indice.getRange("A1").setValue("Registro de Evaluación Docente")
+        .setFontSize(16).setFontWeight("bold").setFontColor("#4f46e5");
+    indice.getRange("A2").setValue(
+        "Cada exportación desde la app crea o actualiza una pestaña por clase y módulo. Este índice se mantiene solo.")
+        .setFontStyle("italic").setFontColor("#64748b");
+
+    var cabecera = ["Pestaña", "Curso", "Módulo", "Clase", "Desdoblamiento", "Nº Alumnos", "Última actualización", "Acceso directo"];
+    indice.getRange(4, 1, 1, cabecera.length).setValues([cabecera])
+        .setFontWeight("bold").setBackground("#4f46e5").setFontColor("#ffffff");
+
+    indice.setColumnWidths(1, 5, 150);
+    indice.setColumnWidth(6, 90);
+    indice.setColumnWidth(7, 140);
+    indice.setColumnWidth(8, 110);
+    indice.setFrozenRows(4);
+  }
+
+  // Elimina la pestaña en blanco por defecto de un Sheet nuevo, si sigue vacía
+  ["Hoja 1", "Sheet1"].forEach(function(nombre) {
+    var hojaDefecto = ss.getSheetByName(nombre);
+    if (hojaDefecto && ss.getSheets().length > 1 && hojaDefecto.getLastRow() === 0) {
+      ss.deleteSheet(hojaDefecto);
+    }
+  });
+
+  return indice;
+}
+
+// Añade o actualiza la fila del índice correspondiente a una pestaña de clase
+function actualizarIndice(ss, nombrePestaña, datos) {
+  var indice = ss.getSheetByName(NOMBRE_INDICE);
+  var datosIndice = indice.getDataRange().getValues();
+  var filaExistente = -1;
+
+  for (var i = 4; i < datosIndice.length; i++) {
+    if (datosIndice[i][0] === nombrePestaña) {
+      filaExistente = i + 1; // getRange usa índice base 1
+      break;
+    }
+  }
+
+  var fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+  var gid = ss.getSheetByName(nombrePestaña).getSheetId();
+  var enlace = '=HYPERLINK("#gid=' + gid + '"; "Abrir")';
+  var fila = [nombrePestaña, datos.curso, datos.modulo, datos.clase, datos.desdoblamiento, datos.evaluaciones.length, fecha, enlace];
+
+  if (filaExistente > 0) {
+    indice.getRange(filaExistente, 1, 1, fila.length).setValues([fila]);
+  } else {
+    indice.appendRow(fila);
+  }
 }
