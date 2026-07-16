@@ -13,7 +13,7 @@
       <h1 class="text-lg font-bold flex items-center gap-2">
         <span class="material-icons">fact_check</span> Evaluador Móvil
       </h1>
-      <span class="text-xs bg-indigo-500 px-2.5 py-1 rounded-full font-semibold">Fase de Diseño</span>
+      <span class="text-xs bg-indigo-500 px-2.5 py-1 rounded-full font-semibold">Classroom</span>
     </div>
   </header>
 
@@ -35,14 +35,9 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Clase</label>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Clase (Classroom)</label>
           <select id="clase" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-            <option value="1ºA">1º A</option>
-            <option value="2ºA">2º A</option>
-            <option value="1ºB">1º B</option>
-            <option value="2ºB">2º B</option>
-            <option value="1ºC">1º C</option>
-            <option value="2ºC">2º C</option>
+            <option value="">Cargando cursos...</option>
           </select>
         </div>
         <div>
@@ -94,30 +89,78 @@
   </main>
 
   <script>
+    let cursos = [];
     let estudiantes = [];
-    let grupos = {}; // { alumnoId: grupoId }
-    let coordinadores = {}; // { grupoId: alumnoId }
+    let criterios = [];
+    let notas = {};          // { alumnoId: { nombreCriterio: valorString } }
+    let grupos = {};         // { alumnoId: grupoId }
+    let coordinadores = {};  // { grupoId: alumnoId }
+    let claseActual = { id: null, nombre: '' };
+    let guardarBorradorTimeout = null;
 
-    // Carga los estudiantes del backend de Google Apps Script
-    function cargarAlumnos() {
-      const curso = document.getElementById('curso').value;
-      const modulo = document.getElementById('modulo').value;
-      const clase = document.getElementById('clase').value;
-      const desdoblamiento = document.getElementById('desdoblamiento').value;
-
-      document.getElementById('lista-estudiantes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Cargando...</p>';
+    // Puebla el desplegable de "Clase" con los cursos reales de Google Classroom
+    function cargarCursos() {
+      const claseSelect = document.getElementById('clase');
 
       google.script.run
         .withSuccessHandler(function(data) {
-          estudiantes = data;
-          grupos = {};
-          coordinadores = {};
-          renderizarLista();
+          cursos = data;
+          if (cursos.length === 0) {
+            claseSelect.innerHTML = '<option value="">No se encontraron cursos</option>';
+            return;
+          }
+          claseSelect.innerHTML = cursos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
         })
-        .getEstudiantes(curso, modulo, clase, desdoblamiento);
+        .withFailureHandler(function(err) {
+          claseSelect.innerHTML = '<option value="">Error al cargar cursos</option>';
+          alert('No se pudieron cargar los cursos de Classroom: ' + err.message);
+        })
+        .listarCursosClassroom();
     }
 
-    // Renderiza la lista de evaluación en la pantalla
+    // Carga alumnos reales (Classroom) y los criterios de evaluación configurados para el módulo
+    function cargarAlumnos() {
+      const claseSelect = document.getElementById('clase');
+      const claseId = claseSelect.value;
+      const claseNombre = claseSelect.selectedOptions[0] ? claseSelect.selectedOptions[0].textContent : '';
+
+      if (!claseId) {
+        alert('Selecciona una clase de Classroom primero.');
+        return;
+      }
+
+      claseActual = { id: claseId, nombre: claseNombre };
+
+      const modulo = document.getElementById('modulo').value;
+      document.getElementById('lista-estudiantes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Cargando alumnos...</p>';
+      document.getElementById('status').innerText = '';
+
+      Promise.all([
+        new Promise((resolve, reject) => {
+          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getEstudiantes(claseId);
+        }),
+        new Promise((resolve, reject) => {
+          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenerCriterios(modulo);
+        })
+      ]).then(([alumnosData, criteriosData]) => {
+        estudiantes = alumnosData;
+        criterios = criteriosData;
+        grupos = {};
+        coordinadores = {};
+        notas = {};
+        restaurarBorrador();
+        renderizarLista();
+      }).catch((err) => {
+        document.getElementById('lista-estudiantes').innerHTML =
+          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+      });
+    }
+
+    function obtenerNota(alumnoId, nombreCriterio) {
+      return (notas[alumnoId] && notas[alumnoId][nombreCriterio]) || '';
+    }
+
+    // Renderiza la lista de evaluación en la pantalla, con un input por criterio y la nota final calculada
     function renderizarLista() {
       const contenedor = document.getElementById('lista-estudiantes');
       contenedor.innerHTML = '';
@@ -134,18 +177,30 @@
         const div = document.createElement('div');
         div.className = "py-3 flex flex-col gap-2";
 
+        const inputsCriterios = criterios.map((c, idx) => `
+          <div class="flex flex-col items-center min-w-0">
+            <label class="text-[9px] text-slate-400 uppercase font-semibold truncate w-full text-center" title="${c.nombre} (${c.peso}%)">${c.nombre}</label>
+            <input type="number" step="0.1" min="0" max="10"
+                   id="nota-${alumno.id}-${idx}"
+                   oninput="manejarCambioNota(${alumno.id}, ${idx}, this.value)"
+                   value="${obtenerNota(alumno.id, c.nombre)}"
+                   class="w-full bg-slate-100 border border-slate-200 rounded-lg p-1 text-center text-xs font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
+                   placeholder="-">
+          </div>
+        `).join('');
+
         div.innerHTML = `
           <div class="flex items-center justify-between">
-            <div>
-              <span class="text-sm font-semibold text-slate-800">${alumno.nombre}</span>
-              ${grupoId ? `<span class="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grupo ${grupoId}</span>` : ''}
-            </div>
+            <span class="text-sm font-semibold text-slate-800">${alumno.nombre}</span>
+            ${grupoId ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grupo ${grupoId}</span>` : ''}
+          </div>
 
-            <input type="number" step="0.1" min="0" max="10"
-                   id="nota-${alumno.id}"
-                   oninput="manejarCambioNota(${alumno.id}, this.value)"
-                   class="w-16 bg-slate-100 border border-slate-200 rounded-lg p-1.5 text-center text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
-                   placeholder="-">
+          <div class="grid gap-1.5" style="grid-template-columns: repeat(${criterios.length + 1}, minmax(0, 1fr));">
+            ${inputsCriterios}
+            <div class="flex flex-col items-center min-w-0">
+              <label class="text-[9px] text-amber-600 uppercase font-bold w-full text-center">Final</label>
+              <div id="final-${alumno.id}" class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1 text-center text-xs font-bold text-amber-700">-</div>
+            </div>
           </div>
 
           ${grupoId ? `
@@ -156,7 +211,7 @@
                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                 <span>Representante / Portavoz</span>
               </label>
-              ${esCoordinador ? `<span class="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Líder del grupo (Propaga Nota)</span>` : ''}
+              ${esCoordinador ? `<span class="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Líder del grupo (Propaga Notas)</span>` : ''}
             </div>
           ` : `
             <div class="flex items-center gap-2 pl-2">
@@ -173,6 +228,29 @@
         `;
         contenedor.appendChild(div);
       });
+
+      estudiantes.forEach(alumno => actualizarNotaFinal(alumno.id));
+    }
+
+    // Recalcula y muestra la nota final ponderada de un alumno según los criterios configurados
+    function actualizarNotaFinal(alumnoId) {
+      const el = document.getElementById(`final-${alumnoId}`);
+      if (!el) return;
+
+      const notasAlumno = notas[alumnoId] || {};
+      let suma = 0;
+      let completos = criterios.length > 0;
+
+      criterios.forEach(c => {
+        const valor = parseFloat(notasAlumno[c.nombre]);
+        if (isNaN(valor)) {
+          completos = false;
+        } else {
+          suma += valor * (c.peso / 100);
+        }
+      });
+
+      el.textContent = completos ? suma.toFixed(2) : '-';
     }
 
     // Gestiona los grupos manuales
@@ -182,6 +260,7 @@
       } else {
         grupos[alumnoId] = parseInt(grupoVal);
       }
+      guardarBorrador();
       renderizarLista();
     }
 
@@ -202,12 +281,14 @@
         coordinadores[grupoActual] = idsMezclados[i];
         grupoActual++;
       }
+      guardarBorrador();
       renderizarLista();
     }
 
     function limpiarGrupos() {
       grupos = {};
       coordinadores = {};
+      guardarBorrador();
       renderizarLista();
     }
 
@@ -220,56 +301,128 @@
           delete coordinadores[grupoId];
         }
       }
+      guardarBorrador();
       renderizarLista();
     }
 
-    // Lógica dinámica: Si cambia la nota del coordinador, se replica en sus compañeros
-    function manejarCambioNota(alumnoId, nota) {
-      const grupoId = grupos[alumnoId];
+    // Guarda la nota de un criterio y, si el alumno es coordinador de su grupo, la propaga al resto
+    function manejarCambioNota(alumnoId, criterioIdx, valor) {
+      const nombreCriterio = criterios[criterioIdx].nombre;
+      if (!notas[alumnoId]) notas[alumnoId] = {};
+      notas[alumnoId][nombreCriterio] = valor;
+      actualizarNotaFinal(alumnoId);
 
-      // Si el alumno es el coordinador de su grupo, propagamos su nota
+      const grupoId = grupos[alumnoId];
       if (grupoId && coordinadores[grupoId] === alumnoId) {
         estudiantes.forEach(al => {
           if (grupos[al.id] === grupoId && al.id !== alumnoId) {
-            document.getElementById(`nota-${al.id}`).value = nota;
+            if (!notas[al.id]) notas[al.id] = {};
+            notas[al.id][nombreCriterio] = valor;
+            const input = document.getElementById(`nota-${al.id}-${criterioIdx}`);
+            if (input) input.value = valor;
+            actualizarNotaFinal(al.id);
           }
         });
       }
+
+      guardarBorrador();
     }
 
-    // Prepara el paquete de datos y lo envía al backend para la hoja de cálculo
-    function exportarDatos() {
+    // Clave única de borrador para la combinación curso/módulo/clase/desdoblamiento actual
+    function claveBorrador() {
+      const curso = document.getElementById('curso').value;
+      const modulo = document.getElementById('modulo').value;
+      const desdoblamiento = document.getElementById('desdoblamiento').value;
+      return `evaluador_borrador_${curso}_${modulo}_${claseActual.id}_${desdoblamiento}`;
+    }
+
+    // Guarda en localStorage las notas y grupos en curso, con un pequeño debounce
+    function guardarBorrador() {
+      clearTimeout(guardarBorradorTimeout);
+      guardarBorradorTimeout = setTimeout(() => {
+        if (!claseActual.id) return;
+        const borrador = { notas, grupos, coordinadores, guardadoEn: new Date().toISOString() };
+        localStorage.setItem(claveBorrador(), JSON.stringify(borrador));
+      }, 400);
+    }
+
+    // Restaura un borrador guardado, si existe, para la clase/módulo recién cargados
+    function restaurarBorrador() {
+      const guardado = localStorage.getItem(claveBorrador());
+      if (!guardado) return;
+
+      try {
+        const borrador = JSON.parse(guardado);
+        notas = borrador.notas || {};
+        grupos = borrador.grupos || {};
+        coordinadores = borrador.coordinadores || {};
+
+        const fecha = new Date(borrador.guardadoEn);
+        const hh = String(fecha.getHours()).padStart(2, '0');
+        const mm = String(fecha.getMinutes()).padStart(2, '0');
+        const statusText = document.getElementById('status');
+        statusText.innerText = `Borrador restaurado (guardado a las ${hh}:${mm})`;
+        statusText.className = "text-xs text-center font-medium text-indigo-600";
+      } catch (e) {
+        // Borrador corrupto: se ignora y se sigue con notas en blanco
+      }
+    }
+
+    function borrarBorrador() {
+      if (!claseActual.id) return;
+      localStorage.removeItem(claveBorrador());
+    }
+
+    // Prepara el paquete de datos y lo envía al backend para la hoja de cálculo.
+    // Si el backend detecta que ya existe una exportación previa, pide confirmación antes de sobrescribir.
+    function exportarDatos(confirmado) {
+      if (!claseActual.id || estudiantes.length === 0) {
+        alert('Carga primero los alumnos de una clase.');
+        return;
+      }
+
       const statusText = document.getElementById('status');
       statusText.innerText = "Exportando datos, por favor espera...";
       statusText.className = "text-xs text-center font-medium text-indigo-600 animate-pulse";
 
-      const evaluaciones = estudiantes.map(al => {
-        return {
-          id: al.id,
-          nombre: al.nombre,
-          nota: document.getElementById(`nota-${al.id}`).value
-        };
-      });
+      const evaluaciones = estudiantes.map(al => ({
+        nombre: al.nombre,
+        notas: notas[al.id] || {}
+      }));
 
       const datos = {
         curso: document.getElementById('curso').value,
         modulo: document.getElementById('modulo').value,
-        clase: document.getElementById('clase').value,
+        clase: claseActual.nombre,
         desdoblamiento: document.getElementById('desdoblamiento').value,
         evaluaciones: evaluaciones
       };
 
       google.script.run
         .withSuccessHandler(function(response) {
+          if (response.necesitaConfirmacion) {
+            const ultima = response.ultimaActualizacion ? ` (última exportación: ${response.ultimaActualizacion})` : '';
+            if (confirm(`Ya existe una exportación para esta clase y módulo${ultima}. ¿Sobrescribir?`)) {
+              exportarDatos(true);
+            } else {
+              statusText.innerText = "Exportación cancelada.";
+              statusText.className = "text-xs text-center font-medium text-slate-500";
+            }
+            return;
+          }
+
           statusText.innerHTML = `¡Guardado con éxito! <a href="${response.url}" target="_blank" class="underline text-green-600 font-bold">Abrir Google Sheets</a>`;
           statusText.className = "text-xs text-center font-medium text-green-600";
+          borrarBorrador();
         })
         .withFailureHandler(function(err) {
           statusText.innerText = "Error al exportar: " + err.message;
           statusText.className = "text-xs text-center font-medium text-red-600";
         })
-        .exportarAGoogleSheets(datos);
+        .exportarAGoogleSheets(datos, confirmado === true);
     }
+
+    cargarCursos();
   </script>
 </body>
 </html>
