@@ -1,5 +1,5 @@
 // URL raw de GitHub donde vive el frontend. Cambia la rama/ruta si mueves el archivo.
-var GITHUB_INDEX_URL = 'https://raw.githubusercontent.com/katwolo/feedback_sessions/claude/teacher-evaluation-code-gs-3mkzol/Index.html';
+var GITHUB_INDEX_URL = 'https://raw.githubusercontent.com/katwolo/feedback_sessions/claude/teacher-evaluation-code-gs-3mkzol/index.html';
 
 // ID del Google Sheet donde se exportan las evaluaciones
 var SPREADSHEET_ID = '1CBaAA7ew3zWmthPP8Xba5prZDJ8_IdNfLj8mIUONylg';
