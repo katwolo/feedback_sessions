@@ -1,6 +1,9 @@
 // URL raw de GitHub donde vive el frontend. Cambia la rama/ruta si mueves el archivo.
 var GITHUB_INDEX_URL = 'https://raw.githubusercontent.com/katwolo/feedback_sessions/claude/teacher-evaluation-code-gs-3mkzol/Index.html';
 
+// ID del Google Sheet donde se exportan las evaluaciones
+var SPREADSHEET_ID = '1CBaAA7ew3zWmthPP8Xba5prZDJ8_IdNfLj8mIUONylg';
+
 function doGet() {
   var html = obtenerIndexDesdeGitHub();
   return HtmlService.createHtmlOutput(html)
@@ -41,14 +44,9 @@ function getEstudiantes(curso, modulo, clase, desdoblamiento) {
   ];
 }
 
-// Exporta las notas a una nueva pestaña del Google Sheet actual
+// Exporta las notas a una nueva pestaña del Google Sheet vinculado (SPREADSHEET_ID)
 function exportarAGoogleSheets(datos) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-  } catch(e) {
-    // Si ejecutas el script de forma independiente, creará un archivo nuevo en tu Drive
-    var ss = SpreadsheetApp.create("Registro de Evaluación - " + datos.modulo);
-  }
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
   var nombrePestaña = datos.clase + " - " + datos.modulo;
   if (datos.desdoblamiento && datos.desdoblamiento !== "General") {
