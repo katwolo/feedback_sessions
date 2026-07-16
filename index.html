@@ -15,118 +15,237 @@
       </h1>
       <span class="text-xs bg-indigo-500 px-2.5 py-1 rounded-full font-semibold">Fase de Disseny</span>
     </div>
+    <div class="max-w-md mx-auto flex gap-2 mt-3">
+      <button id="tab-avaluar" onclick="canviarVista('avaluar')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-white text-indigo-600">Avaluar</button>
+      <button id="tab-resultats" onclick="canviarVista('resultats')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-indigo-500 text-white">Resultats</button>
+    </div>
   </header>
 
   <main class="max-w-md mx-auto p-4 space-y-4">
 
-    <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Configuració de Sessió</h2>
+    <div id="vista-avaluar" class="space-y-4">
 
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Curs</label>
-          <input type="text" id="curs" value="26/27" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Configuració de Sessió</h2>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Curs</label>
+            <input type="text" id="curs" value="26/27" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Mòdul</label>
+            <select id="modul" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+              <option value="">Carregant...</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Mòdul</label>
-          <input type="text" id="modul" value="Individuals Aigua" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
+            <select id="classe" onchange="carregarDesdoblaments(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+              <option value="">Carregant...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Desdoblament</label>
+            <select id="desdoblament" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+              <option value="General">General (tota la classe)</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
-          <input type="text" id="classe" list="llista-classes" placeholder="Ex: 1º A" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-          <datalist id="llista-classes"></datalist>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Sessió avaluada</label>
+          <input type="text" id="sessio-avaluada" placeholder="Ex: Supòsit pràctic aigua 1" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Desdoblament</label>
-          <select id="desdoblament" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-            <option value="General">General (Complet)</option>
-            <option value="Desdoble 1">Desdoblament 1</option>
-            <option value="Desdoble 2">Desdoblament 2</option>
-          </select>
-        </div>
-      </div>
 
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Sessió avaluada</label>
-        <input type="text" id="sessio-avaluada" placeholder="Ex: Supòsit pràctic aigua 1" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-      </div>
-
-      <button onclick="carregarAlumnes()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
-        Carregar Alumnes
-      </button>
-    </section>
-
-    <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-      <div class="flex justify-between items-center">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Grups Temporals (d'aquesta sessió)</h2>
-        <span class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Opcional</span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2">
-        <button onclick="crearGrupsAleatoris()" class="border border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
-          <span class="material-icons text-xs">shuffle</span> Auto-Agrupar (Parelles)
+        <button onclick="carregarAlumnes()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
+          Carregar Alumnes
         </button>
-        <button onclick="desferGrups()" class="border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
-          <span class="material-icons text-xs">clear</span> Desfer Grups
+      </section>
+
+      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Grups Temporals (d'aquest treball)</h2>
+          <span class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Opcional</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="crearGrupsAleatoris()" class="border border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
+            <span class="material-icons text-xs">shuffle</span> Auto-Agrupar (Parelles)
+          </button>
+          <button onclick="desferGrups()" class="border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
+            <span class="material-icons text-xs">clear</span> Desfer Grups
+          </button>
+        </div>
+      </section>
+
+      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Panell de Qualificació</h2>
+
+        <div class="flex gap-2">
+          <input type="text" id="alumne-nom-nou" placeholder="Nom" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-indigo-500">
+          <input type="text" id="alumne-cognoms-nou" placeholder="Cognoms" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-indigo-500">
+          <button onclick="afegirAlumne()" class="bg-indigo-600 text-white text-xs font-semibold px-3 rounded-lg hover:bg-indigo-700">+</button>
+        </div>
+
+        <div id="llista-alumnes" class="divide-y divide-slate-100">
+          <p class="text-sm text-slate-400 py-4 text-center">Prem "Carregar Alumnes" per començar.</p>
+        </div>
+      </section>
+
+      <section class="space-y-3">
+        <button onclick="exportarDades()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
+          <span class="material-icons">trending_flat</span> Exportar a Google Sheets
         </button>
-      </div>
-    </section>
+        <p id="status" class="text-xs text-center font-medium text-slate-500"></p>
+      </section>
 
-    <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Panell de Qualificació</h2>
+    </div>
 
-      <div class="flex gap-2">
-        <input type="text" id="alumne-nou" placeholder="Nom de l'alumne nou (Cognoms, Nom)" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-indigo-500">
-        <button onclick="afegirAlumne()" class="bg-indigo-600 text-white text-xs font-semibold px-3 rounded-lg hover:bg-indigo-700">+ Afegir</button>
-      </div>
+    <div id="vista-resultats" class="space-y-4 hidden">
 
-      <div id="llista-alumnes" class="divide-y divide-slate-100">
-        <p class="text-sm text-slate-400 py-4 text-center">Prem "Carregar Alumnes" per començar.</p>
-      </div>
-    </section>
+      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Cercar Resultats</h2>
 
-    <section class="space-y-3">
-      <button onclick="exportarDades()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
-        <span class="material-icons">trending_flat</span> Exportar a Google Sheets
-      </button>
-      <p id="status" class="text-xs text-center font-medium text-slate-500"></p>
-    </section>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
+            <select id="resultats-classe" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+              <option value="">Carregant...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Mòdul</label>
+            <select id="resultats-modul" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+              <option value="">Tots</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="cercarSessions()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
+          Cercar
+        </button>
+      </section>
+
+      <section id="llista-sessions-wrap" class="space-y-2">
+        <p class="text-sm text-slate-400 text-center py-4">Selecciona una classe i prem "Cercar".</p>
+      </section>
+
+      <section id="detall-sessio-wrap" class="hidden bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+        <div class="flex justify-between items-center">
+          <h2 id="detall-sessio-titol" class="text-sm font-semibold text-slate-700"></h2>
+          <button onclick="tancarDetallSessio()" class="text-xs text-slate-400 hover:text-slate-600">✕ Tancar</button>
+        </div>
+        <div id="detall-sessio-alumnes" class="divide-y divide-slate-100"></div>
+        <button onclick="confirmarEsborrarSessio()" class="w-full border border-red-200 text-red-600 text-xs py-2 rounded-lg hover:bg-red-50">
+          🗑 Esborrar tota la sessió
+        </button>
+      </section>
+
+    </div>
 
   </main>
 
   <script>
-    let estudiants = [];       // array de noms (strings)
-    let criteris = [];         // [{ nom, pes }]
-    let notes = {};             // { nomAlumne: { nomCriteri: valorString } }
-    let observacionsIndividuals = {}; // { nomAlumne: text }
-    let observacionsGrup = {};       // { grupId: text }
-    let grups = {};             // { nomAlumne: grupId }
-    let coordinadors = {};      // { grupId: nomAlumne }
+    // ---- Estat "Avaluar" ----
+    let estudiants = [];        // [{ nom, cognoms }]
+    let criteris = [];          // [{ nom, pes }]
+    let notes = {};             // { clauAlumne: { nomCriteri: valorString } }
+    let observacionsIndividuals = {}; // { clauAlumne: text }
+    let observacionsGrup = {};        // { grupId: text }
+    let grups = {};              // { clauAlumne: grupId }
+    let coordinadors = {};       // { grupId: clauAlumne }
     let guardarEsborranyTimeout = null;
 
-    // Puebla el desplegable/datalist de "Classe" amb les classes conegudes a "👥 Alumnat"
-    function carregarClasses() {
+    // ---- Estat "Resultats" ----
+    let sessionsListades = [];
+    let sessioOberta = null;
+    let resultatsSessio = [];
+
+    function clauAlumne(nom, cognoms) { return nom + '||' + cognoms; }
+    function idSegur(text) { return text.replace(/[^a-zA-Z0-9]/g, '_'); }
+
+    function canviarVista(v) {
+      document.getElementById('vista-avaluar').classList.toggle('hidden', v !== 'avaluar');
+      document.getElementById('vista-resultats').classList.toggle('hidden', v !== 'resultats');
+      document.getElementById('tab-avaluar').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
+        (v === 'avaluar' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
+      document.getElementById('tab-resultats').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
+        (v === 'resultats' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
+    }
+
+    // ---------------- CÀRREGA DE DESPLEGABLES ----------------
+
+    function carregarModuls() {
+      const sel = document.getElementById('modul');
+      const selResultats = document.getElementById('resultats-modul');
       google.script.run
-        .withSuccessHandler(function(classes) {
-          document.getElementById('llista-classes').innerHTML =
-            classes.map(c => `<option value="${c}"></option>`).join('');
+        .withSuccessHandler(function(moduls) {
+          if (moduls.length === 0) {
+            sel.innerHTML = '<option value="">Cap mòdul configurat</option>';
+            return;
+          }
+          sel.innerHTML = moduls.map(m => `<option value="${m}">${m}</option>`).join('');
+          selResultats.innerHTML = '<option value="">Tots</option>' + moduls.map(m => `<option value="${m}">${m}</option>`).join('');
         })
         .withFailureHandler(function(err) {
-          console.error('No s\'han pogut carregar les classes: ' + err.message);
+          sel.innerHTML = '<option value="">Error</option>';
+          alert('No s\'han pogut carregar els mòduls: ' + err.message);
+        })
+        .listarModuls();
+    }
+
+    function carregarClasses() {
+      const sel = document.getElementById('classe');
+      const selResultats = document.getElementById('resultats-classe');
+      google.script.run
+        .withSuccessHandler(function(classes) {
+          if (classes.length === 0) {
+            sel.innerHTML = '<option value="">Cap classe al Llistat</option>';
+            selResultats.innerHTML = '<option value="">Cap classe al Llistat</option>';
+            return;
+          }
+          sel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+          selResultats.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+          carregarDesdoblaments(classes[0]);
+        })
+        .withFailureHandler(function(err) {
+          sel.innerHTML = '<option value="">Error</option>';
+          alert('No s\'han pogut carregar les classes: ' + err.message);
         })
         .listarClasses();
     }
 
-    // Carrega els alumnes coneguts de la classe i els criteris d'avaluació configurats per al mòdul
+    function carregarDesdoblaments(classe, valorSeleccionat) {
+      const sel = document.getElementById('desdoblament');
+      if (!classe) {
+        sel.innerHTML = '<option value="General">General (tota la classe)</option>';
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(desdoblaments) {
+          sel.innerHTML = desdoblaments.map(d =>
+            `<option value="${d}">${d === 'General' ? 'General (tota la classe)' : d}</option>`).join('');
+          if (valorSeleccionat) sel.value = valorSeleccionat;
+        })
+        .withFailureHandler(function() {
+          sel.innerHTML = '<option value="General">General (tota la classe)</option>';
+        })
+        .listarDesdoblaments(classe);
+    }
+
+    // ---------------- AVALUAR: CÀRREGA D'ALUMNES ----------------
+
     function carregarAlumnes() {
-      const classe = document.getElementById('classe').value.trim();
-      const modul = document.getElementById('modul').value.trim();
+      const classe = document.getElementById('classe').value;
+      const desdoblament = document.getElementById('desdoblament').value;
+      const modul = document.getElementById('modul').value;
 
       if (!classe) {
-        alert('Escriu o selecciona una classe primer.');
+        alert('Selecciona una classe primer.');
         return;
       }
 
@@ -135,7 +254,7 @@
 
       Promise.all([
         new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenirAlumnes(classe);
+          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenirAlumnes(classe, desdoblament);
         }),
         new Promise((resolve, reject) => {
           google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenirCriteris(modul);
@@ -156,22 +275,28 @@
       });
     }
 
-    // Afegeix un alumne nou (encara no conegut) a la llista d'avaluació d'aquesta sessió
     function afegirAlumne() {
-      const input = document.getElementById('alumne-nou');
-      const nom = input.value.trim();
-      if (!nom) return;
+      const nomInput = document.getElementById('alumne-nom-nou');
+      const cognomsInput = document.getElementById('alumne-cognoms-nou');
+      const nom = nomInput.value.trim();
+      const cognoms = cognomsInput.value.trim();
 
-      if (!estudiants.includes(nom)) {
-        estudiants.push(nom);
+      if (!nom || !cognoms) {
+        alert('Escriu el nom i els cognoms.');
+        return;
       }
-      input.value = '';
+
+      if (!estudiants.some(a => a.nom === nom && a.cognoms === cognoms)) {
+        estudiants.push({ nom: nom, cognoms: cognoms });
+      }
+      nomInput.value = '';
+      cognomsInput.value = '';
       guardarEsborrany();
       renderitzarLlista();
     }
 
-    function obtenirNota(nom, nomCriteri) {
-      return (notes[nom] && notes[nom][nomCriteri]) || '';
+    function obtenirNota(clau, nomCriteri) {
+      return (notes[clau] && notes[clau][nomCriteri]) || '';
     }
 
     // Renderitza la llista d'avaluació a la pantalla, amb un input per criteri i la nota final calculada
@@ -184,10 +309,11 @@
         return;
       }
 
-      estudiants.forEach(nom => {
-        const grupId = grups[nom] || null;
-        const esCoordinador = grupId && coordinadors[grupId] === nom;
-        const idSegur = nom.replace(/[^a-zA-Z0-9]/g, '_');
+      estudiants.forEach(alumne => {
+        const clau = clauAlumne(alumne.nom, alumne.cognoms);
+        const idSegurAlumne = idSegur(clau);
+        const grupId = grups[clau] || null;
+        const esCoordinador = grupId && coordinadors[grupId] === clau;
 
         const div = document.createElement('div');
         div.className = "py-3 flex flex-col gap-2";
@@ -196,9 +322,9 @@
           <div class="flex flex-col items-center min-w-0">
             <label class="text-[9px] text-slate-400 uppercase font-semibold truncate w-full text-center" title="${c.nom} (${c.pes}%)">${c.nom}</label>
             <input type="number" step="0.1" min="0" max="10"
-                   id="nota-${idSegur}-${idx}"
-                   oninput="canviarNota('${nom.replace(/'/g, "\\'")}', ${idx}, this.value)"
-                   value="${obtenirNota(nom, c.nom)}"
+                   id="nota-${idSegurAlumne}-${idx}"
+                   oninput="canviarNota('${clau.replace(/'/g, "\\'")}', ${idx}, this.value)"
+                   value="${obtenirNota(clau, c.nom)}"
                    class="w-full bg-slate-100 border border-slate-200 rounded-lg p-1 text-center text-xs font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
                    placeholder="-">
           </div>
@@ -206,7 +332,7 @@
 
         div.innerHTML = `
           <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold text-slate-800">${nom}</span>
+            <span class="text-sm font-semibold text-slate-800">${alumne.cognoms}, ${alumne.nom}</span>
             ${grupId ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grup ${grupId}</span>` : ''}
           </div>
 
@@ -214,19 +340,19 @@
             ${inputsCriteris}
             <div class="flex flex-col items-center min-w-0">
               <label class="text-[9px] text-amber-600 uppercase font-bold w-full text-center">Final</label>
-              <div id="final-${idSegur}" class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1 text-center text-xs font-bold text-amber-700">-</div>
+              <div id="final-${idSegurAlumne}" class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1 text-center text-xs font-bold text-amber-700">-</div>
             </div>
           </div>
 
-          <textarea placeholder="Observacions individuals..." rows="1"
-                    oninput="canviarObservacioIndividual('${nom.replace(/'/g, "\\'")}', this.value)"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-indigo-500 resize-none">${observacionsIndividuals[nom] || ''}</textarea>
+          <textarea placeholder="Observacions individuals de ${alumne.nom}..." rows="1"
+                    oninput="canviarObservacioIndividual('${clau.replace(/'/g, "\\'")}', this.value)"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-indigo-500 resize-none">${observacionsIndividuals[clau] || ''}</textarea>
 
           ${grupId ? `
             <div class="flex items-center gap-4 pl-2">
               <label class="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
                 <input type="checkbox" name="coord-${grupId}" ${esCoordinador ? 'checked' : ''}
-                       onchange="assignarCoordinador('${nom.replace(/'/g, "\\'")}', ${grupId}, this.checked)"
+                       onchange="assignarCoordinador('${clau.replace(/'/g, "\\'")}', ${grupId}, this.checked)"
                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                 <span>Representant / Portaveu</span>
               </label>
@@ -240,7 +366,7 @@
           ` : `
             <div class="flex items-center gap-2 pl-2">
               <span class="text-[10px] text-slate-400 uppercase font-semibold">Assignar Grup:</span>
-              <select onchange="assignarGrupManual('${nom.replace(/'/g, "\\'")}', this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-600">
+              <select onchange="assignarGrupManual('${clau.replace(/'/g, "\\'")}', this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-600">
                 <option value="">Cap</option>
                 <option value="1">Grup 1</option>
                 <option value="2">Grup 2</option>
@@ -253,16 +379,15 @@
         contenidor.appendChild(div);
       });
 
-      estudiants.forEach(nom => actualitzarNotaFinal(nom));
+      estudiants.forEach(alumne => actualitzarNotaFinal(clauAlumne(alumne.nom, alumne.cognoms)));
     }
 
     // Recalcula i mostra la nota final ponderada d'un alumne segons els criteris configurats
-    function actualitzarNotaFinal(nom) {
-      const idSegur = nom.replace(/[^a-zA-Z0-9]/g, '_');
-      const el = document.getElementById(`final-${idSegur}`);
+    function actualitzarNotaFinal(clau) {
+      const el = document.getElementById(`final-${idSegur(clau)}`);
       if (!el) return;
 
-      const notesAlumne = notes[nom] || {};
+      const notesAlumne = notes[clau] || {};
       let suma = 0;
       let completes = criteris.length > 0;
 
@@ -278,32 +403,29 @@
       el.textContent = completes ? suma.toFixed(2) : '-';
     }
 
-    // Gestiona els grups manuals
-    function assignarGrupManual(nom, grupVal) {
+    function assignarGrupManual(clau, grupVal) {
       if (grupVal === "") {
-        delete grups[nom];
+        delete grups[clau];
       } else {
-        grups[nom] = parseInt(grupVal);
+        grups[clau] = parseInt(grupVal);
       }
       guardarEsborrany();
       renderitzarLlista();
     }
 
-    // Algoritme ràpid d'agrupació aleatòria (en parelles)
     function crearGrupsAleatoris() {
       if (estudiants.length === 0) return;
       desferGrups();
 
-      const nomsMesclats = [...estudiants].sort(() => Math.random() - 0.5);
+      const clausMesclades = estudiants.map(a => clauAlumne(a.nom, a.cognoms)).sort(() => Math.random() - 0.5);
       let grupActual = 1;
 
-      for (let i = 0; i < nomsMesclats.length; i += 2) {
-        grups[nomsMesclats[i]] = grupActual;
-        if (nomsMesclats[i + 1]) {
-          grups[nomsMesclats[i + 1]] = grupActual;
+      for (let i = 0; i < clausMesclades.length; i += 2) {
+        grups[clausMesclades[i]] = grupActual;
+        if (clausMesclades[i + 1]) {
+          grups[clausMesclades[i + 1]] = grupActual;
         }
-        // Assignar per defecte el primer com a coordinador temporal del subgrup
-        coordinadors[grupActual] = nomsMesclats[i];
+        coordinadors[grupActual] = clausMesclades[i];
         grupActual++;
       }
       guardarEsborrany();
@@ -318,36 +440,33 @@
       renderitzarLlista();
     }
 
-    // Controla qui és el coordinador. Només pot haver-hi'n un per ID de grup.
-    function assignarCoordinador(nom, grupId, checked) {
+    function assignarCoordinador(clau, grupId, checked) {
       if (checked) {
-        coordinadors[grupId] = nom;
-      } else {
-        if (coordinadors[grupId] === nom) {
-          delete coordinadors[grupId];
-        }
+        coordinadors[grupId] = clau;
+      } else if (coordinadors[grupId] === clau) {
+        delete coordinadors[grupId];
       }
       guardarEsborrany();
       renderitzarLlista();
     }
 
     // Guarda la nota d'un criteri i, si l'alumne és coordinador del seu grup, la propaga a la resta
-    function canviarNota(nom, criteriIdx, valor) {
+    function canviarNota(clau, criteriIdx, valor) {
       const nomCriteri = criteris[criteriIdx].nom;
-      if (!notes[nom]) notes[nom] = {};
-      notes[nom][nomCriteri] = valor;
-      actualitzarNotaFinal(nom);
+      if (!notes[clau]) notes[clau] = {};
+      notes[clau][nomCriteri] = valor;
+      actualitzarNotaFinal(clau);
 
-      const grupId = grups[nom];
-      if (grupId && coordinadors[grupId] === nom) {
+      const grupId = grups[clau];
+      if (grupId && coordinadors[grupId] === clau) {
         estudiants.forEach(altre => {
-          if (grups[altre] === grupId && altre !== nom) {
-            if (!notes[altre]) notes[altre] = {};
-            notes[altre][nomCriteri] = valor;
-            const idSegur = altre.replace(/[^a-zA-Z0-9]/g, '_');
-            const input = document.getElementById(`nota-${idSegur}-${criteriIdx}`);
+          const clauAltre = clauAlumne(altre.nom, altre.cognoms);
+          if (grups[clauAltre] === grupId && clauAltre !== clau) {
+            if (!notes[clauAltre]) notes[clauAltre] = {};
+            notes[clauAltre][nomCriteri] = valor;
+            const input = document.getElementById(`nota-${idSegur(clauAltre)}-${criteriIdx}`);
             if (input) input.value = valor;
-            actualitzarNotaFinal(altre);
+            actualitzarNotaFinal(clauAltre);
           }
         });
       }
@@ -355,19 +474,18 @@
       guardarEsborrany();
     }
 
-    // L'observació individual és sempre pròpia de l'alumne, mai es propaga
-    function canviarObservacioIndividual(nom, valor) {
-      observacionsIndividuals[nom] = valor;
+    function canviarObservacioIndividual(clau, valor) {
+      observacionsIndividuals[clau] = valor;
       guardarEsborrany();
     }
 
-    // L'observació de grup s'associa al grup sencer (s'aplicarà a tots els membres en exportar)
     function canviarObservacioGrup(grupId, valor) {
       observacionsGrup[grupId] = valor;
       guardarEsborrany();
     }
 
-    // Clau única d'esborrany per a la combinació curs/mòdul/classe/desdoblament/sessió actual
+    // ---------------- ESBORRANY LOCAL ----------------
+
     function clauEsborrany() {
       const curs = document.getElementById('curs').value;
       const modul = document.getElementById('modul').value;
@@ -377,7 +495,6 @@
       return `avaluador_esborrany_${curs}_${modul}_${classe}_${desdoblament}_${sessio}`;
     }
 
-    // Guarda a localStorage les notes i grups en curs, amb un petit debounce
     function guardarEsborrany() {
       clearTimeout(guardarEsborranyTimeout);
       guardarEsborranyTimeout = setTimeout(() => {
@@ -387,16 +504,14 @@
       }, 400);
     }
 
-    // Restaura un esborrany guardat, si existeix, per a la classe/mòdul/sessió recent carregats
     function restaurarEsborrany() {
       const guardat = localStorage.getItem(clauEsborrany());
       if (!guardat) return;
 
       try {
         const esborrany = JSON.parse(guardat);
-        // Combina alumnes afegits a l'esborrany (p.ex. afegits a mà) amb els ja coneguts
-        (esborrany.estudiants || []).forEach(nom => {
-          if (!estudiants.includes(nom)) estudiants.push(nom);
+        (esborrany.estudiants || []).forEach(a => {
+          if (!estudiants.some(e => e.nom === a.nom && e.cognoms === a.cognoms)) estudiants.push(a);
         });
         notes = esborrany.notes || {};
         grups = esborrany.grups || {};
@@ -411,7 +526,7 @@
         statusText.innerText = `Esborrany restaurat (guardat a les ${hh}:${mm})`;
         statusText.className = "text-xs text-center font-medium text-indigo-600";
       } catch (e) {
-        // Esborrany corrupte: s'ignora i es continua amb notes en blanc
+        // Esborrany corrupte: s'ignora
       }
     }
 
@@ -419,8 +534,8 @@
       localStorage.removeItem(clauEsborrany());
     }
 
-    // Prepara el paquet de dades i l'envia al backend. Si el backend detecta que ja existeix
-    // una avaluació prèvia per algun alumne/sessió, demana confirmació abans de sobreescriure.
+    // ---------------- EXPORTACIÓ ----------------
+
     function exportarDades(confirmat) {
       if (estudiants.length === 0) {
         alert('Carrega o afegeix primer els alumnes d\'aquesta sessió.');
@@ -437,12 +552,16 @@
       statusText.innerText = "Exportant dades, espera si us plau...";
       statusText.className = "text-xs text-center font-medium text-indigo-600 animate-pulse";
 
-      const evaluacions = estudiants.map(nom => ({
-        nom: nom,
-        notes: notes[nom] || {},
-        observacioGrup: grups[nom] ? (observacionsGrup[grups[nom]] || '') : '',
-        observacioIndividual: observacionsIndividuals[nom] || ''
-      }));
+      const evaluacions = estudiants.map(alumne => {
+        const clau = clauAlumne(alumne.nom, alumne.cognoms);
+        return {
+          nom: alumne.nom,
+          cognoms: alumne.cognoms,
+          notes: notes[clau] || {},
+          observacioGrup: grups[clau] ? (observacionsGrup[grups[clau]] || '') : '',
+          observacioIndividual: observacionsIndividuals[clau] || ''
+        };
+      });
 
       const dades = {
         curs: document.getElementById('curs').value,
@@ -477,6 +596,169 @@
         .exportarAGoogleSheets(dades, confirmat === true);
     }
 
+    // ---------------- RESULTATS: CERCA, EDICIÓ I ESBORRAT ----------------
+
+    function cercarSessions() {
+      const classe = document.getElementById('resultats-classe').value;
+      const modul = document.getElementById('resultats-modul').value;
+
+      if (!classe) {
+        alert('Selecciona una classe.');
+        return;
+      }
+
+      tancarDetallSessio();
+      document.getElementById('llista-sessions-wrap').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Cercant...</p>';
+
+      google.script.run
+        .withSuccessHandler(function(sessions) {
+          sessionsListades = sessions;
+          renderitzarSessions();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('llista-sessions-wrap').innerHTML =
+            '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+        })
+        .llistarSessions(classe, modul);
+    }
+
+    function renderitzarSessions() {
+      const cont = document.getElementById('llista-sessions-wrap');
+
+      if (sessionsListades.length === 0) {
+        cont.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">No hi ha sessions avaluades per aquesta cerca.</p>';
+        return;
+      }
+
+      cont.innerHTML = sessionsListades.map((s, idx) => `
+        <button onclick="obrirSessio(${idx})" class="w-full bg-white p-3 rounded-xl shadow-sm border border-slate-100 text-left hover:border-indigo-300 transition">
+          <div class="flex justify-between items-center gap-2">
+            <span class="text-sm font-semibold text-slate-800 truncate">${s.sessioAvaluada}</span>
+            <span class="text-xs text-slate-400 shrink-0">${s.data}</span>
+          </div>
+          <div class="text-xs text-slate-500 mt-1">${s.modul} · ${s.classe}${s.desdoblament !== 'General' ? ' (' + s.desdoblament + ')' : ''} · ${s.nAlumnes} alumne${s.nAlumnes === 1 ? '' : 's'}</div>
+        </button>
+      `).join('');
+    }
+
+    function obrirSessio(idx) {
+      const s = sessionsListades[idx];
+      sessioOberta = s;
+
+      document.getElementById('detall-sessio-titol').textContent = `${s.sessioAvaluada} — ${s.classe}`;
+      document.getElementById('detall-sessio-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant...</p>';
+      document.getElementById('detall-sessio-wrap').classList.remove('hidden');
+
+      google.script.run
+        .withSuccessHandler(function(resultats) {
+          resultatsSessio = resultats;
+          renderitzarDetallSessio();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('detall-sessio-alumnes').innerHTML =
+            '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+        })
+        .obtenirResultatsSessio(s.curs, s.modul, s.classe, s.desdoblament, s.sessioAvaluada);
+    }
+
+    function renderitzarDetallSessio() {
+      const cont = document.getElementById('detall-sessio-alumnes');
+
+      if (resultatsSessio.length === 0) {
+        cont.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Sense alumnes.</p>';
+        return;
+      }
+
+      cont.innerHTML = resultatsSessio.map((r, idx) => `
+        <div class="py-2 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-slate-800 truncate">${r.cognoms}, ${r.nom}</div>
+            <div class="text-xs text-slate-400">Nota final: <span class="font-bold text-amber-600">${r.notaFinal !== '' ? r.notaFinal : '-'}</span></div>
+          </div>
+          <div class="flex gap-1 shrink-0">
+            <button onclick="editarResultat(${idx})" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-100">✏️ Editar</button>
+            <button onclick="confirmarEsborrarResultat(${idx})" class="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100">🗑</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function tancarDetallSessio() {
+      sessioOberta = null;
+      resultatsSessio = [];
+      document.getElementById('detall-sessio-wrap').classList.add('hidden');
+    }
+
+    function confirmarEsborrarResultat(idx) {
+      const r = resultatsSessio[idx];
+      const s = sessioOberta;
+      if (!confirm(`Esborrar el resultat de ${r.cognoms}, ${r.nom}? (L'historial per criteri es conservarà)`)) return;
+
+      google.script.run
+        .withSuccessHandler(function() { obrirSessio(sessionsListades.indexOf(s)); })
+        .withFailureHandler(function(err) { alert('Error en esborrar: ' + err.message); })
+        .eliminarResultat(s.curs, s.modul, s.classe, s.desdoblament, r.nom, r.cognoms, s.sessioAvaluada);
+    }
+
+    function confirmarEsborrarSessio() {
+      if (!sessioOberta) return;
+      const s = sessioOberta;
+      if (!confirm(`Esborrar TOTA la sessió "${s.sessioAvaluada}" (${resultatsSessio.length} alumnes)? Aquesta acció no es pot desfer (l'historial es conservarà).`)) return;
+
+      google.script.run
+        .withSuccessHandler(function() {
+          tancarDetallSessio();
+          cercarSessions();
+        })
+        .withFailureHandler(function(err) { alert('Error en esborrar: ' + err.message); })
+        .eliminarSessio(s.curs, s.modul, s.classe, s.desdoblament, s.sessioAvaluada);
+    }
+
+    // Obre el resultat d'un alumne concret al panell d'Avaluar per poder-lo corregir i reexportar
+    function editarResultat(idx) {
+      const r = resultatsSessio[idx];
+      const s = sessioOberta;
+
+      canviarVista('avaluar');
+
+      document.getElementById('curs').value = s.curs;
+      document.getElementById('modul').value = s.modul;
+      document.getElementById('classe').value = s.classe;
+      document.getElementById('sessio-avaluada').value = s.sessioAvaluada;
+      carregarDesdoblaments(s.classe, s.desdoblament);
+
+      estudiants = [{ nom: r.nom, cognoms: r.cognoms }];
+      grups = {};
+      coordinadors = {};
+      notes = {};
+      observacionsGrup = {};
+      observacionsIndividuals = {};
+
+      const clau = clauAlumne(r.nom, r.cognoms);
+      observacionsIndividuals[clau] = r.observacioIndividual || '';
+
+      document.getElementById('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant detall...</p>';
+
+      Promise.all([
+        new Promise((resolve, reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenirCriteris(s.modul)),
+        new Promise((resolve, reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+            .obtenirDetallAlumne(s.curs, s.modul, s.classe, s.desdoblament, r.nom, r.cognoms, s.sessioAvaluada))
+      ]).then(([criterisData, detallNotes]) => {
+        criteris = criterisData;
+        notes[clau] = {};
+        Object.keys(detallNotes).forEach(k => { notes[clau][k] = detallNotes[k]; });
+        renderitzarLlista();
+
+        const statusText = document.getElementById('status');
+        statusText.innerText = `Editant el resultat de ${r.cognoms}, ${r.nom}. Exporta per desar els canvis.`;
+        statusText.className = "text-xs text-center font-medium text-indigo-600";
+      }).catch((err) => {
+        document.getElementById('llista-alumnes').innerHTML =
+          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+      });
+    }
+
+    carregarModuls();
     carregarClasses();
   </script>
 </body>
