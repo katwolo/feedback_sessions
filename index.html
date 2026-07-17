@@ -2,6 +2,7 @@
 <html lang="ca">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Avaluador</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -319,7 +320,7 @@
         div.className = "py-3 flex flex-col gap-2";
 
         const inputsCriteris = criteris.map((c, idx) => `
-          <div class="flex flex-col items-center min-w-0">
+          <div class="flex flex-col items-center" style="width: 3.75rem;">
             <label class="text-[9px] text-slate-400 uppercase font-semibold truncate w-full text-center" title="${c.nom} (${c.pes}%)">${c.nom}</label>
             <input type="number" step="0.1" min="0" max="10"
                    id="nota-${idSegurAlumne}-${idx}"
@@ -336,9 +337,9 @@
             ${grupId ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grup ${grupId}</span>` : ''}
           </div>
 
-          <div class="grid gap-1.5" style="grid-template-columns: repeat(${criteris.length + 1}, minmax(0, 1fr));">
+          <div class="flex flex-wrap gap-1.5">
             ${inputsCriteris}
-            <div class="flex flex-col items-center min-w-0">
+            <div class="flex flex-col items-center" style="width: 3.75rem;">
               <label class="text-[9px] text-amber-600 uppercase font-bold w-full text-center">Final</label>
               <div id="final-${idSegurAlumne}" class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1 text-center text-xs font-bold text-amber-700">-</div>
             </div>
