@@ -2,7 +2,7 @@
   "timeZone": "Europe/Madrid",
   "webapp": {
     "access": "ANYONE",
-    "executeAs": "ME"
+    "executeAs": "USER_DEPLOYING"
   },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8"
