@@ -1,8 +1,8 @@
 {
   "timeZone": "Europe/Madrid",
   "webapp": {
-    "access": "MYSELF",
-    "executeAs": "USER_ACCESSING"
+    "access": "ANYONE",
+    "executeAs": "ME"
   },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8"

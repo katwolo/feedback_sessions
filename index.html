@@ -151,6 +151,37 @@
   </main>
 
   <script>
+    // URL /exec del NOU desplegament de Apps Script (API, amb el code.gs actualitzat amb el dispatcher).
+    // IMPORTANT: substitueix-la per la teva pròpia URL de desplegament.
+    const API_URL = 'ENGANXA_AQUI_LA_TEVA_URL_EXEC';
+    // Ha de coincidir exactament amb TOKEN_APP a code.gs
+    const TOKEN_APP = 'vLBdWTmjvBCu85fbmiT-v58qQVmAWJtD';
+
+    // Petició de lectura (GET, sense cos)
+    async function cridarGet(action, params) {
+      const url = new URL(API_URL);
+      url.searchParams.set('action', action);
+      url.searchParams.set('token', TOKEN_APP);
+      Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v == null ? '' : v));
+
+      const resposta = await fetch(url);
+      const dades = await resposta.json();
+      if (dades.error) throw new Error(dades.message);
+      return dades.resultat;
+    }
+
+    // Petició d'escriptura (POST). Content-Type text/plain per evitar el preflight CORS.
+    async function cridarPost(action, cos) {
+      const resposta = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(Object.assign({ action: action, token: TOKEN_APP }, cos || {}))
+      });
+      const dades = await resposta.json();
+      if (dades.error) throw new Error(dades.message);
+      return dades.resultat;
+    }
+
     // ---- Estat "Avaluar" ----
     let estudiants = [];        // [{ nom, cognoms }]
     let criteris = [];          // [{ nom, pes }]
@@ -180,67 +211,61 @@
 
     // ---------------- CÀRREGA DE DESPLEGABLES ----------------
 
-    function carregarModuls() {
+    async function carregarModuls() {
       const sel = document.getElementById('modul');
       const selResultats = document.getElementById('resultats-modul');
-      google.script.run
-        .withSuccessHandler(function(moduls) {
-          if (moduls.length === 0) {
-            sel.innerHTML = '<option value="">Cap mòdul configurat</option>';
-            return;
-          }
-          sel.innerHTML = moduls.map(m => `<option value="${m}">${m}</option>`).join('');
-          selResultats.innerHTML = '<option value="">Tots</option>' + moduls.map(m => `<option value="${m}">${m}</option>`).join('');
-        })
-        .withFailureHandler(function(err) {
-          sel.innerHTML = '<option value="">Error</option>';
-          alert('No s\'han pogut carregar els mòduls: ' + err.message);
-        })
-        .listarModuls();
+      try {
+        const moduls = await cridarGet('listarModuls');
+        if (moduls.length === 0) {
+          sel.innerHTML = '<option value="">Cap mòdul configurat</option>';
+          return;
+        }
+        sel.innerHTML = moduls.map(m => `<option value="${m}">${m}</option>`).join('');
+        selResultats.innerHTML = '<option value="">Tots</option>' + moduls.map(m => `<option value="${m}">${m}</option>`).join('');
+      } catch (err) {
+        sel.innerHTML = '<option value="">Error</option>';
+        alert('No s\'han pogut carregar els mòduls: ' + err.message);
+      }
     }
 
-    function carregarClasses() {
+    async function carregarClasses() {
       const sel = document.getElementById('classe');
       const selResultats = document.getElementById('resultats-classe');
-      google.script.run
-        .withSuccessHandler(function(classes) {
-          if (classes.length === 0) {
-            sel.innerHTML = '<option value="">Cap classe al Llistat</option>';
-            selResultats.innerHTML = '<option value="">Cap classe al Llistat</option>';
-            return;
-          }
-          sel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
-          selResultats.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
-          carregarDesdoblaments(classes[0]);
-        })
-        .withFailureHandler(function(err) {
-          sel.innerHTML = '<option value="">Error</option>';
-          alert('No s\'han pogut carregar les classes: ' + err.message);
-        })
-        .listarClasses();
+      try {
+        const classes = await cridarGet('listarClasses');
+        if (classes.length === 0) {
+          sel.innerHTML = '<option value="">Cap classe al Llistat</option>';
+          selResultats.innerHTML = '<option value="">Cap classe al Llistat</option>';
+          return;
+        }
+        sel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+        selResultats.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+        carregarDesdoblaments(classes[0]);
+      } catch (err) {
+        sel.innerHTML = '<option value="">Error</option>';
+        alert('No s\'han pogut carregar les classes: ' + err.message);
+      }
     }
 
-    function carregarDesdoblaments(classe, valorSeleccionat) {
+    async function carregarDesdoblaments(classe, valorSeleccionat) {
       const sel = document.getElementById('desdoblament');
       if (!classe) {
         sel.innerHTML = '<option value="General">General (tota la classe)</option>';
         return;
       }
-      google.script.run
-        .withSuccessHandler(function(desdoblaments) {
-          sel.innerHTML = desdoblaments.map(d =>
-            `<option value="${d}">${d === 'General' ? 'General (tota la classe)' : d}</option>`).join('');
-          if (valorSeleccionat) sel.value = valorSeleccionat;
-        })
-        .withFailureHandler(function() {
-          sel.innerHTML = '<option value="General">General (tota la classe)</option>';
-        })
-        .listarDesdoblaments(classe);
+      try {
+        const desdoblaments = await cridarGet('listarDesdoblaments', { classe });
+        sel.innerHTML = desdoblaments.map(d =>
+          `<option value="${d}">${d === 'General' ? 'General (tota la classe)' : d}</option>`).join('');
+        if (valorSeleccionat) sel.value = valorSeleccionat;
+      } catch (err) {
+        sel.innerHTML = '<option value="General">General (tota la classe)</option>';
+      }
     }
 
     // ---------------- AVALUAR: CÀRREGA D'ALUMNES ----------------
 
-    function carregarAlumnes() {
+    async function carregarAlumnes() {
       const classe = document.getElementById('classe').value;
       const desdoblament = document.getElementById('desdoblament').value;
       const modul = document.getElementById('modul').value;
@@ -253,14 +278,11 @@
       document.getElementById('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant alumnes...</p>';
       document.getElementById('status').innerText = '';
 
-      Promise.all([
-        new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenirAlumnes(classe, desdoblament);
-        }),
-        new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenirCriteris(modul);
-        })
-      ]).then(([alumnesData, criterisData]) => {
+      try {
+        const [alumnesData, criterisData] = await Promise.all([
+          cridarGet('obtenirAlumnes', { classe, desdoblament }),
+          cridarGet('obtenirCriteris', { modul })
+        ]);
         estudiants = alumnesData;
         criteris = criterisData;
         grups = {};
@@ -270,10 +292,10 @@
         observacionsGrup = {};
         restaurarEsborrany();
         renderitzarLlista();
-      }).catch((err) => {
+      } catch (err) {
         document.getElementById('llista-alumnes').innerHTML =
           '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
-      });
+      }
     }
 
     function afegirAlumne() {
@@ -537,7 +559,7 @@
 
     // ---------------- EXPORTACIÓ ----------------
 
-    function exportarDades(confirmat) {
+    async function exportarDades(confirmat) {
       if (estudiants.length === 0) {
         alert('Carrega o afegeix primer els alumnes d\'aquesta sessió.');
         return;
@@ -573,33 +595,32 @@
         evaluacions: evaluacions
       };
 
-      google.script.run
-        .withSuccessHandler(function(response) {
-          if (response.necessitaConfirmacio) {
-            const ultima = response.ultimaActualitzacio ? ` (última actualització: ${response.ultimaActualitzacio})` : '';
-            if (confirm(`Ja existeix una avaluació per aquesta sessió${ultima}. Vols sobreescriure-la?`)) {
-              exportarDades(true);
-            } else {
-              statusText.innerText = "Exportació cancel·lada.";
-              statusText.className = "text-xs text-center font-medium text-slate-500";
-            }
-            return;
-          }
+      try {
+        const response = await cridarPost('exportarAGoogleSheets', { dades, confirmat: confirmat === true });
 
-          statusText.innerHTML = `Guardat amb èxit! <a href="${response.url}" target="_blank" class="underline text-green-600 font-bold">Obrir Google Sheets</a>`;
-          statusText.className = "text-xs text-center font-medium text-green-600";
-          esborrarEsborrany();
-        })
-        .withFailureHandler(function(err) {
-          statusText.innerText = "Error en exportar: " + err.message;
-          statusText.className = "text-xs text-center font-medium text-red-600";
-        })
-        .exportarAGoogleSheets(dades, confirmat === true);
+        if (response.necessitaConfirmacio) {
+          const ultima = response.ultimaActualitzacio ? ` (última actualització: ${response.ultimaActualitzacio})` : '';
+          if (confirm(`Ja existeix una avaluació per aquesta sessió${ultima}. Vols sobreescriure-la?`)) {
+            exportarDades(true);
+          } else {
+            statusText.innerText = "Exportació cancel·lada.";
+            statusText.className = "text-xs text-center font-medium text-slate-500";
+          }
+          return;
+        }
+
+        statusText.innerHTML = `Guardat amb èxit! <a href="${response.url}" target="_blank" class="underline text-green-600 font-bold">Obrir Google Sheets</a>`;
+        statusText.className = "text-xs text-center font-medium text-green-600";
+        esborrarEsborrany();
+      } catch (err) {
+        statusText.innerText = "Error en exportar: " + err.message;
+        statusText.className = "text-xs text-center font-medium text-red-600";
+      }
     }
 
     // ---------------- RESULTATS: CERCA, EDICIÓ I ESBORRAT ----------------
 
-    function cercarSessions() {
+    async function cercarSessions() {
       const classe = document.getElementById('resultats-classe').value;
       const modul = document.getElementById('resultats-modul').value;
 
@@ -611,16 +632,13 @@
       tancarDetallSessio();
       document.getElementById('llista-sessions-wrap').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Cercant...</p>';
 
-      google.script.run
-        .withSuccessHandler(function(sessions) {
-          sessionsListades = sessions;
-          renderitzarSessions();
-        })
-        .withFailureHandler(function(err) {
-          document.getElementById('llista-sessions-wrap').innerHTML =
-            '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
-        })
-        .llistarSessions(classe, modul);
+      try {
+        sessionsListades = await cridarGet('llistarSessions', { classe, modul });
+        renderitzarSessions();
+      } catch (err) {
+        document.getElementById('llista-sessions-wrap').innerHTML =
+          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+      }
     }
 
     function renderitzarSessions() {
@@ -642,7 +660,7 @@
       `).join('');
     }
 
-    function obrirSessio(idx) {
+    async function obrirSessio(idx) {
       const s = sessionsListades[idx];
       sessioOberta = s;
 
@@ -650,16 +668,15 @@
       document.getElementById('detall-sessio-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant...</p>';
       document.getElementById('detall-sessio-wrap').classList.remove('hidden');
 
-      google.script.run
-        .withSuccessHandler(function(resultats) {
-          resultatsSessio = resultats;
-          renderitzarDetallSessio();
-        })
-        .withFailureHandler(function(err) {
-          document.getElementById('detall-sessio-alumnes').innerHTML =
-            '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
-        })
-        .obtenirResultatsSessio(s.curs, s.modul, s.classe, s.desdoblament, s.sessioAvaluada);
+      try {
+        resultatsSessio = await cridarGet('obtenirResultatsSessio', {
+          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessioAvaluada: s.sessioAvaluada
+        });
+        renderitzarDetallSessio();
+      } catch (err) {
+        document.getElementById('detall-sessio-alumnes').innerHTML =
+          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+      }
     }
 
     function renderitzarDetallSessio() {
@@ -690,29 +707,36 @@
       document.getElementById('detall-sessio-wrap').classList.add('hidden');
     }
 
-    function confirmarEsborrarResultat(idx) {
+    async function confirmarEsborrarResultat(idx) {
       const r = resultatsSessio[idx];
       const s = sessioOberta;
       if (!confirm(`Esborrar el resultat de ${r.cognoms}, ${r.nom}? (L'historial per criteri es conservarà)`)) return;
 
-      google.script.run
-        .withSuccessHandler(function() { obrirSessio(sessionsListades.indexOf(s)); })
-        .withFailureHandler(function(err) { alert('Error en esborrar: ' + err.message); })
-        .eliminarResultat(s.curs, s.modul, s.classe, s.desdoblament, r.nom, r.cognoms, s.sessioAvaluada);
+      try {
+        await cridarPost('eliminarResultat', {
+          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
+          nom: r.nom, cognoms: r.cognoms, sessioAvaluada: s.sessioAvaluada
+        });
+        obrirSessio(sessionsListades.indexOf(s));
+      } catch (err) {
+        alert('Error en esborrar: ' + err.message);
+      }
     }
 
-    function confirmarEsborrarSessio() {
+    async function confirmarEsborrarSessio() {
       if (!sessioOberta) return;
       const s = sessioOberta;
       if (!confirm(`Esborrar TOTA la sessió "${s.sessioAvaluada}" (${resultatsSessio.length} alumnes)? Aquesta acció no es pot desfer (l'historial es conservarà).`)) return;
 
-      google.script.run
-        .withSuccessHandler(function() {
-          tancarDetallSessio();
-          cercarSessions();
-        })
-        .withFailureHandler(function(err) { alert('Error en esborrar: ' + err.message); })
-        .eliminarSessio(s.curs, s.modul, s.classe, s.desdoblament, s.sessioAvaluada);
+      try {
+        await cridarPost('eliminarSessio', {
+          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessioAvaluada: s.sessioAvaluada
+        });
+        tancarDetallSessio();
+        cercarSessions();
+      } catch (err) {
+        alert('Error en esborrar: ' + err.message);
+      }
     }
 
     // Obre el resultat d'un alumne concret al panell d'Avaluar per poder-lo corregir i reexportar
@@ -741,9 +765,11 @@
       document.getElementById('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant detall...</p>';
 
       Promise.all([
-        new Promise((resolve, reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).obtenirCriteris(s.modul)),
-        new Promise((resolve, reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
-            .obtenirDetallAlumne(s.curs, s.modul, s.classe, s.desdoblament, r.nom, r.cognoms, s.sessioAvaluada))
+        cridarGet('obtenirCriteris', { modul: s.modul }),
+        cridarGet('obtenirDetallAlumne', {
+          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
+          nom: r.nom, cognoms: r.cognoms, sessioAvaluada: s.sessioAvaluada
+        })
       ]).then(([criterisData, detallNotes]) => {
         criteris = criterisData;
         notes[clau] = {};

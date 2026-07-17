@@ -1,13 +1,9 @@
-// URL raw de GitHub on viu el frontend. Canvia la branca/ruta si mous l'arxiu.
-var GITHUB_INDEX_URL = 'https://raw.githubusercontent.com/katwolo/feedback_sessions/claude/teacher-evaluation-code-gs-3mkzol/index.html';
-
 // ID del Google Sheet on s'exporten les avaluacions
 var SPREADSHEET_ID = '1CBaAA7ew3zWmthPP8Xba5prZDJ8_IdNfLj8mIUONylg';
 
-// Correus amb permís per obrir l'app. Afegeix aquí més adreces separades per coma.
-// Aquesta comprovació només és fiable si el desplegament exigeix inici de sessió
-// (Implementar > Qui té accés: "Només jo" o "Qualsevol usuari de la teva organització").
-var CORREUS_AUTORITZATS = ['ivanfoios@gmail.com'];
+// Clau compartida que el frontend (allotjat a GitHub Pages) ha d'enviar a cada petició.
+// No és seguretat real (és visible al codi font públic d'index.html), només evita crides accidentals.
+var TOKEN_APP = 'vLBdWTmjvBCu85fbmiT-v58qQVmAWJtD';
 
 var NOM_LLISTAT = "👤 Llistat";
 var NOM_CONFIGURACIO = "🔧 Configuració";
@@ -17,36 +13,75 @@ var NOM_HISTORIAL = "🗄 Historial";
 var COLOR_CAPCALERA = "#4f46e5";
 var DESDOBLAMENT_GENERAL = "General";
 
-function doGet() {
-  var email = Session.getActiveUser().getEmail();
-  if (CORREUS_AUTORITZATS.indexOf(email) === -1) {
-    return HtmlService.createHtmlOutput(
-        '<p style="font-family:sans-serif;padding:2rem;text-align:center;color:#475569;">Accés no autoritzat.</p>')
-        .setTitle('Accés denegat');
-  }
+// ============ API: DISPATCHER (el frontend a GitHub Pages parla amb l'app via fetch) ============
 
-  var html = obtenirIndexDesDeGitHub();
-  return HtmlService.createHtmlOutput(html)
-      .setTitle('Avaluador Docent')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+// Peticions de lectura: GET .../exec?action=nomFuncio&param1=...&token=...
+function doGet(e) {
+  return gestionarPeticio(e.parameter.action, e.parameter);
 }
 
-// Descarrega index.html des de GitHub, amb una memòria cau curta per no demanar-lo a cada càrrega
-function obtenirIndexDesDeGitHub() {
-  var cache = CacheService.getScriptCache();
-  var cacheKey = 'index_html';
-  var html = cache.get(cacheKey);
+// Peticions d'escriptura: POST amb cos JSON { action, token, ... }.
+// Content-Type ha de ser "text/plain" des del client per evitar el preflight CORS.
+function doPost(e) {
+  var cos = JSON.parse(e.postData.contents);
+  return gestionarPeticio(cos.action, cos);
+}
 
-  if (!html) {
-    var response = UrlFetchApp.fetch(GITHUB_INDEX_URL, { muteHttpExceptions: true });
-    if (response.getResponseCode() !== 200) {
-      throw new Error('No s\'ha pogut carregar index.html des de GitHub (codi ' + response.getResponseCode() + ')');
-    }
-    html = response.getContentText();
-    cache.put(cacheKey, html, 300); // 5 minuts
+function gestionarPeticio(action, params) {
+  if (!params || params.token !== TOKEN_APP) {
+    return respostaJson({ error: true, message: 'No autoritzat' });
   }
 
-  return html;
+  try {
+    var resultat;
+    switch (action) {
+      case 'listarModuls':
+        resultat = listarModuls();
+        break;
+      case 'listarClasses':
+        resultat = listarClasses();
+        break;
+      case 'listarDesdoblaments':
+        resultat = listarDesdoblaments(params.classe);
+        break;
+      case 'obtenirAlumnes':
+        resultat = obtenirAlumnes(params.classe, params.desdoblament);
+        break;
+      case 'obtenirCriteris':
+        resultat = obtenirCriteris(params.modul);
+        break;
+      case 'exportarAGoogleSheets':
+        resultat = exportarAGoogleSheets(params.dades, params.confirmat);
+        break;
+      case 'llistarSessions':
+        resultat = llistarSessions(params.classe, params.modul);
+        break;
+      case 'obtenirResultatsSessio':
+        resultat = obtenirResultatsSessio(params.curs, params.modul, params.classe, params.desdoblament, params.sessioAvaluada);
+        break;
+      case 'obtenirDetallAlumne':
+        resultat = obtenirDetallAlumne(params.curs, params.modul, params.classe, params.desdoblament,
+            params.nom, params.cognoms, params.sessioAvaluada);
+        break;
+      case 'eliminarResultat':
+        resultat = eliminarResultat(params.curs, params.modul, params.classe, params.desdoblament,
+            params.nom, params.cognoms, params.sessioAvaluada);
+        break;
+      case 'eliminarSessio':
+        resultat = eliminarSessio(params.curs, params.modul, params.classe, params.desdoblament, params.sessioAvaluada);
+        break;
+      default:
+        return respostaJson({ error: true, message: 'Acció desconeguda: ' + action });
+    }
+    return respostaJson({ error: false, resultat: resultat });
+  } catch (err) {
+    return respostaJson({ error: true, message: err.message });
+  }
+}
+
+function respostaJson(objecte) {
+  return ContentService.createTextOutput(JSON.stringify(objecte))
+      .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ============ LECTURA DE CONFIGURACIÓ / LLISTAT (per als desplegables de l'app) ============
