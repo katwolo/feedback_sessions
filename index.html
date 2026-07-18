@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>Avaluador</title>
+  <title>Sessions/Supòsits</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
@@ -12,9 +12,8 @@
   <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50 px-4 py-3">
     <div class="max-w-md mx-auto flex justify-between items-center">
       <h1 class="text-lg font-bold flex items-center gap-2">
-        <span class="material-icons">fact_check</span> Avaluador Mòbil
+        <span class="material-icons">fact_check</span> Sessions/Supòsits
       </h1>
-      <span class="text-xs bg-indigo-500 px-2.5 py-1 rounded-full font-semibold">Fase de Disseny</span>
     </div>
     <div class="max-w-md mx-auto flex gap-2 mt-3">
       <button id="tab-avaluar" onclick="canviarVista('avaluar')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-white text-indigo-600">Avaluar</button>
@@ -85,12 +84,6 @@
 
       <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Panell de Qualificació</h2>
-
-        <div class="flex gap-2">
-          <input type="text" id="alumne-nom-nou" placeholder="Nom" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-indigo-500">
-          <input type="text" id="alumne-cognoms-nou" placeholder="Cognoms" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-indigo-500">
-          <button onclick="afegirAlumne()" class="bg-indigo-600 text-white text-xs font-semibold px-3 rounded-lg hover:bg-indigo-700">+</button>
-        </div>
 
         <div id="llista-alumnes" class="divide-y divide-slate-100">
           <p class="text-sm text-slate-400 py-4 text-center">Prem "Carregar Alumnes" per començar.</p>
@@ -298,26 +291,6 @@
       }
     }
 
-    function afegirAlumne() {
-      const nomInput = document.getElementById('alumne-nom-nou');
-      const cognomsInput = document.getElementById('alumne-cognoms-nou');
-      const nom = nomInput.value.trim();
-      const cognoms = cognomsInput.value.trim();
-
-      if (!nom || !cognoms) {
-        alert('Escriu el nom i els cognoms.');
-        return;
-      }
-
-      if (!estudiants.some(a => a.nom === nom && a.cognoms === cognoms)) {
-        estudiants.push({ nom: nom, cognoms: cognoms });
-      }
-      nomInput.value = '';
-      cognomsInput.value = '';
-      guardarEsborrany();
-      renderitzarLlista();
-    }
-
     function obtenirNota(clau, nomCriteri) {
       return (notes[clau] && notes[clau][nomCriteri]) || '';
     }
@@ -341,30 +314,33 @@
         const div = document.createElement('div');
         div.className = "py-3 flex flex-col gap-2";
 
+        const clauEsc = clau.replace(/'/g, "\\'");
+
         const inputsCriteris = criteris.map((c, idx) => `
-          <div class="flex flex-col items-center" style="width: 3.75rem;">
-            <label class="text-[9px] text-slate-400 uppercase font-semibold truncate w-full text-center" title="${c.nom} (${c.pes}%)">${c.nom}</label>
+          <div class="flex items-center gap-2">
+            <span class="flex-1 min-w-0 text-xs text-slate-600">${c.nom} <span class="text-slate-400">(${c.pes}%)</span></span>
+            <button type="button" onclick="posarNotaMaxima('${clauEsc}', ${idx})"
+                    class="shrink-0 text-[10px] font-bold bg-green-50 text-green-700 px-2 py-1.5 rounded-lg hover:bg-green-100">MÀX</button>
             <input type="number" step="0.1" min="0" max="10"
                    id="nota-${idSegurAlumne}-${idx}"
-                   oninput="canviarNota('${clau.replace(/'/g, "\\'")}', ${idx}, this.value)"
+                   oninput="canviarNota('${clauEsc}', ${idx}, this.value)"
                    value="${obtenirNota(clau, c.nom)}"
-                   class="w-full bg-slate-100 border border-slate-200 rounded-lg p-1 text-center text-xs font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
+                   class="w-14 shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-1.5 text-center text-xs font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
                    placeholder="-">
           </div>
         `).join('');
 
         div.innerHTML = `
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold text-slate-800">${alumne.cognoms}, ${alumne.nom}</span>
-            ${grupId ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grup ${grupId}</span>` : ''}
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm font-semibold text-slate-800 min-w-0 truncate">${alumne.cognoms}, ${alumne.nom}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              ${grupId ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grup ${grupId}</span>` : ''}
+              <span class="text-xs bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 font-bold text-amber-700">Final: <span id="final-${idSegurAlumne}">-</span></span>
+            </div>
           </div>
 
-          <div class="flex flex-wrap gap-1.5">
+          <div class="space-y-1.5">
             ${inputsCriteris}
-            <div class="flex flex-col items-center" style="width: 3.75rem;">
-              <label class="text-[9px] text-amber-600 uppercase font-bold w-full text-center">Final</label>
-              <div id="final-${idSegurAlumne}" class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1 text-center text-xs font-bold text-amber-700">-</div>
-            </div>
           </div>
 
           <textarea placeholder="Observacions individuals de ${alumne.nom}..." rows="1"
@@ -474,6 +450,13 @@
     }
 
     // Guarda la nota d'un criteri i, si l'alumne és coordinador del seu grup, la propaga a la resta
+    // Posa directament la nota màxima (10) a un criteri, com si l'haguessis escrit tu
+    function posarNotaMaxima(clau, criteriIdx) {
+      const input = document.getElementById(`nota-${idSegur(clau)}-${criteriIdx}`);
+      if (input) input.value = 10;
+      canviarNota(clau, criteriIdx, '10');
+    }
+
     function canviarNota(clau, criteriIdx, valor) {
       const nomCriteri = criteris[criteriIdx].nom;
       if (!notes[clau]) notes[clau] = {};
@@ -688,17 +671,52 @@
       }
 
       cont.innerHTML = resultatsSessio.map((r, idx) => `
-        <div class="py-2 flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-sm font-semibold text-slate-800 truncate">${r.cognoms}, ${r.nom}</div>
-            <div class="text-xs text-slate-400">Nota final: <span class="font-bold text-amber-600">${r.notaFinal !== '' ? r.notaFinal : '-'}</span></div>
+        <div class="py-3 flex flex-col gap-1.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm font-semibold text-slate-800 truncate">${r.cognoms}, ${r.nom}</span>
+            <div class="flex gap-1 shrink-0">
+              <button onclick="editarResultat(${idx})" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-100">✏️ Editar</button>
+              <button onclick="confirmarEsborrarResultat(${idx})" class="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100">🗑</button>
+            </div>
           </div>
-          <div class="flex gap-1 shrink-0">
-            <button onclick="editarResultat(${idx})" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-100">✏️ Editar</button>
-            <button onclick="confirmarEsborrarResultat(${idx})" class="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100">🗑</button>
+
+          <div class="flex items-center gap-2">
+            <label class="text-[10px] text-slate-400 uppercase font-semibold shrink-0">Nota final</label>
+            <input type="number" step="0.1" min="0" max="10" id="resnota-${idx}"
+                   value="${r.notaFinal !== '' ? r.notaFinal : ''}"
+                   class="w-16 bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-center text-xs font-bold text-amber-700 focus:outline-none focus:bg-white focus:border-amber-400"
+                   placeholder="-">
+            <button onclick="enviarResultat(${idx})" class="ml-auto text-xs bg-green-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700">Enviar</button>
           </div>
+
+          <textarea id="resobsgrup-${idx}" placeholder="Observacions de grup..." rows="1"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs resize-none focus:outline-none focus:bg-white focus:border-indigo-500">${r.observacioGrup || ''}</textarea>
+          <textarea id="resobsindiv-${idx}" placeholder="Observacions individuals..." rows="1"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs resize-none focus:outline-none focus:bg-white focus:border-indigo-500">${r.observacioIndividual || ''}</textarea>
         </div>
       `).join('');
+    }
+
+    // Desa directament la nota final i les observacions d'un alumne des de la vista de Resultats
+    async function enviarResultat(idx) {
+      const r = resultatsSessio[idx];
+      const s = sessioOberta;
+      const notaInput = document.getElementById(`resnota-${idx}`);
+      const obsGrupInput = document.getElementById(`resobsgrup-${idx}`);
+      const obsIndivInput = document.getElementById(`resobsindiv-${idx}`);
+
+      try {
+        await cridarPost('actualitzarResultat', {
+          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
+          nom: r.nom, cognoms: r.cognoms, sessioAvaluada: s.sessioAvaluada,
+          notaFinal: notaInput.value, observacioGrup: obsGrupInput.value, observacioIndividual: obsIndivInput.value
+        });
+        r.notaFinal = notaInput.value === '' ? '' : parseFloat(notaInput.value);
+        r.observacioGrup = obsGrupInput.value;
+        r.observacioIndividual = obsIndivInput.value;
+      } catch (err) {
+        alert('Error en enviar: ' + err.message);
+      }
     }
 
     function tancarDetallSessio() {

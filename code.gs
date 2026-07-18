@@ -70,6 +70,10 @@ function gestionarPeticio(action, params) {
       case 'eliminarSessio':
         resultat = eliminarSessio(params.curs, params.modul, params.classe, params.desdoblament, params.sessioAvaluada);
         break;
+      case 'actualitzarResultat':
+        resultat = actualitzarResultat(params.curs, params.modul, params.classe, params.desdoblament,
+            params.nom, params.cognoms, params.sessioAvaluada, params.notaFinal, params.observacioGrup, params.observacioIndividual);
+        break;
       default:
         return respostaJson({ error: true, message: 'Acció desconeguda: ' + action });
     }
@@ -443,6 +447,27 @@ function eliminarSessio(curs, modul, classe, desdoblament, sessioAvaluada) {
   }
 
   return { success: true };
+}
+
+// Actualitza directament la Nota final i les observacions d'un resultat ja existent
+// (edició ràpida des de "Resultats"), sense tocar el desglossament per criteri a Historial.
+function actualitzarResultat(curs, modul, classe, desdoblament, nom, cognoms, sessioAvaluada, notaFinal, observacioGrup, observacioIndividual) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = asegurarAlumnat(ss);
+  var files = hoja.getDataRange().getValues();
+
+  for (var i = 1; i < files.length; i++) {
+    var fila = files[i];
+    if (String(fila[1]) === String(curs) && fila[2] === modul && fila[3] === classe &&
+        fila[4] === desdoblament && fila[5] === nom && fila[6] === cognoms && fila[7] === sessioAvaluada) {
+      var valorNota = (notaFinal === '' || notaFinal === null || notaFinal === undefined) ? '' : Number(notaFinal);
+      hoja.getRange(i + 1, 1).setValue(new Date());
+      hoja.getRange(i + 1, 9, 1, 3).setValues([[observacioGrup || '', observacioIndividual || '', valorNota]]);
+      return { success: true };
+    }
+  }
+
+  throw new Error('No s\'ha trobat aquest resultat per actualitzar.');
 }
 
 // ============ FORMAT I ESTRUCTURA DE PESTANYES ============
