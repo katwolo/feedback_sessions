@@ -74,6 +74,13 @@ function gestionarPeticio(action, params) {
         resultat = actualitzarResultat(params.curs, params.modul, params.classe, params.desdoblament,
             params.nom, params.cognoms, params.sessioAvaluada, params.notaFinal, params.observacioGrup, params.observacioIndividual);
         break;
+      case 'enviarCorreuAlumne':
+        resultat = enviarCorreuAlumne(params.classe, params.nom, params.cognoms, params.assumpte, params.cos);
+        break;
+      case 'enviarCorreusMassius':
+        resultat = enviarCorreusMassius(params.curs, params.modul, params.classe, params.desdoblament,
+            params.sessioAvaluada, params.assumpte, params.cos);
+        break;
       default:
         return respostaJson({ error: true, message: 'Acció desconeguda: ' + action });
     }
@@ -468,6 +475,76 @@ function actualitzarResultat(curs, modul, classe, desdoblament, nom, cognoms, se
   }
 
   throw new Error('No s\'ha trobat aquest resultat per actualitzar.');
+}
+
+// ============ CORREUS ============
+
+// Retorna el correu corporatiu d'un alumne des de "👤 Llistat", o cadena buida si no en té configurat
+function obtenirCorreuAlumne(classe, nom, cognoms) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = asegurarLlistat(ss);
+  var files = hoja.getDataRange().getValues();
+
+  for (var i = 1; i < files.length; i++) {
+    if (String(files[i][0]).trim() === nom && String(files[i][1]).trim() === cognoms &&
+        String(files[i][4]).trim() === classe) {
+      return String(files[i][2]).trim();
+    }
+  }
+
+  return '';
+}
+
+// Substitueix etiquetes {{clau}} d'una plantilla pels valors corresponents
+function substituirPlantilla(text, dades) {
+  return String(text).replace(/\{\{(\w+)\}\}/g, function(coincidencia, clau) {
+    return dades.hasOwnProperty(clau) ? String(dades[clau]) : coincidencia;
+  });
+}
+
+// Envia un correu a un sol alumne. L'assumpte i el cos ja arriben composats des del client.
+function enviarCorreuAlumne(classe, nom, cognoms, assumpte, cos) {
+  var correu = obtenirCorreuAlumne(classe, nom, cognoms);
+  if (!correu) {
+    throw new Error('Aquest alumne no té correu corporatiu configurat a "👤 Llistat".');
+  }
+
+  MailApp.sendEmail(correu, assumpte, cos);
+  return { success: true };
+}
+
+// Envia un correu personalitzat a tots els alumnes avaluats en una sessió.
+// assumptePlantilla/cosPlantilla poden contenir {{nom}}, {{cognoms}}, {{nota}},
+// {{observacions_grup}}, {{observacions_individual}}, {{sessio}}, {{modul}}, {{classe}}, {{curs}}.
+function enviarCorreusMassius(curs, modul, classe, desdoblament, sessioAvaluada, assumptePlantilla, cosPlantilla) {
+  var resultats = obtenirResultatsSessio(curs, modul, classe, desdoblament, sessioAvaluada);
+  var enviats = 0;
+  var senseCorreu = [];
+
+  resultats.forEach(function(r) {
+    var correu = obtenirCorreuAlumne(classe, r.nom, r.cognoms);
+    if (!correu) {
+      senseCorreu.push(r.nom + ' ' + r.cognoms);
+      return;
+    }
+
+    var dades = {
+      nom: r.nom,
+      cognoms: r.cognoms,
+      nota: r.notaFinal !== '' ? r.notaFinal : '-',
+      observacions_grup: r.observacioGrup || '',
+      observacions_individual: r.observacioIndividual || '',
+      sessio: sessioAvaluada,
+      modul: modul,
+      classe: classe,
+      curs: curs
+    };
+
+    MailApp.sendEmail(correu, substituirPlantilla(assumptePlantilla, dades), substituirPlantilla(cosPlantilla, dades));
+    enviats++;
+  });
+
+  return { enviats: enviats, senseCorreu: senseCorreu };
 }
 
 // ============ FORMAT I ESTRUCTURA DE PESTANYES ============

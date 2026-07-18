@@ -134,11 +134,36 @@
           <button onclick="tancarDetallSessio()" class="text-xs text-slate-400 hover:text-slate-600">✕ Tancar</button>
         </div>
         <div id="detall-sessio-alumnes" class="divide-y divide-slate-100"></div>
-        <button onclick="confirmarEsborrarSessio()" class="w-full border border-red-200 text-red-600 text-xs py-2 rounded-lg hover:bg-red-50">
-          🗑 Esborrar tota la sessió
-        </button>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="obrirModalCorreuMassiu()" class="border border-indigo-200 text-indigo-600 text-xs py-2 rounded-lg hover:bg-indigo-50">
+            📧 Enviar correu a tots
+          </button>
+          <button onclick="confirmarEsborrarSessio()" class="border border-red-200 text-red-600 text-xs py-2 rounded-lg hover:bg-red-50">
+            🗑 Esborrar tota la sessió
+          </button>
+        </div>
       </section>
 
+    </div>
+
+    <div id="modal-correu" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-4 space-y-3">
+        <h3 id="modal-correu-titol" class="text-sm font-bold text-slate-700"></h3>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Assumpte</label>
+          <input type="text" id="modal-correu-assumpte" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Cos del missatge</label>
+          <textarea id="modal-correu-cos" rows="7" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500"></textarea>
+          <p id="modal-correu-ajuda" class="text-[10px] text-slate-400 mt-1"></p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="tancarModalCorreu()" class="flex-1 border border-slate-200 text-slate-500 text-sm py-2 rounded-lg hover:bg-slate-50">Cancel·lar</button>
+          <button onclick="confirmarEnviarCorreu()" class="flex-1 bg-green-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-green-700">Enviar</button>
+        </div>
+        <p id="modal-correu-status" class="text-xs text-center font-medium"></p>
+      </div>
     </div>
 
   </main>
@@ -686,7 +711,9 @@
                    value="${r.notaFinal !== '' ? r.notaFinal : ''}"
                    class="w-16 bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-center text-xs font-bold text-amber-700 focus:outline-none focus:bg-white focus:border-amber-400"
                    placeholder="-">
-            <button onclick="enviarResultat(${idx})" class="ml-auto text-xs bg-green-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700">Enviar</button>
+            <span id="resstatus-${idx}" class="text-[10px] text-green-600 font-semibold"></span>
+            <button onclick="desarResultat(${idx})" class="ml-auto text-xs bg-slate-700 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-800">💾 Desar</button>
+            <button onclick="obrirModalCorreuIndividual(${idx})" class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-indigo-100">📧</button>
           </div>
 
           <textarea id="resobsgrup-${idx}" placeholder="Observacions de grup..." rows="1"
@@ -698,12 +725,13 @@
     }
 
     // Desa directament la nota final i les observacions d'un alumne des de la vista de Resultats
-    async function enviarResultat(idx) {
+    async function desarResultat(idx) {
       const r = resultatsSessio[idx];
       const s = sessioOberta;
       const notaInput = document.getElementById(`resnota-${idx}`);
       const obsGrupInput = document.getElementById(`resobsgrup-${idx}`);
       const obsIndivInput = document.getElementById(`resobsindiv-${idx}`);
+      const statusEl = document.getElementById(`resstatus-${idx}`);
 
       try {
         await cridarPost('actualitzarResultat', {
@@ -714,8 +742,106 @@
         r.notaFinal = notaInput.value === '' ? '' : parseFloat(notaInput.value);
         r.observacioGrup = obsGrupInput.value;
         r.observacioIndividual = obsIndivInput.value;
+        if (statusEl) {
+          statusEl.textContent = 'Desat ✓';
+          setTimeout(() => { statusEl.textContent = ''; }, 2000);
+        }
       } catch (err) {
-        alert('Error en enviar: ' + err.message);
+        alert('Error en desar: ' + err.message);
+      }
+    }
+
+    // ---------------- CORREUS ----------------
+
+    let modalCorreuMode = null; // 'individual' | 'massiu'
+    let modalCorreuIdx = null;
+
+    function obrirModalCorreuIndividual(idx) {
+      const r = resultatsSessio[idx];
+      const s = sessioOberta;
+      modalCorreuMode = 'individual';
+      modalCorreuIdx = idx;
+
+      document.getElementById('modal-correu-titol').textContent = `Enviar correu a ${r.cognoms}, ${r.nom}`;
+      document.getElementById('modal-correu-assumpte').value = `Nota de ${s.sessioAvaluada}`;
+      document.getElementById('modal-correu-cos').value =
+`Hola ${r.nom},
+
+La teva nota de "${s.sessioAvaluada}" (${s.modul}) és: ${r.notaFinal !== '' ? r.notaFinal : '-'}
+${r.observacioGrup ? '\nObservacions del grup: ' + r.observacioGrup : ''}
+${r.observacioIndividual ? '\nObservacions individuals: ' + r.observacioIndividual : ''}
+
+Salutacions.`;
+      document.getElementById('modal-correu-ajuda').textContent = '';
+      document.getElementById('modal-correu-status').textContent = '';
+      document.getElementById('modal-correu').classList.remove('hidden');
+    }
+
+    function obrirModalCorreuMassiu() {
+      const s = sessioOberta;
+      if (!s) return;
+      modalCorreuMode = 'massiu';
+      modalCorreuIdx = null;
+
+      document.getElementById('modal-correu-titol').textContent = `Enviar correu a tots els alumnes de "${s.sessioAvaluada}"`;
+      document.getElementById('modal-correu-assumpte').value = `Nota de ${s.sessioAvaluada}`;
+      document.getElementById('modal-correu-cos').value =
+`Hola {{nom}},
+
+La teva nota de "{{sessio}}" ({{modul}}) és: {{nota}}
+
+Observacions del grup: {{observacions_grup}}
+Observacions individuals: {{observacions_individual}}
+
+Salutacions.`;
+      document.getElementById('modal-correu-ajuda').textContent =
+        'Etiquetes disponibles (es personalitzen per alumne): {{nom}}, {{cognoms}}, {{nota}}, {{observacions_grup}}, {{observacions_individual}}, {{sessio}}, {{modul}}, {{classe}}, {{curs}}';
+      document.getElementById('modal-correu-status').textContent = '';
+      document.getElementById('modal-correu').classList.remove('hidden');
+    }
+
+    function tancarModalCorreu() {
+      document.getElementById('modal-correu').classList.add('hidden');
+      modalCorreuMode = null;
+      modalCorreuIdx = null;
+    }
+
+    async function confirmarEnviarCorreu() {
+      const assumpte = document.getElementById('modal-correu-assumpte').value.trim();
+      const cos = document.getElementById('modal-correu-cos').value.trim();
+      const statusEl = document.getElementById('modal-correu-status');
+
+      if (!assumpte || !cos) {
+        alert('Escriu l\'assumpte i el cos del missatge.');
+        return;
+      }
+
+      statusEl.textContent = 'Enviant...';
+      statusEl.className = 'text-xs text-center font-medium text-indigo-600';
+
+      const s = sessioOberta;
+
+      try {
+        if (modalCorreuMode === 'individual') {
+          const r = resultatsSessio[modalCorreuIdx];
+          await cridarPost('enviarCorreuAlumne', {
+            classe: s.classe, nom: r.nom, cognoms: r.cognoms, assumpte, cos
+          });
+          statusEl.textContent = 'Correu enviat!';
+          statusEl.className = 'text-xs text-center font-medium text-green-600';
+          setTimeout(tancarModalCorreu, 1200);
+        } else {
+          const resultat = await cridarPost('enviarCorreusMassius', {
+            curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
+            sessioAvaluada: s.sessioAvaluada, assumpte, cos
+          });
+          statusEl.textContent = `Enviats: ${resultat.enviats}` +
+            (resultat.senseCorreu.length ? `. Sense correu configurat: ${resultat.senseCorreu.join(', ')}` : '');
+          statusEl.className = 'text-xs text-center font-medium text-green-600';
+        }
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'text-xs text-center font-medium text-red-600';
       }
     }
 
