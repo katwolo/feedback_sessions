@@ -81,6 +81,12 @@ function gestionarPeticio(action, params) {
         resultat = enviarCorreusMassius(params.curs, params.modul, params.classe, params.desdoblament,
             params.sessioAvaluada, params.assumpte, params.cos);
         break;
+      case 'listarCursosClassroom':
+        resultat = listarCursosClassroom();
+        break;
+      case 'importarAlumnesClassroom':
+        resultat = importarAlumnesClassroom(params.courseId, params.curs, params.classe, params.desdoblament);
+        break;
       default:
         return respostaJson({ error: true, message: 'Acció desconeguda: ' + action });
     }
@@ -475,6 +481,76 @@ function actualitzarResultat(curs, modul, classe, desdoblament, nom, cognoms, se
   }
 
   throw new Error('No s\'ha trobat aquest resultat per actualitzar.');
+}
+
+// ============ IMPORTACIÓ DES DE GOOGLE CLASSROOM ============
+
+// Llista els cursos actius de Classroom on ets professor (cal el servei avançat "Classroom" afegit al projecte)
+function listarCursosClassroom() {
+  var cursos = [];
+  var pageToken;
+
+  do {
+    var resposta = Classroom.Courses.list({
+      teacherId: 'me',
+      courseStates: ['ACTIVE'],
+      pageToken: pageToken
+    });
+    (resposta.courses || []).forEach(function(curs) {
+      cursos.push({ id: curs.id, nom: curs.name });
+    });
+    pageToken = resposta.nextPageToken;
+  } while (pageToken);
+
+  cursos.sort(function(a, b) { return a.nom.localeCompare(b.nom); });
+  return cursos;
+}
+
+// Importa (o actualitza si ja existien) a "👤 Llistat" tots els alumnes d'un curs de Classroom,
+// incloent el seu correu. No toca cap altra pestanya.
+function importarAlumnesClassroom(courseId, curs, classe, desdoblament) {
+  var alumnesClassroom = [];
+  var pageToken;
+
+  do {
+    var resposta = Classroom.Courses.Students.list(courseId, { pageSize: 100, pageToken: pageToken });
+    (resposta.students || []).forEach(function(alumne) {
+      var perfil = alumne.profile || {};
+      var nom = (perfil.name && perfil.name.givenName) || '';
+      var cognoms = (perfil.name && perfil.name.familyName) || '';
+      var correu = perfil.emailAddress || '';
+      if (nom || cognoms) alumnesClassroom.push({ nom: nom, cognoms: cognoms, correu: correu });
+    });
+    pageToken = resposta.nextPageToken;
+  } while (pageToken);
+
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = asegurarLlistat(ss);
+  var files = hoja.getDataRange().getValues();
+
+  var filaPerAlumne = {};
+  for (var i = 1; i < files.length; i++) {
+    var clauExistent = String(files[i][0]).trim() + '||' + String(files[i][1]).trim() + '||' + String(files[i][4]).trim();
+    filaPerAlumne[clauExistent] = i + 1;
+  }
+
+  var importats = 0;
+  var actualitzats = 0;
+
+  alumnesClassroom.forEach(function(al) {
+    var clau = al.nom + '||' + al.cognoms + '||' + classe;
+    var fila = [al.nom, al.cognoms, al.correu, curs, classe, desdoblament];
+
+    if (filaPerAlumne[clau]) {
+      hoja.getRange(filaPerAlumne[clau], 1, 1, fila.length).setValues([fila]);
+      actualitzats++;
+    } else {
+      hoja.appendRow(fila);
+      importats++;
+    }
+  });
+
+  return { importats: importats, actualitzats: actualitzats, total: alumnesClassroom.length };
 }
 
 // ============ CORREUS ============

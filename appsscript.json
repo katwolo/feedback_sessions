@@ -1,5 +1,14 @@
 {
   "timeZone": "Europe/Madrid",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Classroom",
+        "version": "v1",
+        "serviceId": "classroom"
+      }
+    ]
+  },
   "webapp": {
     "access": "ANYONE",
     "executeAs": "USER_DEPLOYING"

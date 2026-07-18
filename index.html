@@ -18,6 +18,7 @@
     <div class="max-w-md mx-auto flex gap-2 mt-3">
       <button id="tab-avaluar" onclick="canviarVista('avaluar')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-white text-indigo-600">Avaluar</button>
       <button id="tab-resultats" onclick="canviarVista('resultats')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-indigo-500 text-white">Resultats</button>
+      <button id="tab-importar" onclick="canviarVista('importar')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-indigo-500 text-white">Importar</button>
     </div>
   </header>
 
@@ -146,6 +147,50 @@
 
     </div>
 
+    <div id="vista-importar" class="space-y-4 hidden">
+
+      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Importar de Google Classroom</h2>
+        <p class="text-xs text-slate-500">
+          Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat".
+          Si un alumne ja hi és (mateix nom, cognoms i classe), s'actualitza en lloc de duplicar-se.
+        </p>
+
+        <button onclick="carregarCursosClassroom()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
+          Carregar cursos de Classroom
+        </button>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Curs de Classroom</label>
+          <select id="importar-curs-classroom" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option value="">Prem "Carregar cursos de Classroom"</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Curs (any acadèmic)</label>
+            <input type="text" id="importar-curs" value="26/27" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
+            <input type="text" id="importar-classe" placeholder="Ex: 1º A" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Desdoblament</label>
+          <input type="text" id="importar-desdoblament" value="General" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <button onclick="importarDeClassroom()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-2.5 px-4 rounded-xl shadow-md transition">
+          Importar alumnat a Llistat
+        </button>
+        <p id="importar-status" class="text-xs text-center font-medium text-slate-500"></p>
+      </section>
+
+    </div>
+
     <div id="modal-correu" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-4 space-y-3">
         <h3 id="modal-correu-titol" class="text-sm font-bold text-slate-700"></h3>
@@ -221,10 +266,13 @@
     function canviarVista(v) {
       document.getElementById('vista-avaluar').classList.toggle('hidden', v !== 'avaluar');
       document.getElementById('vista-resultats').classList.toggle('hidden', v !== 'resultats');
+      document.getElementById('vista-importar').classList.toggle('hidden', v !== 'importar');
       document.getElementById('tab-avaluar').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
         (v === 'avaluar' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
       document.getElementById('tab-resultats').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
         (v === 'resultats' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
+      document.getElementById('tab-importar').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
+        (v === 'importar' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
     }
 
     // ---------------- CÀRREGA DE DESPLEGABLES ----------------
@@ -927,6 +975,59 @@ Salutacions.`;
         document.getElementById('llista-alumnes').innerHTML =
           '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
       });
+    }
+
+    // ---------------- IMPORTAR DES DE CLASSROOM ----------------
+
+    let cursosClassroom = [];
+
+    async function carregarCursosClassroom() {
+      const sel = document.getElementById('importar-curs-classroom');
+      const statusEl = document.getElementById('importar-status');
+      sel.innerHTML = '<option value="">Carregant...</option>';
+      statusEl.textContent = '';
+
+      try {
+        cursosClassroom = await cridarGet('listarCursosClassroom');
+        if (cursosClassroom.length === 0) {
+          sel.innerHTML = '<option value="">No s\'ha trobat cap curs actiu</option>';
+          return;
+        }
+        sel.innerHTML = cursosClassroom.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
+      } catch (err) {
+        sel.innerHTML = '<option value="">Error</option>';
+        statusEl.textContent = 'Error en carregar cursos: ' + err.message;
+        statusEl.className = 'text-xs text-center font-medium text-red-600';
+      }
+    }
+
+    async function importarDeClassroom() {
+      const courseId = document.getElementById('importar-curs-classroom').value;
+      const curs = document.getElementById('importar-curs').value.trim();
+      const classe = document.getElementById('importar-classe').value.trim();
+      const desdoblament = document.getElementById('importar-desdoblament').value.trim() || 'General';
+      const statusEl = document.getElementById('importar-status');
+
+      if (!courseId) {
+        alert('Selecciona primer un curs de Classroom.');
+        return;
+      }
+      if (!classe) {
+        alert('Escriu el nom de la classe (tal com vols que aparegui a l\'app).');
+        return;
+      }
+
+      statusEl.textContent = 'Important...';
+      statusEl.className = 'text-xs text-center font-medium text-indigo-600 animate-pulse';
+
+      try {
+        const resultat = await cridarPost('importarAlumnesClassroom', { courseId, curs, classe, desdoblament });
+        statusEl.textContent = `Fet: ${resultat.importats} alumnes nous, ${resultat.actualitzats} actualitzats (de ${resultat.total} al curs de Classroom).`;
+        statusEl.className = 'text-xs text-center font-medium text-green-600';
+      } catch (err) {
+        statusEl.textContent = 'Error en importar: ' + err.message;
+        statusEl.className = 'text-xs text-center font-medium text-red-600';
+      }
     }
 
     carregarModuls();
