@@ -73,13 +73,21 @@
           <span class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Opcional</span>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="crearGrupsAleatoris()" class="border border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
-            <span class="material-icons text-xs">shuffle</span> Auto-Agrupar (Parelles)
+        <div class="flex items-end gap-2">
+          <div class="flex-1">
+            <label class="block text-xs font-bold text-slate-600 mb-1">Nombre de grups</label>
+            <input type="number" id="nombre-grups" min="1" max="12" value="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+          </div>
+          <button onclick="crearGrupsAutomatics()" class="border border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 shrink-0">
+            <span class="material-icons text-xs">shuffle</span> Crear grups
           </button>
-          <button onclick="desferGrups()" class="border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1">
-            <span class="material-icons text-xs">clear</span> Desfer Grups
+          <button onclick="desferGrups()" class="border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 shrink-0">
+            <span class="material-icons text-xs">clear</span> Desfer
           </button>
+        </div>
+
+        <div id="llista-assignacio-grups" class="divide-y divide-slate-50">
+          <p class="text-xs text-slate-400 text-center py-2">Carrega els alumnes per poder formar grups.</p>
         </div>
       </section>
 
@@ -357,6 +365,7 @@
         observacionsIndividuals = {};
         observacionsGrup = {};
         restaurarEsborrany();
+        renderitzarAssignacioGrups();
         renderitzarLlista();
       } catch (err) {
         document.getElementById('llista-alumnes').innerHTML =
@@ -421,32 +430,13 @@
                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-indigo-500 resize-none">${observacionsIndividuals[clau] || ''}</textarea>
 
           ${grupId ? `
-            <div class="flex items-center gap-4 pl-2">
-              <label class="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
-                <input type="checkbox" name="coord-${grupId}" ${esCoordinador ? 'checked' : ''}
-                       onchange="assignarCoordinador('${clau.replace(/'/g, "\\'")}', ${grupId}, this.checked)"
-                       class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                <span>Representant / Portaveu</span>
-              </label>
-              ${esCoordinador ? `<span class="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Líder (Propaga Notes)</span>` : ''}
-            </div>
             ${esCoordinador ? `
+              <div class="text-[10px] text-amber-600 font-bold uppercase tracking-wider pl-2">Representant del grup (Propaga Notes)</div>
               <textarea placeholder="Observacions del grup (s'aplicarà a tot el grup)..." rows="1"
                         oninput="canviarObservacioGrup(${grupId}, this.value)"
                         class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-amber-400 resize-none">${observacionsGrup[grupId] || ''}</textarea>
             ` : ''}
-          ` : `
-            <div class="flex items-center gap-2 pl-2">
-              <span class="text-[10px] text-slate-400 uppercase font-semibold">Assignar Grup:</span>
-              <select onchange="assignarGrupManual('${clau.replace(/'/g, "\\'")}', this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-600">
-                <option value="">Cap</option>
-                <option value="1">Grup 1</option>
-                <option value="2">Grup 2</option>
-                <option value="3">Grup 3</option>
-                <option value="4">Grup 4</option>
-              </select>
-            </div>
-          `}
+          ` : ''}
         `;
         contenidor.appendChild(div);
       });
@@ -475,32 +465,80 @@
       el.textContent = completes ? suma.toFixed(2) : '-';
     }
 
+    // Renderitza, dins de "Grups Temporals", la llista d'alumnes amb el seu desplegable de grup
+    // i (si ja tenen grup) la casella de coordinador/a. Es fa ABANS del panell de qualificació.
+    function renderitzarAssignacioGrups() {
+      const cont = document.getElementById('llista-assignacio-grups');
+
+      if (estudiants.length === 0) {
+        cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">Carrega els alumnes per poder formar grups.</p>';
+        return;
+      }
+
+      const nGrups = Math.max(1, parseInt(document.getElementById('nombre-grups').value) || 1);
+      const opcions = Array.from({ length: nGrups }, (_, i) => i + 1);
+
+      cont.innerHTML = estudiants.map(alumne => {
+        const clau = clauAlumne(alumne.nom, alumne.cognoms);
+        const clauEsc = clau.replace(/'/g, "\\'");
+        const grupId = grups[clau] || '';
+        const esCoordinador = grupId && coordinadors[grupId] === clau;
+
+        return `
+          <div class="flex items-center justify-between gap-2 py-1.5">
+            <span class="text-xs text-slate-700 truncate flex-1 min-w-0">${alumne.cognoms}, ${alumne.nom}</span>
+            <select onchange="assignarGrupManual('${clauEsc}', this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-600 shrink-0">
+              <option value="">Cap</option>
+              ${opcions.map(g => `<option value="${g}" ${Number(grupId) === g ? 'selected' : ''}>Grup ${g}</option>`).join('')}
+            </select>
+            ${grupId ? `
+              <label class="flex items-center gap-1 text-[10px] text-amber-600 font-semibold cursor-pointer shrink-0">
+                <input type="checkbox" name="coord-${grupId}" ${esCoordinador ? 'checked' : ''}
+                       onchange="assignarCoordinador('${clauEsc}', ${grupId}, this.checked)"
+                       class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                Coord.
+              </label>
+            ` : '<span class="w-12 shrink-0"></span>'}
+          </div>
+        `;
+      }).join('');
+    }
+
     function assignarGrupManual(clau, grupVal) {
       if (grupVal === "") {
         delete grups[clau];
+        Object.keys(coordinadors).forEach(g => { if (coordinadors[g] === clau) delete coordinadors[g]; });
       } else {
         grups[clau] = parseInt(grupVal);
       }
       guardarEsborrany();
+      renderitzarAssignacioGrups();
       renderitzarLlista();
     }
 
-    function crearGrupsAleatoris() {
+    // Distribueix tots els alumnes de manera aleatòria i equilibrada entre el nombre de grups triat
+    function crearGrupsAutomatics() {
       if (estudiants.length === 0) return;
-      desferGrups();
+
+      const nGrups = Math.max(1, parseInt(document.getElementById('nombre-grups').value) || 1);
+      grups = {};
+      coordinadors = {};
+      observacionsGrup = {};
 
       const clausMesclades = estudiants.map(a => clauAlumne(a.nom, a.cognoms)).sort(() => Math.random() - 0.5);
-      let grupActual = 1;
+      const coordinadorAssignat = {};
 
-      for (let i = 0; i < clausMesclades.length; i += 2) {
-        grups[clausMesclades[i]] = grupActual;
-        if (clausMesclades[i + 1]) {
-          grups[clausMesclades[i + 1]] = grupActual;
+      clausMesclades.forEach((clau, idx) => {
+        const grupId = (idx % nGrups) + 1;
+        grups[clau] = grupId;
+        if (!coordinadorAssignat[grupId]) {
+          coordinadors[grupId] = clau;
+          coordinadorAssignat[grupId] = true;
         }
-        coordinadors[grupActual] = clausMesclades[i];
-        grupActual++;
-      }
+      });
+
       guardarEsborrany();
+      renderitzarAssignacioGrups();
       renderitzarLlista();
     }
 
@@ -509,6 +547,7 @@
       coordinadors = {};
       observacionsGrup = {};
       guardarEsborrany();
+      renderitzarAssignacioGrups();
       renderitzarLlista();
     }
 
@@ -519,6 +558,7 @@
         delete coordinadors[grupId];
       }
       guardarEsborrany();
+      renderitzarAssignacioGrups();
       renderitzarLlista();
     }
 
@@ -954,6 +994,7 @@ Salutacions.`;
       const clau = clauAlumne(r.nom, r.cognoms);
       observacionsIndividuals[clau] = r.observacioIndividual || '';
 
+      renderitzarAssignacioGrups();
       document.getElementById('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant detall...</p>';
 
       Promise.all([
