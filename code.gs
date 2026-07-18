@@ -215,6 +215,23 @@ function construirClau(curs, modul, classe, desdoblament, nom, cognoms, sessioAv
   return [curs, modul, classe, desdoblament, nom, cognoms, sessioAvaluada].join('|');
 }
 
+// Executa aquesta funció UN COP manualment des de l'editor (desplegable de funcions > autoritzarTot
+// > Executar ▶) per forçar que Google et demani autoritzar TOTS els permisos que fa servir
+// l'app (Sheets, Classroom i enviar correu) en una sola finestra. T'arribarà un correu de
+// prova a tu mateix si el permís d'enviar correu ha quedat ben autoritzat.
+function autoritzarTot() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  Logger.log('Sheets OK: ' + ss.getName());
+
+  var cursos = Classroom.Courses.list({ pageSize: 1 });
+  Logger.log('Classroom OK: ' + ((cursos.courses || []).length) + ' curs(os) de prova llegit(s)');
+
+  var correuPropi = Session.getActiveUser().getEmail();
+  MailApp.sendEmail(correuPropi, 'Avaluador Docent: autorització completada',
+      'Si reps aquest correu, els permisos de Google Sheets, Classroom i enviament de correu ja estan autoritzats correctament.');
+  Logger.log('Mail OK: correu de prova enviat a ' + correuPropi);
+}
+
 // Executa aquesta funció un cop manualment des de l'editor (Executar > configurarRegistre)
 // per organitzar el full de càlcul encara que no s'hagi exportat cap avaluació.
 function configurarRegistre() {
