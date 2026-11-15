@@ -113,6 +113,7 @@ var ACCIONS = {
   actualitzarResultat: function(p) { return ambBloqueig(function() { return actualitzarResultat(p); }); },
   enviarCorreus: function(p) { return ambBloqueig(function() { return enviarCorreus(p); }); },
   crearInformePdf: function(p) { return crearInformePdf(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada); },
+  desarDesdoblaments: function(p) { return ambBloqueig(function() { return desarDesdoblaments(p.classe, p.assignacions); }); },
   importarAlumnesClassroom: function(p) { return ambBloqueig(function() { return importarAlumnesClassroom(p.courseId, p.curs, p.classe, p.desdoblament); }); }
 };
 
@@ -354,9 +355,36 @@ function obtenirAlumnes(classe, desdoblament) {
     var nom = txt(f[0]);
     if (txt(f[4]) !== classe || !nom) return;
     if (desdoblament !== DESDOBLAMENT_GENERAL && txt(f[5]) !== desdoblament) return;
-    alumnes.push({ nom: nom, cognoms: txt(f[1]), id: txt(f[6]) || txt(f[2]) });
+    alumnes.push({ nom: nom, cognoms: txt(f[1]), id: txt(f[6]) || txt(f[2]), desdoblament: txt(f[5]) || DESDOBLAMENT_GENERAL });
   });
   return ordenarAlumnes(alumnes);
+}
+
+// Desa a quin desdoblament va cada alumne d'una classe (columna "Desdoblament" de "👤 Llistat").
+// assignacions = [{ alumne: { nom, cognoms, id }, desdoblament }]. Buit o "General" = sense desdoblament.
+function desarDesdoblaments(classe, assignacions) {
+  classe = txt(classe);
+  if (!classe) throw new Error('Falta la classe.');
+  var hoja = asegurarLlistat(obrirFull());
+  var amplada = CAPCALERA_LLISTAT.length;
+  var files = llegirFiles(hoja, amplada);
+  var actualitzats = 0;
+  var noTrobats = [];
+
+  (assignacions || []).forEach(function(a) {
+    var desdoblament = txt(a.desdoblament) || DESDOBLAMENT_GENERAL;
+    var trobat = false;
+    files.forEach(function(f) {
+      if (txt(f[4]) === classe && txt(f[0]) && mateixAlumne(f[0], f[1], txt(f[6]) || txt(f[2]), a.alumne)) {
+        trobat = true;
+        if (txt(f[5]) !== desdoblament) { f[5] = desdoblament; actualitzats++; }
+      }
+    });
+    if (!trobat) noTrobats.push(txt(a.alumne.nom) + ' ' + txt(a.alumne.cognoms));
+  });
+
+  hoja.getRange(2, 6, Math.max(files.length, 1), 1).setValues(files.length ? files.map(function(f) { return [f[5]]; }) : [['']]);
+  return { actualitzats: actualitzats, noTrobats: noTrobats };
 }
 
 // Criteris aplicables a un supòsit: els propis del supòsit si en té; si no, els del mòdul.
@@ -900,6 +928,7 @@ function listarCursosClassroom() {
 
 // Importa (o actualitza) a "👤 Llistat" els alumnes d'un curs de Classroom, amb correu i ID.
 // L'ID (el correu, o l'ID de Classroom si no n'hi ha) és el que identifica l'alumne d'ara endavant.
+// Els alumnes que ja hi eren CONSERVEN el seu desdoblament; el de la importació només s'aplica als nous.
 function importarAlumnesClassroom(courseId, curs, classe, desdoblament) {
   var alumnesClassroom = [];
   var pageToken;
@@ -921,13 +950,14 @@ function importarAlumnesClassroom(courseId, curs, classe, desdoblament) {
   var importats = 0, actualitzats = 0;
 
   alumnesClassroom.forEach(function(al) {
-    var fila = [al.nom, al.cognoms, al.correu, curs, classe, desdoblament, al.id];
     var index = -1;
     for (var i = 0; i < files.length; i++) {
       var f = files[i];
       // Mateixa classe i mateix alumne: per ID si tots dos en tenen, si no per nom i cognoms
       if (txt(f[4]) === classe && mateixAlumne(f[0], f[1], txt(f[6]) || txt(f[2]), al)) { index = i; break; }
     }
+    var desdoblamentFila = index >= 0 ? (txt(files[index][5]) || desdoblament) : desdoblament;
+    var fila = [al.nom, al.cognoms, al.correu, curs, classe, desdoblamentFila, al.id];
     if (index >= 0) { files[index] = fila; actualitzats++; } else { files.push(fila); importats++; }
   });
 

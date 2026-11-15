@@ -32,7 +32,7 @@ borrar resultados y enviar correos desde tu cuenta. Comparte el enlace solo con 
 
 | Pestaña | Contenido |
 |---|---|
-| 👤 Llistat | Alumnado. La columna "ID alumne" (el correo de Classroom) evita confundir a alumnos con el mismo nombre. |
+| 👤 Llistat | Alumnado. La columna "ID alumne" (el correo de Classroom) evita confundir a alumnos con el mismo nombre. El desdoblamiento de cada alumno se asigna en la app: Configurar → Desdoblaments ("General" = sin desdoblamiento; al evaluar "General" sale toda la clase). |
 | 🔧 Configuració | Ítems de evaluación. Si "Supòsit" está vacío, el ítem vale para todo el módulo. Tipos: `numeric`, `sino`, `rubrica`. |
 | 📋 Supòsits | Catálogo de supuestos por módulo (fecha, descripción, activo). |
 | 👥 Alumnat | Una fila por alumno y sesión: nota final, grupo, origen de la nota (Calculada/Manual) y correo enviado. |

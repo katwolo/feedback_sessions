@@ -238,4 +238,29 @@ prova('importar Classroom amb ID i sense duplicar', () => {
   assert.deepStrictEqual(al.map(a => a.id).sort(), ['pau2@x.cat', 'pau@x.cat']);
 });
 
+prova('desdoblaments: assignar, filtrar i no trepitjar-los en reimportar', () => {
+  const e = crearEntorn({ alumnesClassroom: [
+    { userId: 'u1', profile: { name: { givenName: 'Pau', familyName: 'Puig' }, emailAddress: 'pau@x.cat' } },
+    { userId: 'u2', profile: { name: { givenName: 'Anna', familyName: 'Ros' }, emailAddress: 'anna@x.cat' } },
+    { userId: 'u3', profile: { name: { givenName: 'Joan', familyName: 'Mas' }, emailAddress: 'joan@x.cat' } }
+  ] });
+  e.call('importarAlumnesClassroom', { courseId: 'c1', curs: '26/27', classe: '1B', desdoblament: 'General' });
+  let al = e.call('obtenirAlumnes', { classe: '1B', desdoblament: 'General' });
+  assert.deepStrictEqual(al.map(a => a.desdoblament), ['General', 'General', 'General']);
+  const r = e.call('desarDesdoblaments', { classe: '1B', assignacions: [
+    { alumne: al.find(a => a.nom === 'Pau'), desdoblament: 'Desdoblament 1' },
+    { alumne: al.find(a => a.nom === 'Anna'), desdoblament: 'Desdoblament 2' },
+    { alumne: al.find(a => a.nom === 'Joan'), desdoblament: '' },
+    { alumne: { nom: 'No', cognoms: 'Existeix', id: '' }, desdoblament: 'Desdoblament 1' }
+  ] });
+  assert.strictEqual(r.actualitzats, 2);
+  assert.deepStrictEqual(r.noTrobats, ['No Existeix']);
+  assert.deepStrictEqual(e.call('listarDesdoblaments', { classe: '1B' }), ['General', 'Desdoblament 1', 'Desdoblament 2']);
+  assert.deepStrictEqual(e.call('obtenirAlumnes', { classe: '1B', desdoblament: 'Desdoblament 1' }).map(a => a.nom), ['Pau']);
+  assert.strictEqual(e.call('obtenirAlumnes', { classe: '1B', desdoblament: 'General' }).length, 3);
+  // Reimportar no trepitja el desdoblament ja assignat
+  e.call('importarAlumnesClassroom', { courseId: 'c1', curs: '26/27', classe: '1B', desdoblament: 'General' });
+  assert.deepStrictEqual(e.call('obtenirAlumnes', { classe: '1B', desdoblament: 'Desdoblament 2' }).map(a => a.nom), ['Anna']);
+});
+
 console.log(`\n${passats} proves superades`);

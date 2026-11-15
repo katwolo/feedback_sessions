@@ -66,6 +66,8 @@
     .seg button { min-height: 42px; border-radius: .7rem; font-weight: 600; color: var(--text3); }
     .seg .seg-si { background: var(--card); color: var(--ok); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
     .seg .seg-no { background: var(--card); color: var(--ko); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .seg .seg-neutre { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .seg .seg-tab { background: var(--card); color: var(--accent-text); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
 
     /* Nota final */
     .pill { display: inline-flex; align-items: center; gap: .25rem; border-radius: .75rem; padding: .2rem .6rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -244,6 +246,27 @@
 
     <!-- ============================ CONFIGURAR ============================ -->
     <div id="vista-configurar" class="hidden space-y-3">
+      <div class="seg text-[14px]" role="tablist">
+        <button id="cfg-tab-moduls" role="tab" onclick="canviarSubConfig('moduls')">Mòduls i supòsits</button>
+        <button id="cfg-tab-desd" role="tab" onclick="canviarSubConfig('desd')">Desdoblaments</button>
+      </div>
+
+      <div id="cfg-desdoblaments" class="hidden space-y-3">
+        <section class="card p-4 space-y-3">
+          <label for="desd-classe" class="titol-seccio block">Classe</label>
+          <select id="desd-classe" onchange="carregarDesdoblamentsClasse()" class="camp"><option value="">Carregant...</option></select>
+          <p class="text-[14px] t2">Tria a quin desdoblament va cada alumne. Quan avaluïs <b>General</b> sortirà tota la classe; si tries un desdoblament, només els seus alumnes.</p>
+          <div id="desd-resum" class="flex flex-wrap gap-1.5"></div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="afegirDesdoblament()" class="btn btn-accent">+ Desdoblament</button>
+            <button onclick="repartirPerMeitats()" class="btn btn-suau">Repartir per meitats</button>
+          </div>
+        </section>
+        <section id="desd-llista" class="card divisor overflow-hidden"></section>
+        <button id="boto-desar-desd" onclick="desarDesdoblamentsClasse()" class="btn btn-ok w-full" disabled>Desar desdoblaments</button>
+      </div>
+
+      <div id="cfg-moduls" class="space-y-3">
       <section class="card p-4 space-y-3">
         <label for="cfg-modul" class="titol-seccio block">Mòdul</label>
         <select id="cfg-modul" onchange="renderitzarConfiguracio()" class="camp"><option value="">Carregant...</option></select>
@@ -259,13 +282,14 @@
       </section>
       <section id="cfg-criteris-modul" class="card p-4 space-y-3"></section>
       <section id="cfg-suposits" class="card p-4 space-y-3"></section>
+      </div>
     </div>
 
     <!-- ============================ ALUMNAT (importar) ============================ -->
     <div id="vista-importar" class="hidden space-y-3">
       <section class="card p-4 space-y-3">
         <h2 class="titol-seccio">Importar de Google Classroom</h2>
-        <p class="text-[14px] t2">Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat". El correu identifica cada alumne, així dos alumnes amb el mateix nom no es barregen.</p>
+        <p class="text-[14px] t2">Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat". El correu identifica cada alumne, així dos alumnes amb el mateix nom no es barregen. Si tornes a importar una classe, els alumnes que ja hi eren conserven el seu desdoblament; per canviar-los, ves a Configurar → Desdoblaments.</p>
         <button onclick="carregarCursosClassroom()" class="btn btn-accent w-full">Carregar cursos de Classroom</button>
         <div>
           <label for="importar-curs-classroom" class="lbl">Curs de Classroom</label>
@@ -561,7 +585,7 @@
       $('cap-simple').classList.toggle('hidden', v === 'avaluar' || v === 'resultats');
       $('cap-simple-titol').textContent = v === 'configurar' ? 'Configurar' : 'Alumnat';
       $('barra-exportar').classList.toggle('hidden', v !== 'avaluar' || estudiants.length === 0);
-      if (v === 'configurar' && !configuracio) carregarConfiguracio();
+      if (v === 'configurar') { if (!configuracio) carregarConfiguracio(); canviarSubConfig(subConfig); }
       if (v === 'resultats' && !resultatsCercats) cercarResultats();
       window.scrollTo(0, 0);
     }
@@ -600,10 +624,12 @@
       try {
         const classes = await api('listarClasses');
         if (classes.length === 0) {
-          sel.innerHTML = selResultats.innerHTML = '<option value="">Cap classe al Llistat</option>';
+          sel.innerHTML = selResultats.innerHTML = $('desd-classe').innerHTML = '<option value="">Cap classe al Llistat</option>';
           return;
         }
-        sel.innerHTML = selResultats.innerHTML = opcions(classes, c => c, c => c);
+        const anteriorDesd = $('desd-classe').value;
+        sel.innerHTML = selResultats.innerHTML = $('desd-classe').innerHTML = opcions(classes, c => c, c => c);
+        if (anteriorDesd && classes.includes(anteriorDesd)) $('desd-classe').value = anteriorDesd;
         carregarDesdoblaments(classes[0]);
         carregarAlumnesFitxa();
       } catch (err) {
@@ -697,7 +723,7 @@
     function marcarCanvis() { canvisPendents = true; }
 
     window.addEventListener('beforeunload', e => {
-      if (canvisPendents) { e.preventDefault(); e.returnValue = ''; }
+      if (canvisPendents || desdCanvis) { e.preventDefault(); e.returnValue = ''; }
     });
 
     // Capçalera de la vista Avaluar: resum de la sessió carregada
@@ -2091,6 +2117,131 @@ Salutacions.`;
       } catch (err) {
         statusEl.textContent = err.message;
         statusEl.className = 'text-[14px] text-center t-ko';
+      }
+    }
+
+    // =====================================================================
+    // CONFIGURAR: DESDOBLAMENTS DE CADA CLASSE
+    // =====================================================================
+    let subConfig = 'moduls';
+    let desdAlumnes = [];      // [{ nom, cognoms, id, desdoblament }]
+    let desdOpcions = [];      // noms dels desdoblaments de la classe (sense "General")
+    let desdCanvis = false;
+
+    function canviarSubConfig(sub) {
+      if (sub !== 'desd' && desdCanvis && !confirm('Tens canvis de desdoblaments sense desar. Sortir igualment?')) return;
+      subConfig = sub;
+      $('cfg-moduls').classList.toggle('hidden', sub !== 'moduls');
+      $('cfg-desdoblaments').classList.toggle('hidden', sub !== 'desd');
+      $('cfg-tab-moduls').className = sub === 'moduls' ? 'seg-tab' : '';
+      $('cfg-tab-desd').className = sub === 'desd' ? 'seg-tab' : '';
+      if (sub === 'desd' && !desdCanvis) carregarDesdoblamentsClasse();
+    }
+
+    async function carregarDesdoblamentsClasse() {
+      const classe = $('desd-classe').value;
+      const llista = $('desd-llista');
+      if (!classe) { llista.innerHTML = '<p class="text-center t3 py-6">Primer importa alumnes a la pestanya Alumnat.</p>'; return; }
+      if (desdCanvis && $('desd-llista').dataset.classe && $('desd-llista').dataset.classe !== classe &&
+          !confirm('Tens canvis de desdoblaments sense desar a l\'altra classe. Es perdran. Continuar?')) {
+        $('desd-classe').value = $('desd-llista').dataset.classe;
+        return;
+      }
+      llista.innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant alumnes...</p>';
+      try {
+        desdAlumnes = await api('obtenirAlumnes', { classe, desdoblament: 'General' });
+        llista.dataset.classe = classe;
+        const existents = [...new Set(desdAlumnes.map(a => a.desdoblament).filter(d => d && d !== 'General'))].sort((a, b) => a.localeCompare(b));
+        desdOpcions = existents.length ? existents : ['Desdoblament 1', 'Desdoblament 2'];
+        desdCanvis = false;
+        renderitzarDesdoblaments();
+      } catch (err) {
+        llista.innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
+      }
+    }
+
+    // Etiqueta curta per als botons: "Desdoblament 1" -> "D1"; altres noms, els primers caràcters
+    function etiquetaDesd(nom) {
+      const m = String(nom).match(/(\d+)\s*$/);
+      return m ? 'D' + m[1] : String(nom).slice(0, 8);
+    }
+
+    function renderitzarDesdoblaments() {
+      const llista = $('desd-llista');
+      $('boto-desar-desd').disabled = !desdCanvis;
+      $('boto-desar-desd').textContent = desdCanvis ? 'Desar desdoblaments' : 'Desdoblaments desats ✓';
+
+      const compte = nom => desdAlumnes.filter(a => (a.desdoblament || 'General') === nom).length;
+      $('desd-resum').innerHTML = [['General', 'Sense desdoblament']].concat(desdOpcions.map(d => [d, d])).map(([valor, text]) =>
+        `<span class="etiqueta !text-[13px] !py-1 !px-2.5" style="background:var(--soft)">${esc(text)}${valor !== 'General' ? ` <b class="t-accent">(${esc(etiquetaDesd(valor))})</b>` : ''} · <b>${compte(valor)}</b></span>`).join('');
+
+      if (!desdAlumnes.length) { llista.innerHTML = '<p class="text-center t3 py-6">Aquesta classe no té alumnes.</p>'; return; }
+
+      llista.innerHTML = desdAlumnes.map((a, i) => {
+        const actual = a.desdoblament || 'General';
+        const boto = (k, text, titol) => {
+          const valor = k < 0 ? 'General' : desdOpcions[k];
+          const actiu = actual === valor;
+          return `<button type="button" onclick="assignarDesd(${i}, ${k})" aria-pressed="${actiu}" title="${esc(titol)}"
+                    class="${actiu ? (k < 0 ? 'seg-neutre' : 'opcio-activa') : ''}">${esc(text)}</button>`;
+        };
+        return `
+          <div class="px-4 py-3 space-y-2">
+            <div class="flex items-center gap-2.5">
+              ${htmlAvatar(a, '', 34)}
+              <span class="font-semibold text-[15px] truncate">${esc(a.cognoms)}, ${esc(a.nom)}</span>
+            </div>
+            <div class="seg text-[14px]" role="group" aria-label="Desdoblament de ${esc(a.nom)}">
+              ${boto(-1, 'Cap', 'Sense desdoblament (només surt a General)')}
+              ${desdOpcions.map((d, k) => boto(k, etiquetaDesd(d), d)).join('')}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function assignarDesd(i, k) {
+      desdAlumnes[i].desdoblament = k < 0 ? 'General' : desdOpcions[k];
+      desdCanvis = true;
+      renderitzarDesdoblaments();
+    }
+
+    function afegirDesdoblament() {
+      const proposat = 'Desdoblament ' + (desdOpcions.length + 1);
+      const nom = (prompt('Nom del nou desdoblament:', proposat) || '').trim();
+      if (!nom) return;
+      if (nom === 'General' || desdOpcions.includes(nom)) { mostrarAvis('Aquest desdoblament ja existeix.', 'error'); return; }
+      desdOpcions.push(nom);
+      renderitzarDesdoblaments();
+    }
+
+    // Primera meitat (per ordre alfabètic) al primer desdoblament, la resta al segon
+    function repartirPerMeitats() {
+      if (desdOpcions.length < 2) { mostrarAvis('Calen almenys dos desdoblaments.', 'error'); return; }
+      if (desdAlumnes.some(a => a.desdoblament && a.desdoblament !== 'General') &&
+          !confirm(`Això reassignarà tots els alumnes: la primera meitat a "${desdOpcions[0]}" i la resta a "${desdOpcions[1]}". Continuar?`)) return;
+      const meitat = Math.ceil(desdAlumnes.length / 2);
+      desdAlumnes.forEach((a, i) => { a.desdoblament = i < meitat ? desdOpcions[0] : desdOpcions[1]; });
+      desdCanvis = true;
+      renderitzarDesdoblaments();
+    }
+
+    async function desarDesdoblamentsClasse() {
+      const classe = $('desd-llista').dataset.classe;
+      const boto = $('boto-desar-desd');
+      boto.disabled = true;
+      boto.textContent = 'Desant...';
+      try {
+        const r = await api('desarDesdoblaments', {
+          classe, assignacions: desdAlumnes.map(a => ({ alumne: { nom: a.nom, cognoms: a.cognoms, id: a.id }, desdoblament: a.desdoblament }))
+        });
+        desdCanvis = false;
+        renderitzarDesdoblaments();
+        mostrarAvis(`Desdoblaments desats (${r.actualitzats} canvis).` + (r.noTrobats.length ? ` No trobats: ${r.noTrobats.join(', ')}.` : ''), r.noTrobats.length ? 'error' : 'ok');
+        if ($('classe').value === classe) carregarDesdoblaments(classe, $('desdoblament').value);
+      } catch (err) {
+        boto.disabled = false;
+        boto.textContent = 'Desar desdoblaments';
+        mostrarAvis('Error en desar: ' + err.message, 'error');
       }
     }
 
