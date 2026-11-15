@@ -14,8 +14,11 @@ proyecto de Apps Script y Google identifica a quien la abre.
 2. Ejecuta **una vez** `configurarRegistre` (añade las columnas y pestañas nuevas al Sheet sin tocar
    tus datos) y después `autoritzarTot` (pide los permisos nuevos de Drive para los PDF).
 3. **Implementar → Gestionar implementaciones → Editar → Nueva versión**. Abre la URL `/exec`: esa es la app.
-4. **Revoca el token antiguo.** La implementación vieja que usaba GitHub Pages sigue viva hasta que la archives:
-   ve a "Gestionar implementaciones" y archívala.
+4. Si en el paso 3 editaste la implementación existente, la URL `/exec` sigue siendo la misma y ya ejecuta
+   el código nuevo (el token antiguo deja de funcionar solo). **No la archives.** Archiva únicamente otras
+   implementaciones antiguas que aparezcan en la lista, si las hay.
+5. Si alguien abre la antigua dirección de GitHub Pages, la página redirige sola a la URL de `URL_APP`
+   (al final de `index.html`). Si tu URL `/exec` es otra, cámbiala ahí.
 
 ### Quién puede entrar
 
