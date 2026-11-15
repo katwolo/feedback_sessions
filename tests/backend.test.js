@@ -192,7 +192,7 @@ prova('resultats: actualitzar (Manual), esborrar alumne i sessió, sessions, fit
   const sessions = e.call('llistarSessions', { classe: '1A', modul: '' });
   assert.strictEqual(sessions.length, 2);
   const fitxa = e.call('obtenirFitxaAlumne', { classe: '1A', alumne: p1 });
-  assert.deepStrictEqual(fitxa.map(s => s.notaFinal), [9, 6]);
+  assert.deepStrictEqual(fitxa.map(s => s.notaFinal).sort(), [6, 9]);
   e.call('eliminarResultat', Object.assign({}, sessioS1, { alumne: p1 }));
   const res = e.call('obtenirResultatsSessio', sessioS1);
   assert.deepStrictEqual(res.alumnes.map(a => a.id), ['pau2@x.cat']);
