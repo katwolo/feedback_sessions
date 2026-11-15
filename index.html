@@ -1946,6 +1946,25 @@ Salutacions.`;
     // =====================================================================
     // INICI
     // =====================================================================
+
+    // Adreça de l'app a Apps Script (Implementar → Gestionar implementacions → URL de l'aplicació web).
+    // Només s'usa per redirigir-hi si algú obre aquest fitxer des d'una altra adreça (p. ex. l'antiga
+    // de GitHub Pages), on l'app no pot funcionar.
+    const URL_APP = 'https://script.google.com/macros/s/AKfycbz-hUG84Bwtu8n8iefOE1LqDEXO-Bq0ybMw4At1kd_jLtJrtOwblgu-BwD1u_qlo9vC/exec';
+
+    if (!window.google || !google.script || !google.script.run) {
+      document.querySelector('main').innerHTML = `
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 space-y-3 text-center">
+          <h2 class="text-base font-bold text-slate-800">Aquesta adreça ja no és la de l'app</h2>
+          <p class="text-sm text-slate-600">Ara l'app s'obre des de Google Apps Script. T'hi portem automàticament...</p>
+          <a href="${esc(URL_APP)}" class="inline-block bg-indigo-600 text-white font-semibold text-sm py-2 px-4 rounded-lg">Obrir l'app</a>
+          <p class="text-xs text-slate-400">Guarda aquest nou enllaç a les adreces d'interès o a la pantalla d'inici.</p>
+        </section>`;
+      document.getElementById('pestanyes').classList.add('hidden');
+      setTimeout(() => { window.location.replace(URL_APP); }, 1500);
+      throw new Error('Pàgina oberta fora de Apps Script: redirigint a ' + URL_APP);
+    }
+
     $('curs').value = cursPerDefecte();
     $('importar-curs').value = cursPerDefecte();
     canviarVista('avaluar');
