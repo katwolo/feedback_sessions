@@ -2,361 +2,412 @@
 <html lang="ca">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1e1b4b" media="(prefers-color-scheme: dark)">
   <title>Sessions/Supòsits</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
+    /* ---------- Colors (clar / fosc automàtic segons el mòbil) ---------- */
+    :root {
+      color-scheme: light dark;
+      --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --text2: #475569; --text3: #64748b;
+      --line: #e2e8f0; --field: #f8fafc; --soft: #f1f5f9; --soft2: #e2e8f0;
+      --accent: #4f46e5; --accent-soft: #eef2ff; --accent-text: #4338ca; --hdr: #4f46e5;
+      --ok-bg: #ecfdf5; --ok: #047857; --ok-fort: #059669;
+      --ko-bg: #fef2f2; --ko: #b91c1c;
+      --warn-bg: #fffbeb; --warn: #b45309; --manual: #7e22ce;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #020617; --card: #0f172a; --text: #f1f5f9; --text2: #cbd5e1; --text3: #94a3b8;
+        --line: #1e293b; --field: #1e293b; --soft: #1e293b; --soft2: #334155;
+        --accent: #6366f1; --accent-soft: #1e1b4b; --accent-text: #a5b4fc; --hdr: #1e1b4b;
+        --ok-bg: #022c22; --ok: #6ee7b7; --ok-fort: #059669;
+        --ko-bg: #450a0a; --ko: #fca5a5;
+        --warn-bg: #451a03; --warn: #fcd34d; --manual: #d8b4fe;
+      }
+    }
+
     /* Si el CDN de Tailwind no carrega, que almenys els elements amagats continuïn amagats */
     .hidden { display: none !important; }
-    .chip-actiu { background: #4f46e5; color: #fff; border-color: #4f46e5; }
-    @media print { header, .no-print { display: none !important; } }
+
+    body { background: var(--bg); color: var(--text); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           font-size: 16px; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    .card { background: var(--card); border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.06); }
+    .card-activa { box-shadow: 0 0 0 2px var(--accent), 0 4px 12px rgba(15,23,42,.12); }
+    .t2 { color: var(--text2); } .t3 { color: var(--text3); }
+    .t-ok { color: var(--ok); } .t-ko { color: var(--ko); } .t-warn { color: var(--warn); } .t-manual { color: var(--manual); } .t-accent { color: var(--accent-text); }
+    .linia { border-color: var(--line) !important; }
+    .divisor > * + * { border-top: 1px solid var(--line); }
+    .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 4px; }
+    .titol-seccio { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text3); }
+
+    .camp { width: 100%; background: var(--field); color: var(--text); border: 1px solid var(--line); border-radius: .75rem;
+            padding: .6rem .75rem; font-size: 16px; }
+    .camp:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--card); }
+    textarea.camp { font-size: 15px; resize: vertical; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: .75rem;
+           font-weight: 600; padding: .6rem .9rem; font-size: 15px; transition: filter .15s, background .15s; }
+    .btn:active { filter: brightness(.95); }
+    .btn:disabled { opacity: .5; }
+    .btn-suau { background: var(--soft); color: var(--text); }
+    .btn-accent { background: var(--accent-soft); color: var(--accent-text); }
+    .btn-prim { background: var(--accent); color: #fff; }
+    .btn-ok { background: var(--ok-fort); color: #fff; }
+    .btn-perill { background: var(--ko-bg); color: var(--ko); }
+    .btn-vora { background: transparent; color: var(--text2); border: 1px dashed var(--soft2); }
+
+    /* Botons de nota */
+    .opcio { background: var(--soft); color: var(--text); border-radius: .75rem; font-weight: 600; min-height: 44px; }
+    .opcio-activa { background: var(--accent) !important; color: #fff !important; }
+    .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; padding: 3px; border-radius: .9rem; background: var(--soft); }
+    .seg button { min-height: 42px; border-radius: .7rem; font-weight: 600; color: var(--text3); }
+    .seg .seg-si { background: var(--card); color: var(--ok); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .seg .seg-no { background: var(--card); color: var(--ko); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+
+    /* Nota final */
+    .pill { display: inline-flex; align-items: center; gap: .25rem; border-radius: .75rem; padding: .2rem .6rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pill-ok { background: var(--ok-bg); color: var(--ok); }
+    .pill-ko { background: var(--ko-bg); color: var(--ko); }
+    .pill-buit { background: var(--soft); color: var(--text3); }
+    .etiqueta { display: inline-block; font-size: 11px; font-weight: 700; border-radius: .4rem; padding: .05rem .4rem; }
+
+    /* Avatars: color segons el grup */
+    .av { flex: none; width: 44px; height: 44px; border-radius: 9999px; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+    .g0 { background: var(--soft); color: var(--text2); }
+    .g1 { background: #fef3c7; color: #92400e; } .g2 { background: #e0f2fe; color: #075985; } .g3 { background: #fce7f3; color: #9d174d; }
+    .g4 { background: #dcfce7; color: #166534; } .g5 { background: #ede9fe; color: #5b21b6; } .g6 { background: #ffedd5; color: #9a3412; }
+    @media (prefers-color-scheme: dark) {
+      .g1 { background: #78350f; color: #fde68a; } .g2 { background: #0c4a6e; color: #bae6fd; } .g3 { background: #831843; color: #fbcfe8; }
+      .g4 { background: #14532d; color: #bbf7d0; } .g5 { background: #4c1d95; color: #ddd6fe; } .g6 { background: #7c2d12; color: #fed7aa; }
+    }
+
+    .barra { height: 6px; border-radius: 9999px; background: var(--soft); overflow: hidden; }
+    .barra > div { height: 100%; border-radius: 9999px; background: var(--accent); transition: width .2s; }
+    .barra-ok > div { background: var(--ok-fort); }
+
+    /* Capçalera i navegació */
+    .capcalera { background: var(--hdr); color: #fff; padding-top: env(safe-area-inset-top); }
+    .xip { background: rgba(255,255,255,.16); color: #fff; border-radius: 9999px; padding: .2rem .7rem; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .xip-select { appearance: none; -webkit-appearance: none; background: rgba(255,255,255,.16); color: #fff; border: 0; border-radius: 9999px;
+                  padding: .3rem 1.6rem .3rem .8rem; font-size: 14px; font-weight: 600; max-width: 100%;
+                  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+                  background-repeat: no-repeat; background-position: right .55rem center; }
+    .xip-select option { color: #0f172a; }
+    .xip-select-actiu { background-color: #fff; color: var(--accent); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+    .nav-inferior { background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+    .nav-inferior button { color: var(--text3); }
+    .nav-inferior button[aria-current="page"] { color: var(--accent-text); }
+    .ico { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    .ico-s { width: 17px; height: 17px; }
+
+    .full-inferior { background: var(--card); border-radius: 1.25rem 1.25rem 0 0; }
+    @media (min-width: 640px) { .full-inferior { border-radius: 1.25rem; } }
+    .previ { background: var(--field); border: 1px solid var(--line); }
+    .previ table td { border: 1px solid var(--soft2); padding: 2px 8px; }
+    input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-16">
+<body class="min-h-screen">
 
-  <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40 px-4 py-3">
-    <div class="max-w-md mx-auto flex justify-between items-center">
-      <h1 class="text-lg font-bold flex items-center gap-2">
-        <span class="material-icons">fact_check</span> Sessions/Supòsits
-      </h1>
+  <!-- ============================ CAPÇALERA ============================ -->
+  <header class="capcalera sticky top-0 z-30 shadow-md">
+    <div class="max-w-md mx-auto px-4 py-3">
+
+      <!-- Avaluar: resum de la sessió -->
+      <div id="cap-avaluar">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-[11px] uppercase tracking-wider opacity-75" id="cap-avaluar-etiqueta">Nova sessió</div>
+            <div class="text-lg font-bold leading-tight truncate" id="cap-avaluar-titol">Configura la sessió</div>
+          </div>
+          <button id="boto-canviar-sessio" onclick="obrirConfigSessio()" class="hidden shrink-0 xip !py-1.5 !px-3 flex items-center gap-1.5 font-semibold">
+            <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Canviar
+          </button>
+        </div>
+        <div id="cap-avaluar-xips" class="hidden flex flex-wrap gap-1.5 mt-2"></div>
+      </div>
+
+      <!-- Resultats: filtres com a xips -->
+      <div id="cap-resultats" class="hidden">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-lg font-bold">Resultats</div>
+          <button id="boto-mode-resultats" onclick="canviarModeResultats(modeResultats === 'sessio' ? 'alumne' : 'sessio')" class="xip !py-1 font-semibold">Per alumne</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          <select id="resultats-classe" aria-label="Classe" onchange="carregarAlumnesFitxa(); cercarResultats()" class="xip-select xip-select-actiu"><option value="">Carregant...</option></select>
+          <select id="resultats-modul" aria-label="Mòdul" onchange="cercarResultats()" class="xip-select"><option value="">Tots els mòduls</option></select>
+          <select id="fitxa-alumne" aria-label="Alumne" onchange="cercarResultats()" class="xip-select hidden"><option value="">-</option></select>
+        </div>
+      </div>
+
+      <!-- Configurar / Alumnat -->
+      <div id="cap-simple" class="hidden">
+        <div class="text-lg font-bold" id="cap-simple-titol"></div>
+      </div>
     </div>
-    <nav class="max-w-md mx-auto grid grid-cols-4 gap-1.5 mt-3" id="pestanyes">
-      <button data-vista="avaluar" onclick="canviarVista('avaluar')" class="text-xs font-semibold py-1.5 rounded-lg">Avaluar</button>
-      <button data-vista="resultats" onclick="canviarVista('resultats')" class="text-xs font-semibold py-1.5 rounded-lg">Resultats</button>
-      <button data-vista="configurar" onclick="canviarVista('configurar')" class="text-xs font-semibold py-1.5 rounded-lg">Configurar</button>
-      <button data-vista="importar" onclick="canviarVista('importar')" class="text-xs font-semibold py-1.5 rounded-lg">Importar</button>
-    </nav>
   </header>
 
-  <main class="max-w-md mx-auto p-4 space-y-4">
+  <main class="max-w-md mx-auto p-3 space-y-3 pb-48">
 
     <!-- ============================ AVALUAR ============================ -->
-    <div id="vista-avaluar" class="space-y-4">
+    <div id="vista-avaluar" class="space-y-3">
 
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Configuració de Sessió</h2>
-
+      <section id="panell-config" class="card p-4 space-y-3">
+        <h2 class="titol-seccio">Configuració de la sessió</h2>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label for="curs" class="block text-xs font-bold text-slate-600 mb-1">Curs</label>
-            <input type="text" id="curs" onchange="configSessioCanviada()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+            <label for="curs" class="lbl">Curs</label>
+            <input type="text" id="curs" onchange="configSessioCanviada()" class="camp">
           </div>
           <div>
-            <label for="modul" class="block text-xs font-bold text-slate-600 mb-1">Mòdul</label>
-            <select id="modul" onchange="carregarSupositsAvaluar(); configSessioCanviada()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Carregant...</option>
-            </select>
+            <label for="modul" class="lbl">Mòdul</label>
+            <select id="modul" onchange="carregarSupositsAvaluar(); configSessioCanviada()" class="camp"><option value="">Carregant...</option></select>
+          </div>
+          <div>
+            <label for="classe" class="lbl">Classe</label>
+            <select id="classe" onchange="carregarDesdoblaments(this.value); configSessioCanviada()" class="camp"><option value="">Carregant...</option></select>
+          </div>
+          <div>
+            <label for="desdoblament" class="lbl">Desdoblament</label>
+            <select id="desdoblament" onchange="configSessioCanviada()" class="camp"><option value="General">General (tota la classe)</option></select>
           </div>
         </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="classe" class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
-            <select id="classe" onchange="carregarDesdoblaments(this.value); configSessioCanviada()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Carregant...</option>
-            </select>
-          </div>
-          <div>
-            <label for="desdoblament" class="block text-xs font-bold text-slate-600 mb-1">Desdoblament</label>
-            <select id="desdoblament" onchange="configSessioCanviada()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="General">General (tota la classe)</option>
-            </select>
-          </div>
-        </div>
-
         <div>
-          <label for="sessio-select" class="block text-xs font-bold text-slate-600 mb-1">Supòsit / sessió avaluada</label>
-          <select id="sessio-select" onchange="canviSessioSelect(); configSessioCanviada()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+          <label for="sessio-select" class="lbl">Supòsit / sessió avaluada</label>
+          <select id="sessio-select" onchange="canviSessioSelect(); configSessioCanviada()" class="camp">
             <option value="__altre__">✎ Altre (text lliure)</option>
           </select>
-          <input type="text" id="sessio-avaluada" onchange="configSessioCanviada()" placeholder="Ex: Supòsit pràctic aigua 1" class="hidden mt-2 w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-          <p id="sessio-descripcio" class="hidden mt-2 text-xs text-slate-500 bg-slate-50 rounded-lg p-2 whitespace-pre-line"></p>
+          <input type="text" id="sessio-avaluada" onchange="configSessioCanviada()" placeholder="Ex: Supòsit pràctic aigua 1" class="camp hidden mt-2">
+          <p id="sessio-descripcio" class="hidden mt-2 text-[14px] t2 rounded-xl p-3 whitespace-pre-line" style="background:var(--soft)"></p>
         </div>
+        <button onclick="carregarAlumnes()" class="btn btn-prim w-full">Carregar alumnes</button>
+        <p id="avis-config" class="hidden text-[14px] t-warn rounded-xl p-3" style="background:var(--warn-bg)">Has canviat la configuració de la sessió. Prem "Carregar alumnes" perquè s'apliquin els ítems correctes.</p>
+      </section>
 
-        <button onclick="carregarAlumnes()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
-          Carregar Alumnes
+      <section id="panell-grups" class="card hidden">
+        <button onclick="grupsOberts = !grupsOberts; renderitzarAssignacioGrups()" class="w-full flex items-center justify-between gap-2 p-4 text-left">
+          <span>
+            <span class="block font-semibold">Grups temporals</span>
+            <span id="resum-grups" class="block text-[13px] t3"></span>
+          </span>
+          <svg id="fletxa-grups" class="ico t3 transition" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
         </button>
-        <p id="avis-config" class="hidden text-xs text-amber-700 bg-amber-50 rounded-lg p-2">Has canviat la configuració de la sessió. Prem "Carregar Alumnes" perquè s'apliquin els ítems correctes.</p>
-      </section>
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <div class="flex justify-between items-center">
-          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Grups Temporals</h2>
-          <span class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Opcional</span>
-        </div>
-
-        <div class="flex items-end gap-2">
-          <div class="flex-1">
-            <label for="nombre-grups" class="block text-xs font-bold text-slate-600 mb-1">Nombre de grups</label>
-            <input type="number" id="nombre-grups" min="1" max="12" value="2" onchange="renderitzarAssignacioGrups()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+        <div id="contingut-grups" class="hidden px-4 pb-4 space-y-3">
+          <div class="flex items-end gap-2">
+            <div class="w-24">
+              <label for="nombre-grups" class="lbl">Nº de grups</label>
+              <input type="number" id="nombre-grups" min="1" max="12" value="2" onchange="renderitzarAssignacioGrups()" class="camp">
+            </div>
+            <button onclick="crearGrupsAutomatics()" class="btn btn-accent flex-1">
+              <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Crear a l'atzar
+            </button>
+            <button onclick="desferGrups()" class="btn btn-suau">Desfer</button>
           </div>
-          <button onclick="crearGrupsAutomatics()" class="border border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 shrink-0">
-            <span class="material-icons text-xs">shuffle</span> Crear grups
-          </button>
-          <button onclick="desferGrups()" class="border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 shrink-0">
-            <span class="material-icons text-xs">clear</span> Desfer
-          </button>
-        </div>
-        <p class="text-[11px] text-slate-400">El/la coordinador/a propaga les seves notes al grup, però no sobreescriu una nota que ja hagis posat a mà a un altre membre.</p>
-
-        <div id="llista-assignacio-grups" class="divide-y divide-slate-50">
-          <p class="text-xs text-slate-400 text-center py-2">Carrega els alumnes per poder formar grups.</p>
+          <p class="text-[13px] t3">El/la coordinador/a (★) propaga les seves notes al grup, però no sobreescriu una nota que ja hagis posat a mà a un altre membre.</p>
+          <div id="llista-assignacio-grups" class="divisor"></div>
         </div>
       </section>
 
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <div class="flex justify-between items-center gap-2">
-          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Panell de Qualificació</h2>
-          <span id="progres" class="text-xs font-semibold text-slate-500"></span>
-        </div>
+      <div id="eines-panell" class="hidden flex gap-2">
+        <label class="card flex-1 min-w-0 flex items-center gap-2 px-3">
+          <svg class="ico ico-s t3" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="cerca-alumne" oninput="aplicarVisibilitat()" placeholder="Cerca alumne" aria-label="Cerca alumne" class="flex-1 min-w-0 bg-transparent py-2.5 outline-none text-[16px]">
+        </label>
+        <button id="boto-pendents" onclick="filtrePendents = !filtrePendents; aplicarVisibilitat()" class="card shrink-0 px-4 font-semibold text-[15px]" aria-pressed="false">Pendents</button>
+      </div>
 
-        <div id="eines-panell" class="hidden space-y-2">
-          <div class="flex gap-2">
-            <input type="search" id="cerca-alumne" oninput="aplicarVisibilitat()" placeholder="Cerca alumne..." class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-            <button id="boto-mode" onclick="canviarModeUnAlumne()" class="shrink-0 text-xs border border-slate-200 text-slate-600 rounded-lg px-2.5 hover:bg-slate-50">Un per pantalla</button>
-          </div>
-          <div id="nav-un-alumne" class="hidden flex items-center justify-between gap-2">
-            <button onclick="moureAlumne(-1)" class="text-sm bg-slate-100 rounded-lg px-4 py-2 hover:bg-slate-200">‹ Anterior</button>
-            <span id="nav-posicio" class="text-xs text-slate-500"></span>
-            <button onclick="moureAlumne(1)" class="text-sm bg-slate-100 rounded-lg px-4 py-2 hover:bg-slate-200">Següent ›</button>
-          </div>
-        </div>
-
-        <div id="llista-alumnes" class="divide-y divide-slate-100">
-          <p class="text-sm text-slate-400 py-4 text-center">Prem "Carregar Alumnes" per començar.</p>
-        </div>
-      </section>
-
-      <section class="space-y-3">
-        <button onclick="exportarDades()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
-          <span class="material-icons">trending_flat</span> Exportar a Google Sheets
-        </button>
-        <p id="status" class="text-xs text-center font-medium text-slate-500" aria-live="polite"></p>
-      </section>
+      <div id="llista-alumnes" class="space-y-2.5">
+        <p class="text-center t3 py-6">Tria la sessió i prem "Carregar alumnes" per començar.</p>
+      </div>
     </div>
 
     <!-- ============================ RESULTATS ============================ -->
-    <div id="vista-resultats" class="space-y-4 hidden">
-
-      <div class="grid grid-cols-2 gap-1.5 bg-slate-200 p-1 rounded-lg">
-        <button id="res-mode-sessio" onclick="canviarModeResultats('sessio')" class="text-xs font-semibold py-1.5 rounded-md">Per sessió</button>
-        <button id="res-mode-alumne" onclick="canviarModeResultats('alumne')" class="text-xs font-semibold py-1.5 rounded-md">Per alumne</button>
-      </div>
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="resultats-classe" class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
-            <select id="resultats-classe" onchange="carregarAlumnesFitxa()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Carregant...</option>
-            </select>
-          </div>
-          <div id="res-filtre-modul">
-            <label for="resultats-modul" class="block text-xs font-bold text-slate-600 mb-1">Mòdul</label>
-            <select id="resultats-modul" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Tots</option>
-            </select>
-          </div>
-          <div id="res-filtre-alumne" class="hidden">
-            <label for="fitxa-alumne" class="block text-xs font-bold text-slate-600 mb-1">Alumne</label>
-            <select id="fitxa-alumne" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">-</option>
-            </select>
-          </div>
-        </div>
-
-        <button onclick="cercarResultats()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
-          Cercar
-        </button>
-      </section>
-
-      <div id="res-per-sessio" class="space-y-4">
-        <section id="llista-sessions-wrap" class="space-y-2">
-          <p class="text-sm text-slate-400 text-center py-4">Selecciona una classe i prem "Cercar".</p>
+    <div id="vista-resultats" class="hidden space-y-3">
+      <div id="res-per-sessio" class="space-y-3">
+        <section id="llista-sessions-wrap" class="space-y-2.5">
+          <p class="text-center t3 py-6">Tria una classe per veure'n les sessions.</p>
         </section>
-
-        <section id="detall-sessio-wrap" class="hidden bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-4">
-          <div class="flex justify-between items-start gap-2">
-            <h2 id="detall-sessio-titol" class="text-sm font-semibold text-slate-700"></h2>
-            <button onclick="tancarDetallSessio()" class="shrink-0 text-xs text-slate-400 hover:text-slate-600">✕ Tancar</button>
-          </div>
-
-          <div id="estadistiques-sessio"></div>
-
-          <div class="grid grid-cols-3 gap-2">
-            <button onclick="descarregarCsvSessio()" class="border border-slate-200 text-slate-600 text-xs py-2 rounded-lg hover:bg-slate-50">⬇ CSV</button>
-            <button onclick="crearPdfSessio()" class="border border-slate-200 text-slate-600 text-xs py-2 rounded-lg hover:bg-slate-50">📄 PDF a Drive</button>
-            <button onclick="confirmarEsborrarSessio()" class="border border-red-200 text-red-600 text-xs py-2 rounded-lg hover:bg-red-50">🗑 Esborrar</button>
-          </div>
-          <p id="pdf-status" class="text-xs text-center"></p>
-
-          <div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-            <label class="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" id="seleccionar-tots" onchange="seleccionarTots(this.checked)" class="rounded border-slate-300"> Seleccionar tots
-            </label>
-            <button onclick="obrirModalCorreu()" class="text-xs bg-indigo-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-700">📧 Enviar correu (<span id="n-seleccionats">0</span>)</button>
-          </div>
-
-          <div id="detall-sessio-alumnes" class="divide-y divide-slate-100"></div>
+        <section id="detall-sessio-wrap" class="hidden space-y-3">
+          <button onclick="tancarDetallSessio()" class="btn btn-suau !py-1.5 !px-3 text-[14px]">‹ Totes les sessions</button>
+          <div id="detall-sessio-resum"></div>
+          <p id="pdf-status" class="text-[14px] text-center"></p>
+          <div id="detall-sessio-alumnes" class="card divisor overflow-hidden"></div>
         </section>
       </div>
-
-      <div id="res-per-alumne" class="hidden space-y-4">
-        <section id="fitxa-wrap">
-          <p class="text-sm text-slate-400 text-center py-4">Tria una classe i un alumne i prem "Cercar".</p>
-        </section>
+      <div id="res-per-alumne" class="hidden">
+        <section id="fitxa-wrap"><p class="text-center t3 py-6">Tria un alumne a dalt.</p></section>
       </div>
     </div>
 
     <!-- ============================ CONFIGURAR ============================ -->
-    <div id="vista-configurar" class="space-y-4 hidden">
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Mòdul</h2>
-        <select id="cfg-modul" onchange="renderitzarConfiguracio()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-          <option value="">Carregant...</option>
-        </select>
+    <div id="vista-configurar" class="hidden space-y-3">
+      <section class="card p-4 space-y-3">
+        <label for="cfg-modul" class="titol-seccio block">Mòdul</label>
+        <select id="cfg-modul" onchange="renderitzarConfiguracio()" class="camp"><option value="">Carregant...</option></select>
         <div class="grid grid-cols-3 gap-2">
-          <button onclick="nouModul()" class="text-xs bg-indigo-50 text-indigo-600 rounded-lg py-2 hover:bg-indigo-100">+ Nou</button>
-          <button onclick="renomenarModulActual()" class="text-xs border border-slate-200 text-slate-600 rounded-lg py-2 hover:bg-slate-50">Reanomenar</button>
-          <button onclick="eliminarModulActual()" class="text-xs border border-red-200 text-red-600 rounded-lg py-2 hover:bg-red-50">Eliminar</button>
-          <button onclick="exportarPlantilla()" class="col-span-1 text-xs border border-slate-200 text-slate-600 rounded-lg py-2 hover:bg-slate-50">⬇ Plantilla</button>
-          <label class="col-span-2 text-xs border border-slate-200 text-slate-600 rounded-lg py-2 hover:bg-slate-50 text-center cursor-pointer">
-            ⬆ Importar plantilla
+          <button onclick="nouModul()" class="btn btn-accent">+ Nou</button>
+          <button onclick="renomenarModulActual()" class="btn btn-suau">Reanomenar</button>
+          <button onclick="eliminarModulActual()" class="btn btn-perill">Eliminar</button>
+          <button onclick="exportarPlantilla()" class="btn btn-suau">⬇ Plantilla</button>
+          <label class="btn btn-suau col-span-2 cursor-pointer">⬆ Importar plantilla
             <input type="file" accept=".json,application/json" class="hidden" onchange="importarPlantillaFitxer(this)">
           </label>
         </div>
       </section>
-
-      <section id="cfg-criteris-modul" class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3"></section>
-
-      <section id="cfg-suposits" class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3"></section>
+      <section id="cfg-criteris-modul" class="card p-4 space-y-3"></section>
+      <section id="cfg-suposits" class="card p-4 space-y-3"></section>
     </div>
 
-    <!-- ============================ IMPORTAR ============================ -->
-    <div id="vista-importar" class="space-y-4 hidden">
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Importar de Google Classroom</h2>
-        <p class="text-xs text-slate-500">
-          Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat".
-          El correu es fa servir com a identificador de l'alumne, així dos alumnes amb el mateix nom no es barregen.
-        </p>
-
-        <button onclick="carregarCursosClassroom()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
-          Carregar cursos de Classroom
-        </button>
-
+    <!-- ============================ ALUMNAT (importar) ============================ -->
+    <div id="vista-importar" class="hidden space-y-3">
+      <section class="card p-4 space-y-3">
+        <h2 class="titol-seccio">Importar de Google Classroom</h2>
+        <p class="text-[14px] t2">Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat". El correu identifica cada alumne, així dos alumnes amb el mateix nom no es barregen.</p>
+        <button onclick="carregarCursosClassroom()" class="btn btn-accent w-full">Carregar cursos de Classroom</button>
         <div>
-          <label for="importar-curs-classroom" class="block text-xs font-bold text-slate-600 mb-1">Curs de Classroom</label>
-          <select id="importar-curs-classroom" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-            <option value="">Prem "Carregar cursos de Classroom"</option>
-          </select>
+          <label for="importar-curs-classroom" class="lbl">Curs de Classroom</label>
+          <select id="importar-curs-classroom" class="camp"><option value="">Prem "Carregar cursos de Classroom"</option></select>
         </div>
-
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label for="importar-curs" class="block text-xs font-bold text-slate-600 mb-1">Curs (any acadèmic)</label>
-            <input type="text" id="importar-curs" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+            <label for="importar-curs" class="lbl">Curs (any acadèmic)</label>
+            <input type="text" id="importar-curs" class="camp">
           </div>
           <div>
-            <label for="importar-classe" class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
-            <input type="text" id="importar-classe" placeholder="Ex: 1º A" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+            <label for="importar-classe" class="lbl">Classe</label>
+            <input type="text" id="importar-classe" placeholder="Ex: 1r A" class="camp">
           </div>
         </div>
-
         <div>
-          <label for="importar-desdoblament" class="block text-xs font-bold text-slate-600 mb-1">Desdoblament</label>
-          <input type="text" id="importar-desdoblament" value="General" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+          <label for="importar-desdoblament" class="lbl">Desdoblament</label>
+          <input type="text" id="importar-desdoblament" value="General" class="camp">
         </div>
-
-        <button onclick="importarDeClassroom()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-2.5 px-4 rounded-xl shadow-md transition">
-          Importar alumnat a Llistat
-        </button>
-        <p id="importar-status" class="text-xs text-center font-medium text-slate-500"></p>
+        <button onclick="importarDeClassroom()" class="btn btn-ok w-full">Importar alumnat a Llistat</button>
+        <p id="importar-status" class="text-[14px] text-center"></p>
       </section>
     </div>
-
-    <!-- ============================ MODAL CORREU ============================ -->
-    <div id="modal-correu" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-4 space-y-3 max-h-[92vh] overflow-y-auto">
-        <h3 id="modal-correu-titol" class="text-sm font-bold text-slate-700"></h3>
-        <p id="modal-correu-quota" class="text-[11px] text-slate-500"></p>
-        <div>
-          <label for="modal-correu-assumpte" class="block text-xs font-bold text-slate-600 mb-1">Assumpte</label>
-          <input type="text" id="modal-correu-assumpte" oninput="actualitzarPrevisualitzacio()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label for="modal-correu-cos" class="block text-xs font-bold text-slate-600 mb-1">Cos del missatge</label>
-          <textarea id="modal-correu-cos" rows="8" oninput="actualitzarPrevisualitzacio()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500"></textarea>
-          <p class="text-[10px] text-slate-400 mt-1">Etiquetes: {{nom}}, {{cognoms}}, {{nota}}, {{grup}}, {{desglossament}}, {{observacions_grup}}, {{observacions_individual}}, {{sessio}}, {{modul}}, {{classe}}, {{curs}}</p>
-        </div>
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <span class="text-xs font-bold text-slate-600">Previsualització</span>
-            <select id="modal-correu-previ" onchange="actualitzarPrevisualitzacio()" class="text-xs bg-slate-50 border border-slate-200 rounded px-1 py-0.5 max-w-[60%]"></select>
-          </div>
-          <div id="modal-correu-previsualitzacio" class="border border-slate-200 rounded-lg p-3 text-sm bg-slate-50 space-y-1"></div>
-        </div>
-        <div class="flex gap-2">
-          <button onclick="tancarModalCorreu()" class="flex-1 border border-slate-200 text-slate-500 text-sm py-2 rounded-lg hover:bg-slate-50">Cancel·lar</button>
-          <button id="boto-enviar-correu" onclick="confirmarEnviarCorreu()" class="flex-1 bg-green-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-green-700">Enviar</button>
-        </div>
-        <p id="modal-correu-status" class="text-xs text-center font-medium"></p>
-      </div>
-    </div>
-
-    <!-- ============================ MODAL EDITOR D'ÍTEMS ============================ -->
-    <div id="modal-editor" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-4 space-y-3 max-h-[92vh] overflow-y-auto">
-        <h3 id="editor-titol" class="text-sm font-bold text-slate-700"></h3>
-
-        <div id="editor-suposit" class="space-y-2">
-          <div>
-            <label for="editor-nom" class="block text-xs font-bold text-slate-600 mb-1">Nom del supòsit</label>
-            <input type="text" id="editor-nom" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label for="editor-data" class="block text-xs font-bold text-slate-600 mb-1">Data</label>
-              <input type="date" id="editor-data" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-            </div>
-            <label class="flex items-end gap-2 text-xs text-slate-600 pb-2">
-              <input type="checkbox" id="editor-actiu" class="rounded border-slate-300"> Actiu (surt a Avaluar)
-            </label>
-          </div>
-          <div>
-            <label for="editor-descripcio" class="block text-xs font-bold text-slate-600 mb-1">Descripció / enunciat</label>
-            <textarea id="editor-descripcio" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500"></textarea>
-          </div>
-          <label class="flex items-center gap-2 text-xs text-slate-700 font-semibold">
-            <input type="checkbox" id="editor-propis" onchange="canviarItemsPropis(this.checked)" class="rounded border-slate-300">
-            Aquest supòsit té ítems propis (si no, fa servir els del mòdul)
-          </label>
-        </div>
-
-        <div id="editor-criteris-wrap" class="space-y-2">
-          <div class="flex justify-between items-center">
-            <span class="text-xs font-bold text-slate-600">Ítems d'avaluació</span>
-            <span id="editor-suma" class="text-xs font-bold"></span>
-          </div>
-          <div id="editor-criteris" class="space-y-2"></div>
-          <button onclick="editorAfegir()" class="w-full border border-dashed border-indigo-300 text-indigo-600 text-xs py-2 rounded-lg hover:bg-indigo-50">+ Afegir ítem</button>
-          <p class="text-[10px] text-slate-400">Rúbrica: escriu els nivells com <i>Insuficient=2; Suficient=5; Bé=7.5; Excel·lent=10</i>. Imprescindible: si es treu menys d'un 5, la nota final queda limitada a un 4.</p>
-        </div>
-
-        <div class="flex gap-2">
-          <button onclick="tancarEditor()" class="flex-1 border border-slate-200 text-slate-500 text-sm py-2 rounded-lg hover:bg-slate-50">Cancel·lar</button>
-          <button onclick="desarEditor()" class="flex-1 bg-green-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-green-700">Desar</button>
-        </div>
-        <p id="editor-status" class="text-xs text-center font-medium"></p>
-      </div>
-    </div>
-
   </main>
 
-  <div id="avis" class="hidden fixed bottom-4 left-4 right-4 max-w-md mx-auto z-[60] text-sm rounded-xl shadow-lg px-4 py-3" role="status"></div>
+  <!-- ============================ BARRA FIXA D'EXPORTAR ============================ -->
+  <div id="barra-exportar" class="hidden fixed inset-x-0 z-20 px-3" style="bottom: calc(64px + env(safe-area-inset-bottom))">
+    <div class="max-w-md mx-auto card p-2.5 space-y-1.5" style="border:1px solid var(--soft2);box-shadow:0 8px 24px rgba(15,23,42,.25)">
+      <div class="flex items-center gap-3">
+        <div class="flex-1 min-w-0">
+          <div id="progres" class="text-[14px] font-semibold"></div>
+          <div class="barra barra-ok mt-1"><div id="progres-barra" style="width:0%"></div></div>
+        </div>
+        <button onclick="exportarDades()" class="btn btn-ok">
+          <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Exportar
+        </button>
+      </div>
+      <p id="status" class="hidden text-[13px] text-center" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- ============================ NAVEGACIÓ INFERIOR ============================ -->
+  <nav id="pestanyes" class="nav-inferior fixed bottom-0 inset-x-0 z-30">
+    <div class="max-w-md mx-auto grid grid-cols-4 text-[12px] font-semibold">
+      <button data-vista="avaluar" onclick="canviarVista('avaluar')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Avaluar</button>
+      <button data-vista="resultats" onclick="canviarVista('resultats')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg>Resultats</button>
+      <button data-vista="configurar" onclick="canviarVista('configurar')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="16" r="3"/></svg>Configurar</button>
+      <button data-vista="importar" onclick="canviarVista('importar')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>Alumnat</button>
+    </div>
+  </nav>
+
+  <!-- ============================ MODAL CORREU ============================ -->
+  <div id="modal-correu" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div class="full-inferior w-full max-w-md p-4 space-y-3 max-h-[94vh] overflow-y-auto">
+      <div class="flex justify-between items-start gap-2">
+        <h3 id="modal-correu-titol" class="font-bold">Enviar correu</h3>
+        <button onclick="tancarModalCorreu()" class="t3 text-xl leading-none" aria-label="Tancar">✕</button>
+      </div>
+      <p id="modal-correu-quota" class="text-[13px] t3"></p>
+      <div>
+        <div class="flex justify-between items-center">
+          <span class="lbl">Destinataris (<span id="modal-correu-n">0</span>)</span>
+          <button onclick="marcarTotsDestinataris()" class="text-[13px] font-semibold t-accent">Tots / cap</button>
+        </div>
+        <div id="modal-correu-dest" class="rounded-xl divisor max-h-40 overflow-y-auto" style="background:var(--field)"></div>
+      </div>
+      <div>
+        <label for="modal-correu-assumpte" class="lbl">Assumpte</label>
+        <input type="text" id="modal-correu-assumpte" oninput="actualitzarPrevisualitzacio()" class="camp">
+      </div>
+      <div>
+        <label for="modal-correu-cos" class="lbl">Missatge</label>
+        <textarea id="modal-correu-cos" rows="7" oninput="actualitzarPrevisualitzacio()" class="camp"></textarea>
+        <p class="text-[12px] t3 mt-1">Etiquetes: {{nom}}, {{cognoms}}, {{nota}}, {{grup}}, {{desglossament}}, {{observacions_grup}}, {{observacions_individual}}, {{sessio}}, {{modul}}, {{classe}}, {{curs}}</p>
+      </div>
+      <div>
+        <div class="flex justify-between items-center gap-2 mb-1">
+          <span class="lbl !mb-0">Previsualització</span>
+          <select id="modal-correu-previ" onchange="actualitzarPrevisualitzacio()" class="camp !w-auto !py-1 !text-[14px] max-w-[60%]"></select>
+        </div>
+        <div id="modal-correu-previsualitzacio" class="previ rounded-xl p-3 text-[14px] space-y-1"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="tancarModalCorreu()" class="btn btn-suau">Cancel·lar</button>
+        <button id="boto-enviar-correu" onclick="confirmarEnviarCorreu()" class="btn btn-ok">Enviar</button>
+      </div>
+      <p id="modal-correu-status" class="text-[14px] text-center"></p>
+    </div>
+  </div>
+
+  <!-- ============================ MODAL EDITOR D'ÍTEMS ============================ -->
+  <div id="modal-editor" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div class="full-inferior w-full max-w-md p-4 space-y-3 max-h-[94vh] overflow-y-auto">
+      <div class="flex justify-between items-start gap-2">
+        <h3 id="editor-titol" class="font-bold"></h3>
+        <button onclick="tancarEditor()" class="t3 text-xl leading-none" aria-label="Tancar">✕</button>
+      </div>
+      <div id="editor-suposit" class="space-y-3">
+        <div>
+          <label for="editor-nom" class="lbl">Nom del supòsit</label>
+          <input type="text" id="editor-nom" class="camp">
+        </div>
+        <div class="grid grid-cols-2 gap-3 items-end">
+          <div>
+            <label for="editor-data" class="lbl">Data</label>
+            <input type="date" id="editor-data" class="camp">
+          </div>
+          <label class="flex items-center gap-2 text-[14px] t2 pb-3">
+            <input type="checkbox" id="editor-actiu"> Actiu (surt a Avaluar)
+          </label>
+        </div>
+        <div>
+          <label for="editor-descripcio" class="lbl">Descripció / enunciat</label>
+          <textarea id="editor-descripcio" rows="3" class="camp"></textarea>
+        </div>
+        <label class="flex items-start gap-2 text-[14px] font-semibold">
+          <input type="checkbox" id="editor-propis" onchange="canviarItemsPropis(this.checked)" class="mt-0.5">
+          Aquest supòsit té ítems propis (si no, fa servir els del mòdul)
+        </label>
+      </div>
+      <div id="editor-criteris-wrap" class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="lbl !mb-0">Ítems d'avaluació</span>
+          <span id="editor-suma" class="text-[14px] font-bold"></span>
+        </div>
+        <div id="editor-criteris" class="space-y-2"></div>
+        <button onclick="editorAfegir()" class="btn btn-vora w-full">+ Afegir ítem</button>
+        <p class="text-[12px] t3">Rúbrica: escriu els nivells com <i>Insuficient=2; Suficient=5; Bé=7.5; Excel·lent=10</i>. Imprescindible: si es treu menys d'un 5, la nota final queda limitada a un 4.</p>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="tancarEditor()" class="btn btn-suau">Cancel·lar</button>
+        <button onclick="desarEditor()" class="btn btn-ok">Desar</button>
+      </div>
+      <p id="editor-status" class="text-[14px] text-center"></p>
+    </div>
+  </div>
+
+  <div id="avis" class="hidden fixed left-3 right-3 max-w-md mx-auto z-[60] text-[15px] rounded-xl shadow-lg px-4 py-3" role="status"></div>
 
   <script>
     // =====================================================================
@@ -393,6 +444,7 @@
     // UTILITATS
     // =====================================================================
     const NOTA_MAXIMA = 10, NOTA_APROVAT = 5, NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE = 4;
+    const NOTES_RAPIDES = [4, 5, 6, 7, 8, 9, 10];
 
     function esc(text) {
       return String(text === null || text === undefined ? '' : text)
@@ -402,9 +454,36 @@
     function $(id) { return document.getElementById(id); }
     function esBuit(v) { return v === undefined || v === null || v === ''; }
     function normalitzar(t) { return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+    function fmt(n, decimals) { return Number(n).toFixed(decimals === undefined ? 2 : decimals).replace('.', ','); }
+    function fmtValor(v) { return esBuit(v) ? '–' : String(v).replace('.', ','); }
 
     function clauAlumne(a) {
       return a.id ? 'id:' + String(a.id).toLowerCase() : 'nom:' + a.nom + '||' + a.cognoms;
+    }
+
+    function inicials(a) {
+      const primera = t => (String(t || '').trim()[0] || '').toUpperCase();
+      return primera(a.nom) + primera(a.cognoms);
+    }
+
+    // Classe de color de l'avatar segons el grup (g0 = sense grup)
+    function classeGrup(grup) {
+      const n = parseInt(grup);
+      return isNaN(n) || n < 1 ? 'g0' : 'g' + (((n - 1) % 6) + 1);
+    }
+
+    function htmlAvatar(a, grup, mida) {
+      const estil = mida ? `style="width:${mida}px;height:${mida}px;font-size:${Math.round(mida / 3)}px"` : '';
+      return `<div class="av ${classeGrup(grup)}" ${estil} aria-hidden="true">${esc(inicials(a))}</div>`;
+    }
+
+    // Nota final amb color + icona (no només color): ✓ aprovat, ✕ suspès, – pendent
+    function htmlNota(nota, mida, titol) {
+      const t = titol ? ` title="${esc(titol)}"` : '';
+      const text = mida === 'gran' ? 'text-xl' : 'text-[15px]';
+      if (esBuit(nota)) return `<span class="pill pill-buit ${text}"${t}>–</span>`;
+      const ok = Number(nota) >= NOTA_APROVAT;
+      return `<span class="pill ${ok ? 'pill-ok' : 'pill-ko'} ${text}"${t}><span aria-hidden="true">${ok ? '✓' : '✕'}</span>${fmt(nota)}<span class="sr-only">${ok ? ' aprovat' : ' suspès'}</span></span>`;
     }
 
     function cursPerDefecte() {
@@ -427,9 +506,10 @@
     let avisTimeout = null;
     function mostrarAvis(text, tipus) {
       const el = $('avis');
-      const colors = { error: 'bg-red-600 text-white', ok: 'bg-green-600 text-white', info: 'bg-slate-800 text-white' };
-      el.className = 'fixed bottom-4 left-4 right-4 max-w-md mx-auto z-[60] text-sm rounded-xl shadow-lg px-4 py-3 ' + (colors[tipus] || colors.info);
+      const colors = { error: 'background:#b91c1c;color:#fff', ok: 'background:#047857;color:#fff', info: 'background:#1e293b;color:#fff' };
+      el.style.cssText = (colors[tipus] || colors.info) + ';bottom:' + (vistaActual === 'avaluar' && estudiants.length ? 150 : 76) + 'px';
       el.textContent = text;
+      el.classList.remove('hidden');
       clearTimeout(avisTimeout);
       avisTimeout = setTimeout(() => el.classList.add('hidden'), tipus === 'error' ? 7000 : 4500);
     }
@@ -468,17 +548,22 @@
     // NAVEGACIÓ
     // =====================================================================
     let vistaActual = 'avaluar';
+    let resultatsCercats = false;
 
     function canviarVista(v) {
       vistaActual = v;
-      ['avaluar', 'resultats', 'configurar', 'importar'].forEach(nom => {
-        $('vista-' + nom).classList.toggle('hidden', nom !== v);
-      });
+      ['avaluar', 'resultats', 'configurar', 'importar'].forEach(nom => $('vista-' + nom).classList.toggle('hidden', nom !== v));
       document.querySelectorAll('#pestanyes button').forEach(b => {
-        const actiu = b.dataset.vista === v;
-        b.className = 'text-xs font-semibold py-1.5 rounded-lg ' + (actiu ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
+        if (b.dataset.vista === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
       });
+      $('cap-avaluar').classList.toggle('hidden', v !== 'avaluar');
+      $('cap-resultats').classList.toggle('hidden', v !== 'resultats');
+      $('cap-simple').classList.toggle('hidden', v === 'avaluar' || v === 'resultats');
+      $('cap-simple-titol').textContent = v === 'configurar' ? 'Configurar' : 'Alumnat';
+      $('barra-exportar').classList.toggle('hidden', v !== 'avaluar' || estudiants.length === 0);
       if (v === 'configurar' && !configuracio) carregarConfiguracio();
+      if (v === 'resultats' && !resultatsCercats) cercarResultats();
+      window.scrollTo(0, 0);
     }
 
     // =====================================================================
@@ -493,12 +578,14 @@
         modulsDisponibles = await api('listarModuls');
         if (modulsDisponibles.length === 0) {
           sel.innerHTML = '<option value="">Cap mòdul configurat</option>';
-          selResultats.innerHTML = '<option value="">Tots</option>';
+          selResultats.innerHTML = '<option value="">Tots els mòduls</option>';
         } else {
           const anterior = seleccionat || sel.value;
           sel.innerHTML = opcions(modulsDisponibles, m => m, m => m);
           if (anterior && modulsDisponibles.includes(anterior)) sel.value = anterior;
-          selResultats.innerHTML = '<option value="">Tots</option>' + opcions(modulsDisponibles, m => m, m => m);
+          const anteriorRes = selResultats.value;
+          selResultats.innerHTML = '<option value="">Tots els mòduls</option>' + opcions(modulsDisponibles, m => m, m => m);
+          if (anteriorRes && modulsDisponibles.includes(anteriorRes)) selResultats.value = anteriorRes;
         }
         await carregarSupositsAvaluar();
       } catch (err) {
@@ -593,8 +680,10 @@
     let coordinadors = {};             // { grupId: clauAlumne }
     let sessioCarregada = null;        // configuració amb què s'han carregat els alumnes
     let canvisPendents = false;
-    let modeUnAlumne = false;
-    let alumneActual = 0;
+    let alumneObert = -1;              // índex de la targeta oberta
+    let filtrePendents = false;
+    let grupsOberts = false;
+    let observacioOberta = {};         // { índex: true } quan s'ha premut "Afegir observació"
     let guardarEsborranyTimeout = null;
 
     function configSessioActual() {
@@ -602,8 +691,7 @@
     }
 
     function configSessioCanviada() {
-      const avis = $('avis-config');
-      avis.classList.toggle('hidden', !sessioCarregada || sessioCarregada === configSessioActual());
+      $('avis-config').classList.toggle('hidden', !sessioCarregada || sessioCarregada === configSessioActual());
     }
 
     function marcarCanvis() { canvisPendents = true; }
@@ -611,6 +699,26 @@
     window.addEventListener('beforeunload', e => {
       if (canvisPendents) { e.preventDefault(); e.returnValue = ''; }
     });
+
+    // Capçalera de la vista Avaluar: resum de la sessió carregada
+    function actualitzarCapcaleraAvaluar() {
+      const carregada = estudiants.length > 0;
+      $('cap-avaluar-etiqueta').textContent = carregada ? 'Avaluant' : 'Nova sessió';
+      $('cap-avaluar-titol').textContent = carregada ? (obtenirSessio() || 'Sessió sense nom') : 'Configura la sessió';
+      $('boto-canviar-sessio').classList.toggle('hidden', !carregada);
+      const xips = $('cap-avaluar-xips');
+      xips.classList.toggle('hidden', !carregada);
+      if (carregada) {
+        const desd = $('desdoblament').value;
+        xips.innerHTML = [$('modul').value, $('classe').value + (desd && desd !== 'General' ? ' · ' + desd : ''), $('curs').value]
+          .filter(Boolean).map(t => `<span class="xip">${esc(t)}</span>`).join('');
+      }
+    }
+
+    function obrirConfigSessio() {
+      $('panell-config').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     // =====================================================================
     // AVALUAR: CÀRREGA D'ALUMNES
@@ -624,8 +732,8 @@
       if (!classe) { mostrarAvis('Selecciona una classe primer.', 'error'); return; }
       if (canvisPendents && !confirm('Tens notes sense exportar (estan guardades com a esborrany en aquest dispositiu). Vols carregar igualment?')) return;
 
-      $('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500 animate-pulse">Carregant alumnes...</p>';
-      $('status').innerText = '';
+      $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant alumnes...</p>';
+      mostrarStatus('');
 
       try {
         const [alumnesData, criterisData] = await Promise.all([
@@ -635,16 +743,18 @@
         estudiants = alumnesData;
         criteris = criterisData;
         grups = {}; coordinadors = {}; notes = {}; observacionsIndividuals = {}; observacionsGrup = {};
+        observacioOberta = {};
         canvisPendents = false;
-        alumneActual = 0;
         restaurarEsborrany();
         sessioCarregada = configSessioActual();
         configSessioCanviada();
         avisarNomsDuplicats();
+        alumneObert = seguentPendent(-1);
+        if (estudiants.length) $('panell-config').classList.add('hidden');
         renderitzarAssignacioGrups();
         renderitzarLlista();
       } catch (err) {
-        $('llista-alumnes').innerHTML = `<p class="text-sm text-red-500 text-center py-4">Error: ${esc(err.message)}</p>`;
+        $('llista-alumnes').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
     }
 
@@ -668,42 +778,69 @@
       if (esBuit(valor)) delete notes[clau][nomCriteri]; else notes[clau][nomCriteri] = valor;
     }
 
+    function itemsOmplerts(i) {
+      const n = notes[clauAlumne(estudiants[i])] || {};
+      return criteris.filter(c => !esBuit(n[c.nom])).length;
+    }
+    function esComplet(i) { return itemsOmplerts(i) === criteris.length; }
+
     // =====================================================================
-    // AVALUAR: RENDER DEL PANELL
+    // AVALUAR: TARGETES D'ALUMNE
     // =====================================================================
     function htmlCriteri(i, j, c, clau) {
       const valor = obtenirNota(clau, c.nom);
-      const etiqueta = `<span class="flex-1 min-w-0 text-xs text-slate-600">${esc(c.nom)} <span class="text-slate-400">(${esc(c.pes)}%)</span>${c.imprescindible ? ' <span class="text-[10px] font-bold text-red-600" title="Imprescindible">★</span>' : ''}</span>`;
+      const capcalera = `
+        <div class="flex justify-between items-baseline gap-2 mb-1.5">
+          <span class="font-medium text-[15px]">${esc(c.nom)}${c.imprescindible ? ' <span class="etiqueta t-ko" style="background:var(--ko-bg)">IMPRESCINDIBLE</span>' : ''}</span>
+          <span class="t3 text-[14px] shrink-0">${esc(c.pes)}%</span>
+        </div>`;
 
       if (c.tipus === 'sino') {
-        const boto = (text, v) => {
-          const actiu = valor !== '' && Number(valor) === v;
-          return `<button type="button" onclick="clicNota(${i}, ${j}, ${v})" aria-pressed="${actiu}"
-                    class="text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 ${actiu ? 'chip-actiu' : 'bg-slate-50 text-slate-600'}">${text}</button>`;
-        };
-        return `<div class="flex items-center gap-2">${etiqueta}${boto('Sí', NOTA_MAXIMA)}${boto('No', 0)}</div>`;
+        const esSi = valor !== '' && Number(valor) === NOTA_MAXIMA;
+        const esNo = valor !== '' && Number(valor) === 0;
+        return `<div data-crit="${j}">${capcalera}
+          <div class="seg text-[15px]" role="group" aria-label="${esc(c.nom)}">
+            <button type="button" onclick="clicNota(${i}, ${j}, ${NOTA_MAXIMA})" aria-pressed="${esSi}" class="${esSi ? 'seg-si' : ''}">✓ Sí</button>
+            <button type="button" onclick="clicNota(${i}, ${j}, 0)" aria-pressed="${esNo}" class="${esNo ? 'seg-no' : ''}">✕ No</button>
+          </div></div>`;
       }
 
       if (c.tipus === 'rubrica') {
-        const chips = c.nivells.map(n => {
+        const cols = Math.min(c.nivells.length, 4);
+        const botons = c.nivells.map(n => {
           const actiu = valor !== '' && Number(valor) === Number(n.valor);
           return `<button type="button" onclick="clicNota(${i}, ${j}, ${Number(n.valor)})" aria-pressed="${actiu}" title="${esc(n.nom)} = ${esc(n.valor)}"
-                    class="text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 ${actiu ? 'chip-actiu' : 'bg-slate-50 text-slate-600'}">${esc(n.nom)}</button>`;
+                    class="opcio ${actiu ? 'opcio-activa' : ''} px-1 py-1.5 leading-tight text-[14px]">${esc(n.nom)}<br><span class="text-[12px] font-normal opacity-80">${fmtValor(n.valor)}</span></button>`;
         }).join('');
-        return `<div class="space-y-1">${etiqueta.replace('flex-1 ', 'block ')}<div class="flex flex-wrap gap-1">${chips}</div></div>`;
+        return `<div data-crit="${j}">${capcalera}<div class="grid gap-1.5" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${botons}</div></div>`;
       }
 
-      return `
-        <div class="flex items-center gap-2">
-          ${etiqueta}
-          <button type="button" onclick="clicNota(${i}, ${j}, ${NOTA_MAXIMA}, true)"
-                  class="shrink-0 text-[10px] font-bold bg-green-50 text-green-700 px-2 py-1.5 rounded-lg hover:bg-green-100">MÀX</button>
+      const rapides = NOTES_RAPIDES.map(v => {
+        const actiu = valor !== '' && Number(valor) === v;
+        return `<button type="button" data-v="${v}" onclick="clicNota(${i}, ${j}, ${v})" aria-pressed="${actiu}" class="opcio ${actiu ? 'opcio-activa' : ''} text-[15px]">${v}</button>`;
+      }).join('');
+      return `<div data-crit="${j}">${capcalera}
+        <div class="grid grid-cols-7 gap-1.5">${rapides}</div>
+        <label class="flex items-center gap-2 mt-1.5 text-[14px] t3">o escriu-la:
           <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" aria-label="${esc(c.nom)}"
-                 id="nota-${i}-${j}" value="${esc(valor)}"
-                 oninput="escriureNota(${i}, ${j}, this)"
-                 class="w-14 shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-1.5 text-center text-xs font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
-                 placeholder="-">
-        </div>`;
+                 id="nota-${i}-${j}" value="${esc(valor)}" oninput="escriureNota(${i}, ${j}, this)" placeholder="–"
+                 class="camp !w-20 !py-1 text-center font-bold">
+        </label></div>`;
+    }
+
+    function textSubtitol(i) {
+      const clau = clauAlumne(estudiants[i]);
+      const grupId = grups[clau];
+      const parts = [];
+      if (grupId) parts.push('Grup ' + grupId + (coordinadors[grupId] === clau ? ' ★ coord.' : ''));
+      const fets = itemsOmplerts(i);
+      parts.push(fets === 0 ? 'pendent' : `${fets}/${criteris.length} ítems`);
+      return parts.join(' · ');
+    }
+
+    function htmlNotaAlumne(i) {
+      const r = calcularNotaFinal(criteris, notes[clauAlumne(estudiants[i])] || {});
+      return htmlNota(r.nota, 'gran', r.limitada ? `Limitada a ${NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE} per un ítem imprescindible suspès` : '');
     }
 
     function htmlTarjeta(i) {
@@ -711,42 +848,59 @@
       const clau = clauAlumne(alumne);
       const grupId = grups[clau] || null;
       const esCoordinador = grupId && coordinadors[grupId] === clau;
+      const obert = i === alumneObert;
+      const percent = criteris.length ? Math.round(itemsOmplerts(i) / criteris.length * 100) : 0;
 
-      return `
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-sm font-semibold text-slate-800 min-w-0 truncate">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</span>
-          <div class="flex items-center gap-2 shrink-0">
-            ${grupId ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grup ${grupId}${esCoordinador ? ' ★' : ''}</span>` : ''}
-            <span class="text-xs bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 font-bold text-amber-700">Final: <span id="final-${i}">-</span></span>
-          </div>
-        </div>
-        <div class="space-y-2">${criteris.map((c, j) => htmlCriteri(i, j, c, clau)).join('')}</div>
-        <textarea placeholder="Observacions individuals de ${esc(alumne.nom)}..." rows="1" aria-label="Observacions individuals"
-                  oninput="canviarObservacioIndividual(${i}, this.value)"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-indigo-500 resize-y">${esc(observacionsIndividuals[clau] || '')}</textarea>
-        ${esCoordinador ? `
-          <div class="text-[10px] text-amber-600 font-bold uppercase tracking-wider pl-2">Coordinador/a del grup ${grupId} (propaga notes)</div>
-          <textarea placeholder="Observacions del grup (s'aplicarà a tot el grup)..." rows="1" aria-label="Observacions del grup"
-                    oninput="canviarObservacioGrup(${grupId}, this.value)"
-                    class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-amber-400 resize-y">${esc(observacionsGrup[grupId] || '')}</textarea>
-        ` : ''}`;
+      const cap = `
+        <button type="button" onclick="obrirAlumne(${i})" aria-expanded="${obert}" class="w-full flex items-center gap-3 text-left p-3.5">
+          ${htmlAvatar(alumne, grupId)}
+          <span class="flex-1 min-w-0">
+            <span class="block font-semibold ${obert ? 'text-[17px]' : 'text-[16px]'} truncate">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</span>
+            <span id="sub-${i}" class="block text-[13px] t3 truncate">${esc(textSubtitol(i))}</span>
+          </span>
+          <span id="final-${i}">${htmlNotaAlumne(i)}</span>
+        </button>`;
+
+      if (!obert) return cap;
+
+      const obs = observacionsIndividuals[clau] || '';
+      const obsHtml = obs || observacioOberta[i]
+        ? `<textarea placeholder="Observacions de ${esc(alumne.nom)}..." rows="2" aria-label="Observacions individuals"
+                     oninput="canviarObservacioIndividual(${i}, this.value)" class="camp">${esc(obs)}</textarea>`
+        : `<button type="button" onclick="observacioOberta[${i}] = true; renderitzarTarjeta(${i}); document.querySelector('#tarjeta-${i} textarea').focus()" class="btn btn-vora w-full !justify-start">
+             <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Afegir observació</button>`;
+
+      return `${cap}
+        <div class="px-4 pb-4 space-y-4">
+          <div class="barra"><div id="barra-${i}" style="width:${percent}%"></div></div>
+          ${criteris.map((c, j) => htmlCriteri(i, j, c, clau)).join('')}
+          ${obsHtml}
+          ${esCoordinador ? `
+            <div>
+              <span class="lbl t-warn">★ Observacions del grup ${grupId} (s'apliquen a tot el grup)</span>
+              <textarea placeholder="Observacions del grup..." rows="2" aria-label="Observacions del grup"
+                        oninput="canviarObservacioGrup(${grupId}, this.value)" class="camp">${esc(observacionsGrup[grupId] || '')}</textarea>
+            </div>` : ''}
+          <button type="button" onclick="anarSeguentPendent(${i})" class="btn btn-accent w-full">Següent pendent ›</button>
+        </div>`;
     }
 
     function renderitzarLlista() {
       const contenidor = $('llista-alumnes');
       $('eines-panell').classList.toggle('hidden', estudiants.length === 0);
+      $('panell-grups').classList.toggle('hidden', estudiants.length === 0);
+      $('barra-exportar').classList.toggle('hidden', vistaActual !== 'avaluar' || estudiants.length === 0);
+      actualitzarCapcaleraAvaluar();
 
       if (estudiants.length === 0) {
-        contenidor.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">No hi ha alumnes carregats.</p>';
+        contenidor.innerHTML = '<p class="text-center t3 py-6">No hi ha alumnes en aquesta classe / desdoblament.</p>';
         actualitzarProgres();
         return;
       }
 
       contenidor.innerHTML = estudiants.map((a, i) =>
-        `<div id="tarjeta-${i}" data-cerca="${esc(normalitzar(a.nom + ' ' + a.cognoms))}" class="py-3 flex flex-col gap-2">${htmlTarjeta(i)}</div>`
+        `<article id="tarjeta-${i}" data-cerca="${esc(normalitzar(a.nom + ' ' + a.cognoms))}" class="card ${i === alumneObert ? 'card-activa' : ''}">${htmlTarjeta(i)}</article>`
       ).join('');
-
-      estudiants.forEach((_, i) => actualitzarNotaFinal(i));
       aplicarVisibilitat();
       actualitzarProgres();
     }
@@ -755,64 +909,76 @@
       const el = $('tarjeta-' + i);
       if (!el) return;
       el.innerHTML = htmlTarjeta(i);
-      actualitzarNotaFinal(i);
+      el.classList.toggle('card-activa', i === alumneObert);
     }
 
-    function actualitzarNotaFinal(i) {
-      const el = $('final-' + i);
-      if (!el) return;
-      const r = calcularNotaFinal(criteris, notes[clauAlumne(estudiants[i])] || {});
-      el.textContent = r.nota === '' ? '-' : r.nota.toFixed(2) + (r.limitada ? ' ⚠' : '');
-      el.title = r.limitada ? 'Limitada a ' + NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE + ' per un ítem imprescindible suspès' : '';
+    // Actualitza només la capçalera d'una targeta (sense tocar els camps que s'estan escrivint)
+    function actualitzarCapTarjeta(i) {
+      if ($('final-' + i)) $('final-' + i).innerHTML = htmlNotaAlumne(i);
+      if ($('sub-' + i)) $('sub-' + i).textContent = textSubtitol(i);
+      if ($('barra-' + i)) $('barra-' + i).style.width = (criteris.length ? Math.round(itemsOmplerts(i) / criteris.length * 100) : 0) + '%';
+    }
+
+    function obrirAlumne(i) {
+      const anterior = alumneObert;
+      alumneObert = alumneObert === i ? -1 : i;
+      if (anterior >= 0) renderitzarTarjeta(anterior);
+      if (alumneObert >= 0) {
+        renderitzarTarjeta(alumneObert);
+        const el = $('tarjeta-' + alumneObert);
+        if (el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }
+
+    function seguentPendent(desDe) {
+      for (let k = 1; k <= estudiants.length; k++) {
+        const i = (desDe + k + estudiants.length) % estudiants.length;
+        if (!esComplet(i) && visible(i)) return i;
+      }
+      return -1;
+    }
+
+    function anarSeguentPendent(i) {
+      const seg = seguentPendent(i);
+      if (seg === -1 || seg === i) {
+        mostrarAvis(seg === -1 ? 'Tots els alumnes estan avaluats. Ja pots exportar.' : 'Aquest és l\'últim alumne pendent.', 'ok');
+        if (seg === -1) obrirAlumne(i); // plega la targeta
+        return;
+      }
+      obrirAlumne(seg);
     }
 
     function actualitzarProgres() {
-      const el = $('progres');
-      if (estudiants.length === 0) { el.textContent = ''; return; }
-      let complets = 0, comencats = 0;
-      estudiants.forEach(a => {
-        const n = notes[clauAlumne(a)] || {};
-        const omplerts = criteris.filter(c => !esBuit(n[c.nom])).length;
-        if (omplerts === criteris.length) complets++; else if (omplerts > 0) comencats++;
-      });
-      el.textContent = `✔ ${complets}/${estudiants.length}` + (comencats ? ` · a mitges ${comencats}` : '');
-      el.className = 'text-xs font-semibold ' + (complets === estudiants.length ? 'text-green-600' : 'text-slate-500');
+      const total = estudiants.length;
+      let complets = 0;
+      estudiants.forEach((_, i) => { if (esComplet(i)) complets++; });
+      $('progres').textContent = total ? `${complets} de ${total} avaluats` : '';
+      $('progres-barra').style.width = (total ? Math.round(complets / total * 100) : 0) + '%';
     }
 
-    // ---- Cerca i mode "un alumne per pantalla" ----
-    function indexsVisiblesPerCerca() {
-      const cerca = normalitzar($('cerca-alumne').value.trim());
-      return estudiants.map((a, i) => i).filter(i => !cerca || $('tarjeta-' + i).dataset.cerca.includes(cerca));
+    function mostrarStatus(html, color) {
+      const el = $('status');
+      el.innerHTML = html;
+      el.className = 'text-[13px] text-center ' + (color || 't2') + (html ? '' : ' hidden');
+    }
+
+    // ---- Cerca i filtre de pendents ----
+    function visible(i) {
+      const el = $('tarjeta-' + i);
+      const cerca = normalitzar(($('cerca-alumne').value || '').trim());
+      const coincideix = !cerca || (el ? el.dataset.cerca : normalitzar(estudiants[i].nom + ' ' + estudiants[i].cognoms)).includes(cerca);
+      return coincideix && (!filtrePendents || !esComplet(i) || i === alumneObert);
     }
 
     function aplicarVisibilitat() {
-      const visibles = indexsVisiblesPerCerca();
-      if (modeUnAlumne && !visibles.includes(alumneActual)) alumneActual = visibles[0] !== undefined ? visibles[0] : 0;
       estudiants.forEach((_, i) => {
         const el = $('tarjeta-' + i);
-        if (!el) return;
-        const mostrar = visibles.includes(i) && (!modeUnAlumne || i === alumneActual);
-        el.classList.toggle('hidden', !mostrar);
+        if (el) el.classList.toggle('hidden', !visible(i));
       });
-      $('nav-un-alumne').classList.toggle('hidden', !modeUnAlumne);
-      $('nav-un-alumne').classList.toggle('flex', modeUnAlumne);
-      const pos = visibles.indexOf(alumneActual);
-      $('nav-posicio').textContent = visibles.length ? `${pos + 1} de ${visibles.length}` : 'Cap coincidència';
-      $('boto-mode').textContent = modeUnAlumne ? 'Veure tots' : 'Un per pantalla';
-    }
-
-    function canviarModeUnAlumne() {
-      modeUnAlumne = !modeUnAlumne;
-      aplicarVisibilitat();
-    }
-
-    function moureAlumne(direccio) {
-      const visibles = indexsVisiblesPerCerca();
-      if (!visibles.length) return;
-      const pos = Math.max(0, visibles.indexOf(alumneActual));
-      alumneActual = visibles[(pos + direccio + visibles.length) % visibles.length];
-      aplicarVisibilitat();
-      $('tarjeta-' + alumneActual).scrollIntoView({ block: 'nearest' });
+      const boto = $('boto-pendents');
+      boto.setAttribute('aria-pressed', filtrePendents);
+      boto.style.background = filtrePendents ? 'var(--accent)' : '';
+      boto.style.color = filtrePendents ? '#fff' : '';
     }
 
     // =====================================================================
@@ -820,10 +986,14 @@
     // =====================================================================
     function renderitzarAssignacioGrups() {
       const cont = $('llista-assignacio-grups');
-      if (estudiants.length === 0) {
-        cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">Carrega els alumnes per poder formar grups.</p>';
-        return;
-      }
+      $('contingut-grups').classList.toggle('hidden', !grupsOberts);
+      $('fletxa-grups').style.transform = grupsOberts ? 'rotate(180deg)' : '';
+
+      const nAssignats = Object.keys(grups).length;
+      const nGrupsUsats = new Set(Object.values(grups)).size;
+      $('resum-grups').textContent = nAssignats ? `${nGrupsUsats} grup${nGrupsUsats === 1 ? '' : 's'} · ${nAssignats} de ${estudiants.length} alumnes assignats` : 'Opcional · sense grups';
+
+      if (estudiants.length === 0) { cont.innerHTML = ''; return; }
 
       const nGrups = Math.max(1, parseInt($('nombre-grups').value) || 1);
       const opcionsGrup = Array.from({ length: nGrups }, (_, k) => k + 1);
@@ -833,18 +1003,17 @@
         const grupId = grups[clau] || '';
         const esCoordinador = grupId && coordinadors[grupId] === clau;
         return `
-          <div class="flex items-center justify-between gap-2 py-1.5">
-            <span class="text-xs text-slate-700 truncate flex-1 min-w-0">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</span>
-            <select onchange="assignarGrupManual(${i}, this.value)" aria-label="Grup de ${esc(alumne.nom)}" class="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-600 shrink-0">
+          <div class="flex items-center gap-2 py-2">
+            ${htmlAvatar(alumne, grupId, 32)}
+            <span class="text-[14px] truncate flex-1 min-w-0">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</span>
+            <select onchange="assignarGrupManual(${i}, this.value)" aria-label="Grup de ${esc(alumne.nom)}" class="camp !w-auto !py-1 !px-2 !text-[14px]">
               <option value="">Cap</option>
               ${opcionsGrup.map(g => `<option value="${g}" ${Number(grupId) === g ? 'selected' : ''}>Grup ${g}</option>`).join('')}
             </select>
             ${grupId ? `
-              <label class="flex items-center gap-1 text-[10px] text-amber-600 font-semibold cursor-pointer shrink-0">
-                <input type="checkbox" ${esCoordinador ? 'checked' : ''} onchange="assignarCoordinador(${i}, this.checked)"
-                       class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"> Coord.
-              </label>
-            ` : '<span class="w-12 shrink-0"></span>'}
+              <label class="flex items-center gap-1 text-[13px] t-warn font-semibold cursor-pointer shrink-0">
+                <input type="checkbox" ${esCoordinador ? 'checked' : ''} onchange="assignarCoordinador(${i}, this.checked)"> ★
+              </label>` : '<span class="w-9 shrink-0"></span>'}
           </div>`;
       }).join('');
     }
@@ -869,7 +1038,6 @@
       if (Object.keys(grups).length && !confirm('Això substituirà els grups actuals. Continuar?')) return;
       const nGrups = Math.max(1, parseInt($('nombre-grups').value) || 1);
       grups = {}; coordinadors = {}; observacionsGrup = {};
-
       barrejar(estudiants.map(clauAlumne)).forEach((clau, idx) => {
         const grupId = (idx % nGrups) + 1;
         grups[clau] = grupId;
@@ -895,11 +1063,11 @@
     // AVALUAR: NOTES
     // =====================================================================
 
-    // Clic a MÀX, Sí/No o a un nivell de rúbrica. Tornar a clicar l'opció activa l'esborra.
-    function clicNota(i, j, valor, nomesPosar) {
+    // Clic a una nota ràpida, Sí/No o nivell de rúbrica. Tornar a clicar l'opció activa l'esborra.
+    function clicNota(i, j, valor) {
       const clau = clauAlumne(estudiants[i]);
       const actual = obtenirNota(clau, criteris[j].nom);
-      const nou = !nomesPosar && actual !== '' && Number(actual) === valor ? '' : valor;
+      const nou = actual !== '' && Number(actual) === valor ? '' : valor;
       canviarNota(i, j, nou);
       renderitzarTarjeta(i);
     }
@@ -914,6 +1082,11 @@
         if (n < 0) { valor = 0; input.value = valor; }
       }
       canviarNota(i, j, valor);
+      document.querySelectorAll(`#tarjeta-${i} [data-crit="${j}"] button[data-v]`).forEach(b => {
+        const actiu = valor !== '' && Number(valor) === Number(b.dataset.v);
+        b.classList.toggle('opcio-activa', actiu);
+        b.setAttribute('aria-pressed', actiu);
+      });
     }
 
     // Desa la nota i, si l'alumne coordina el seu grup, la propaga als altres membres
@@ -923,7 +1096,7 @@
       const nomCriteri = criteris[j].nom;
       const anterior = obtenirNota(clau, nomCriteri);
       posarValorNota(clau, nomCriteri, valor);
-      actualitzarNotaFinal(i);
+      actualitzarCapTarjeta(i);
 
       const grupId = grups[clau];
       if (grupId && coordinadors[grupId] === clau) {
@@ -981,7 +1154,6 @@
       let guardat = null;
       try { guardat = localStorage.getItem(clauEsborrany()); } catch (e) { return; }
       if (!guardat) return;
-
       try {
         const esborrany = JSON.parse(guardat);
         (esborrany.estudiants || []).forEach(a => {
@@ -993,10 +1165,8 @@
         observacionsIndividuals = esborrany.observacionsIndividuals || {};
         observacionsGrup = esborrany.observacionsGrup || {};
         canvisPendents = true;
-
         const data = new Date(esborrany.guardatEn);
-        $('status').innerText = `Esborrany restaurat (guardat a les ${String(data.getHours()).padStart(2, '0')}:${String(data.getMinutes()).padStart(2, '0')}). Recorda exportar.`;
-        $('status').className = 'text-xs text-center font-medium text-indigo-600';
+        mostrarStatus(`Esborrany restaurat (${String(data.getHours()).padStart(2, '0')}:${String(data.getMinutes()).padStart(2, '0')}). Recorda exportar.`, 't-accent');
       } catch (e) { /* esborrany corrupte: s'ignora */ }
     }
 
@@ -1010,13 +1180,11 @@
     async function exportarDades(confirmat) {
       if (estudiants.length === 0) { mostrarAvis('Carrega primer els alumnes d\'aquesta sessió.', 'error'); return; }
       const sessioAvaluada = obtenirSessio();
-      if (!sessioAvaluada) { mostrarAvis('Tria o escriu el supòsit / sessió avaluada.', 'error'); return; }
+      if (!sessioAvaluada) { mostrarAvis('Tria o escriu el supòsit / sessió avaluada.', 'error'); obrirConfigSessio(); return; }
       if (sessioCarregada && sessioCarregada !== configSessioActual() &&
           !confirm('Has canviat la configuració de la sessió després de carregar els alumnes. Exportar igualment amb la configuració actual?')) return;
 
-      const statusText = $('status');
-      statusText.innerText = 'Exportant dades, espera si us plau...';
-      statusText.className = 'text-xs text-center font-medium text-indigo-600 animate-pulse';
+      mostrarStatus('Exportant, espera si us plau...', 't-accent animate-pulse');
 
       const dades = {
         curs: $('curs').value.trim(),
@@ -1041,20 +1209,17 @@
           if (confirm(`Ja existeix una avaluació per aquesta sessió (última actualització: ${r.ultimaActualitzacio}). Vols sobreescriure-la?`)) {
             exportarDades(true);
           } else {
-            statusText.innerText = 'Exportació cancel·lada.';
-            statusText.className = 'text-xs text-center font-medium text-slate-500';
+            mostrarStatus('Exportació cancel·lada.');
           }
           return;
         }
-
-        statusText.innerHTML = `Guardat amb èxit (${r.exportats} alumnes)! <a href="${esc(r.url)}" target="_blank" rel="noopener" class="underline text-green-600 font-bold">Obrir Google Sheets</a>` +
-          (r.limitades.length ? `<br><span class="text-amber-700">Nota limitada per ítem imprescindible: ${esc(r.limitades.join(', '))}</span>` : '');
-        statusText.className = 'text-xs text-center font-medium text-green-600';
+        mostrarStatus(`✓ Guardat (${r.exportats} alumnes). <a href="${esc(r.url)}" target="_blank" rel="noopener" class="underline font-bold">Obrir el full</a>` +
+          (r.limitades.length ? `<br><span class="t-warn">Nota limitada per ítem imprescindible: ${esc(r.limitades.join(', '))}</span>` : ''), 't-ok');
         canvisPendents = false;
+        resultatsCercats = false;
         esborrarEsborrany();
       } catch (err) {
-        statusText.innerText = 'Error en exportar: ' + err.message;
-        statusText.className = 'text-xs text-center font-medium text-red-600';
+        mostrarStatus('Error en exportar: ' + esc(err.message), 't-ko');
       }
     }
 
@@ -1066,194 +1231,183 @@
     let sessioOberta = null;
     let resultatsSessio = [];      // [{ nom, cognoms, id, notaFinal, grup, origen, correuEnviat, notes, ... }]
     let criterisSessio = [];       // [{ nom, pes }]
-    let seleccionats = new Set();  // índexs de resultatsSessio
+    let resultatObert = -1;
     let alumnesFitxa = [];
 
     function canviarModeResultats(mode) {
       modeResultats = mode;
       $('res-per-sessio').classList.toggle('hidden', mode !== 'sessio');
       $('res-per-alumne').classList.toggle('hidden', mode !== 'alumne');
-      $('res-filtre-modul').classList.toggle('hidden', mode !== 'sessio');
-      $('res-filtre-alumne').classList.toggle('hidden', mode !== 'alumne');
-      $('res-mode-sessio').className = 'text-xs font-semibold py-1.5 rounded-md ' + (mode === 'sessio' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600');
-      $('res-mode-alumne').className = 'text-xs font-semibold py-1.5 rounded-md ' + (mode === 'alumne' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600');
+      $('resultats-modul').classList.toggle('hidden', mode !== 'sessio');
+      $('fitxa-alumne').classList.toggle('hidden', mode !== 'alumne');
+      $('boto-mode-resultats').textContent = mode === 'sessio' ? 'Per alumne' : 'Per sessió';
+      if (vistaActual === 'resultats') cercarResultats();
     }
 
     function cercarResultats() {
+      if (vistaActual !== 'resultats') { resultatsCercats = false; return; }
+      resultatsCercats = true;
       if (modeResultats === 'sessio') cercarSessions(); else veureFitxaAlumne();
     }
 
     async function cercarSessions() {
       const classe = $('resultats-classe').value;
       const modul = $('resultats-modul').value;
-      if (!classe) { mostrarAvis('Selecciona una classe.', 'error'); return; }
-
+      if (!classe) return;
       tancarDetallSessio();
-      $('llista-sessions-wrap').innerHTML = '<p class="text-sm text-center py-4 text-slate-500 animate-pulse">Cercant...</p>';
+      $('llista-sessions-wrap').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Cercant...</p>';
       try {
         sessionsListades = await api('llistarSessions', { classe, modul });
         renderitzarSessions();
       } catch (err) {
-        $('llista-sessions-wrap').innerHTML = `<p class="text-sm text-red-500 text-center py-4">Error: ${esc(err.message)}</p>`;
+        $('llista-sessions-wrap').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
     }
 
     function renderitzarSessions() {
       const cont = $('llista-sessions-wrap');
       if (sessionsListades.length === 0) {
-        cont.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">No hi ha sessions avaluades per aquesta cerca.</p>';
+        cont.innerHTML = '<p class="text-center t3 py-6">Encara no hi ha sessions avaluades amb aquests filtres.</p>';
         return;
       }
       cont.innerHTML = sessionsListades.map((s, idx) => `
-        <button onclick="obrirSessio(${idx})" class="w-full bg-white p-3 rounded-xl shadow-sm border border-slate-100 text-left hover:border-indigo-300 transition">
-          <div class="flex justify-between items-center gap-2">
-            <span class="text-sm font-semibold text-slate-800 truncate">${esc(s.sessioAvaluada)}</span>
-            <span class="text-xs text-slate-400 shrink-0">${esc(s.data)}</span>
-          </div>
-          <div class="text-xs text-slate-500 mt-1">${esc(s.modul)} · ${esc(s.classe)}${s.desdoblament !== 'General' ? ' (' + esc(s.desdoblament) + ')' : ''} · ${s.nAlumnes} alumne${s.nAlumnes === 1 ? '' : 's'}${s.mitjana !== '' ? ' · mitjana ' + esc(s.mitjana) : ''}</div>
-        </button>
-      `).join('');
+        <button onclick="obrirSessio(${idx})" class="card w-full p-4 text-left flex items-center gap-3">
+          <span class="flex-1 min-w-0">
+            <span class="block font-bold text-[16px] truncate">${esc(s.sessioAvaluada)}</span>
+            <span class="block text-[13px] t3">${esc(s.modul)}${s.desdoblament !== 'General' ? ' · ' + esc(s.desdoblament) : ''} · ${esc(String(s.data).split(' ')[0])} · ${s.nAlumnes} alumne${s.nAlumnes === 1 ? '' : 's'}</span>
+          </span>
+          ${s.mitjana !== '' ? `<span class="text-right shrink-0"><span class="block text-2xl font-extrabold tabular-nums leading-none">${fmt(s.mitjana)}</span><span class="block text-[11px] uppercase tracking-wider t3 mt-0.5">mitjana</span></span>` : ''}
+          <span class="t3 text-xl">›</span>
+        </button>`).join('');
     }
 
     async function obrirSessio(idx) {
       const s = sessionsListades[idx];
       sessioOberta = s;
-      seleccionats = new Set();
-      $('seleccionar-tots').checked = false;
+      resultatObert = -1;
       $('pdf-status').textContent = '';
-      $('detall-sessio-titol').textContent = `${s.sessioAvaluada} — ${s.classe}${s.desdoblament !== 'General' ? ' (' + s.desdoblament + ')' : ''}`;
-      $('detall-sessio-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500 animate-pulse">Carregant...</p>';
-      $('estadistiques-sessio').innerHTML = '';
+      $('llista-sessions-wrap').classList.add('hidden');
       $('detall-sessio-wrap').classList.remove('hidden');
-
+      $('detall-sessio-resum').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant...</p>';
+      $('detall-sessio-alumnes').innerHTML = '';
+      window.scrollTo(0, 0);
       try {
-        const r = await api('obtenirResultatsSessio', {
-          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessioAvaluada: s.sessioAvaluada
-        });
+        const r = await api('obtenirResultatsSessio', paramsSessio(s));
         resultatsSessio = r.alumnes;
         criterisSessio = r.criteris;
-        renderitzarEstadistiques();
+        renderitzarResumSessio();
         renderitzarDetallSessio();
-        $('detall-sessio-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
-        $('detall-sessio-alumnes').innerHTML = `<p class="text-sm text-red-500 text-center py-4">Error: ${esc(err.message)}</p>`;
+        $('detall-sessio-resum').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
     }
 
-    // ---- Estadístiques: resum, distribució de notes i mitjana per ítem ----
-    function renderitzarEstadistiques() {
-      const cont = $('estadistiques-sessio');
+    // ---- Resum de la sessió: mitjana, aprovats/suspesos i ítems del més fluix al més fort ----
+    function renderitzarResumSessio() {
+      const s = sessioOberta;
       const notesFinals = resultatsSessio.map(r => r.notaFinal).filter(n => n !== '');
-      if (notesFinals.length === 0) { cont.innerHTML = ''; return; }
-
-      const mitjana = notesFinals.reduce((a, b) => a + b, 0) / notesFinals.length;
+      const mitjana = notesFinals.length ? notesFinals.reduce((a, b) => a + b, 0) / notesFinals.length : null;
       const aprovats = notesFinals.filter(n => n >= NOTA_APROVAT).length;
-      const tile = (etiqueta, valor) => `<div class="bg-slate-50 rounded-lg p-2 text-center"><div class="text-lg font-bold text-slate-800">${valor}</div><div class="text-[10px] uppercase tracking-wider text-slate-500">${etiqueta}</div></div>`;
 
-      // Distribució: 10 trams [0,1), [1,2) ... [9,10]
-      const trams = Array(10).fill(0);
-      notesFinals.forEach(n => { trams[Math.min(9, Math.floor(n))]++; });
-      const maxTram = Math.max(...trams, 1);
-      const barres = trams.map((q, k) => `
-        <div class="flex-1 flex flex-col items-center justify-end h-full" title="${k}–${k + 1}: ${q} alumne${q === 1 ? '' : 's'}">
-          ${q ? `<span class="text-[9px] text-slate-500">${q}</span>` : ''}
-          <div class="w-full rounded-t ${k < NOTA_APROVAT ? 'bg-slate-400' : 'bg-indigo-500'}" style="height:${(q / maxTram) * 100}%;${q ? 'min-height:2px' : ''}"></div>
-        </div>`).join('');
-      const etiquetesTrams = trams.map((_, k) => `<span class="flex-1 text-center text-[9px] text-slate-400">${k}</span>`).join('');
-
-      // Mitjana per ítem (només si hi ha desglossament)
       const perItem = criterisSessio.map(c => {
         const valors = resultatsSessio.map(r => r.notes[c.nom]).filter(v => !esBuit(v) && !isNaN(Number(v))).map(Number);
-        return { nom: c.nom, pes: c.pes, mitjana: valors.length ? valors.reduce((a, b) => a + b, 0) / valors.length : null };
-      }).filter(x => x.mitjana !== null);
-      const mesFluix = perItem.length > 1 ? perItem.reduce((a, b) => (b.mitjana < a.mitjana ? b : a)) : null;
+        return { nom: c.nom, mitjana: valors.length ? valors.reduce((a, b) => a + b, 0) / valors.length : null };
+      }).filter(x => x.mitjana !== null).sort((a, b) => a.mitjana - b.mitjana);
 
-      cont.innerHTML = `
-        <div class="grid grid-cols-4 gap-2">
-          ${tile('Mitjana', mitjana.toFixed(2))}
-          ${tile('Aprovats', aprovats + '/' + notesFinals.length)}
-          ${tile('Mínima', Math.min(...notesFinals).toFixed(1))}
-          ${tile('Màxima', Math.max(...notesFinals).toFixed(1))}
-        </div>
-        <div class="mt-3">
-          <div class="text-[11px] font-semibold text-slate-500 mb-1">Distribució de notes finals <span class="font-normal text-slate-400">(gris: suspès)</span></div>
-          <div class="flex items-end gap-0.5 h-20 border-b border-slate-200">${barres}</div>
-          <div class="flex gap-0.5 mt-0.5">${etiquetesTrams}</div>
-        </div>
-        ${perItem.length ? `
-          <div class="mt-3 space-y-1.5">
-            <div class="text-[11px] font-semibold text-slate-500">Mitjana per ítem</div>
-            ${perItem.map(x => `
-              <div title="${esc(x.nom)}: ${x.mitjana.toFixed(2)}">
-                <div class="flex justify-between text-[11px] text-slate-600"><span class="truncate">${esc(x.nom)}</span><span class="font-semibold shrink-0 ml-2">${x.mitjana.toFixed(2)}</span></div>
-                <div class="h-1.5 bg-slate-100 rounded"><div class="h-1.5 rounded bg-indigo-500" style="width:${x.mitjana * 10}%"></div></div>
+      const accio = (onclick, etiqueta, path, classe) => `
+        <button onclick="${onclick}" class="btn ${classe || 'btn-suau'} flex-col !gap-1 !py-2.5 text-[13px]">
+          <svg class="ico" viewBox="0 0 24 24">${path}</svg>${etiqueta}</button>`;
+
+      $('detall-sessio-resum').innerHTML = `
+        <article class="card card-activa p-4 space-y-4">
+          <div class="flex justify-between items-start gap-3">
+            <div class="min-w-0">
+              <h2 class="text-[18px] font-bold">${esc(s.sessioAvaluada)}</h2>
+              <div class="text-[13px] t3">${esc(s.modul)} · ${esc(s.classe)}${s.desdoblament !== 'General' ? ' (' + esc(s.desdoblament) + ')' : ''} · ${esc(String(s.data).split(' ')[0])} · ${resultatsSessio.length} alumnes</div>
+            </div>
+            ${mitjana !== null ? `<div class="text-right shrink-0"><div class="text-[32px] font-extrabold tabular-nums leading-none">${fmt(mitjana)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
+          </div>
+          ${notesFinals.length ? `
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="rounded-xl py-2 pill-ok"><div class="text-lg font-bold">${aprovats}</div><div class="text-[12px]">✓ aprovats</div></div>
+            <div class="rounded-xl py-2 pill-ko"><div class="text-lg font-bold">${notesFinals.length - aprovats}</div><div class="text-[12px]">✕ suspesos</div></div>
+            <div class="rounded-xl py-2" style="background:var(--soft)"><div class="text-lg font-bold tabular-nums">${fmt(Math.min(...notesFinals), 1)}–${fmt(Math.max(...notesFinals), 1)}</div><div class="text-[12px] t3">rang</div></div>
+          </div>` : ''}
+          ${perItem.length ? `
+          <div class="space-y-2.5">
+            <div class="text-[13px] font-semibold t2">Ítems (del més fluix al més fort)</div>
+            ${perItem.map((x, k) => `
+              <div title="${esc(x.nom)}: ${fmt(x.mitjana)}">
+                <div class="flex justify-between gap-2 text-[14px]"><span class="min-w-0">${esc(x.nom)}${k === 0 && perItem.length > 1 ? ' <span class="text-[12px] font-semibold t-warn">a reforçar</span>' : ''}</span><b class="tabular-nums shrink-0">${fmt(x.mitjana)}</b></div>
+                <div class="barra mt-1" style="height:8px"><div style="width:${x.mitjana * 10}%"></div></div>
               </div>`).join('')}
-            ${mesFluix ? `<p class="text-[11px] text-slate-500">Ítem més fluix: <b>${esc(mesFluix.nom)}</b> (${mesFluix.mitjana.toFixed(2)})</p>` : ''}
-          </div>` : ''}`;
+          </div>` : ''}
+          <div class="grid grid-cols-4 gap-2">
+            ${accio('obrirModalCorreu()', 'Correu', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>')}
+            ${accio('crearPdfSessio()', 'PDF', '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>')}
+            ${accio('descarregarCsvSessio()', 'CSV', '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>')}
+            ${accio('confirmarEsborrarSessio()', 'Esborrar', '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>', 'btn-perill')}
+          </div>
+        </article>`;
+    }
+
+    function textEtiquetesResultat(r) {
+      const parts = [];
+      if (r.grup) parts.push(`<span>Grup ${esc(r.grup)}</span>`);
+      if (r.origen === 'Manual') parts.push('<span class="t-manual font-semibold" title="Nota final ajustada a mà; ja no coincideix amb els ítems">nota manual</span>');
+      if (r.origen.indexOf('limitada') !== -1) parts.push('<span class="t-ko font-semibold">★ imprescindible suspès</span>');
+      if (r.correuEnviat) parts.push(`<span>📧 enviat ${esc(String(r.correuEnviat).split(' ')[0])}</span>`);
+      return parts.join(' · ');
     }
 
     function renderitzarDetallSessio() {
       const cont = $('detall-sessio-alumnes');
-      actualitzarSeleccionats();
       if (resultatsSessio.length === 0) {
-        cont.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Sense alumnes.</p>';
+        cont.innerHTML = '<p class="text-center t3 py-6">Sense alumnes.</p>';
         return;
       }
-
       cont.innerHTML = resultatsSessio.map((r, idx) => {
-        const desglossament = criterisSessio.filter(c => !esBuit(r.notes[c.nom]))
-          .map(c => `${esc(c.nom)}: <b>${esc(r.notes[c.nom])}</b>`).join(' · ');
-        const insignies = [
-          r.grup ? `<span class="bg-amber-100 text-amber-800 px-1.5 rounded">Grup ${esc(r.grup)}</span>` : '',
-          r.origen === 'Manual' ? '<span class="bg-purple-100 text-purple-700 px-1.5 rounded" title="Nota final ajustada a mà; ja no coincideix amb els ítems">Manual</span>' : '',
-          r.origen.indexOf('limitada') !== -1 ? '<span class="bg-red-100 text-red-700 px-1.5 rounded">Limitada ★</span>' : '',
-          r.correuEnviat ? `<span class="bg-green-100 text-green-700 px-1.5 rounded">📧 ${esc(r.correuEnviat)}</span>` : ''
-        ].filter(Boolean).join(' ');
+        const obert = idx === resultatObert;
+        const etiquetes = textEtiquetesResultat(r);
+        const fila = `
+          <button onclick="obrirResultat(${idx})" aria-expanded="${obert}" class="w-full flex items-center gap-3 px-4 py-3 text-left">
+            ${htmlAvatar(r, r.grup, 38)}
+            <span class="flex-1 min-w-0">
+              <span class="block font-semibold text-[15px] truncate">${esc(r.cognoms)}, ${esc(r.nom)}</span>
+              ${etiquetes ? `<span class="block text-[12px] t3">${etiquetes}</span>` : ''}
+            </span>
+            ${htmlNota(r.notaFinal)}
+            <span class="t3 transition" style="${obert ? 'transform:rotate(90deg)' : ''}">›</span>
+          </button>`;
+        if (!obert) return `<div>${fila}</div>`;
 
-        return `
-        <div class="py-3 flex flex-col gap-1.5">
-          <div class="flex items-center justify-between gap-2">
-            <label class="flex items-center gap-2 min-w-0">
-              <input type="checkbox" ${seleccionats.has(idx) ? 'checked' : ''} onchange="seleccionar(${idx}, this.checked)" class="rounded border-slate-300 shrink-0">
-              <span class="text-sm font-semibold text-slate-800 truncate">${esc(r.cognoms)}, ${esc(r.nom)}</span>
-            </label>
-            <div class="flex gap-1 shrink-0">
-              <button onclick="editarResultat(${idx})" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-100" title="Obrir a Avaluar amb tots els ítems">✏️ Ítems</button>
-              <button onclick="obrirModalCorreu(${idx})" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-100" title="Enviar correu">📧</button>
-              <button onclick="confirmarEsborrarResultat(${idx})" class="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100" title="Esborrar">🗑</button>
+        const desglossament = criterisSessio.map(c =>
+          `<span class="rounded-lg px-2 py-1 text-[13px]" style="background:var(--soft)">${esc(c.nom)}: <b>${fmtValor(r.notes[c.nom])}</b></span>`).join('');
+
+        return `<div style="background:var(--field)">${fila}
+          <div class="px-4 pb-4 space-y-3">
+            ${desglossament ? `<div class="flex flex-wrap gap-1.5">${desglossament}</div>` : ''}
+            <div class="flex items-center gap-2">
+              <label for="resnota-${idx}" class="lbl !mb-0">Nota final</label>
+              <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" id="resnota-${idx}" value="${esc(r.notaFinal)}" placeholder="–"
+                     class="camp !w-20 !py-1.5 text-center font-bold">
+              <span id="resstatus-${idx}" class="text-[13px] t-ok font-semibold"></span>
             </div>
-          </div>
-          ${insignies ? `<div class="flex flex-wrap gap-1 text-[10px] font-semibold">${insignies}</div>` : ''}
-          ${desglossament ? `<div class="text-[11px] text-slate-500">${desglossament}</div>` : ''}
-          <div class="flex items-center gap-2">
-            <label for="resnota-${idx}" class="text-[10px] text-slate-400 uppercase font-semibold shrink-0">Nota final</label>
-            <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" id="resnota-${idx}"
-                   value="${esc(r.notaFinal)}"
-                   class="w-16 bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-center text-xs font-bold text-amber-700 focus:outline-none focus:bg-white focus:border-amber-400"
-                   placeholder="-">
-            <span id="resstatus-${idx}" class="text-[10px] text-green-600 font-semibold"></span>
-            <button onclick="desarResultat(${idx})" class="ml-auto text-xs bg-slate-700 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-800">💾 Desar</button>
-          </div>
-          <textarea id="resobsgrup-${idx}" placeholder="Observacions de grup..." rows="1" aria-label="Observacions de grup"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs resize-y focus:outline-none focus:bg-white focus:border-indigo-500">${esc(r.observacioGrup)}</textarea>
-          <textarea id="resobsindiv-${idx}" placeholder="Observacions individuals..." rows="1" aria-label="Observacions individuals"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs resize-y focus:outline-none focus:bg-white focus:border-indigo-500">${esc(r.observacioIndividual)}</textarea>
-        </div>`;
+            <textarea id="resobsgrup-${idx}" placeholder="Observacions de grup..." rows="2" aria-label="Observacions de grup" class="camp">${esc(r.observacioGrup)}</textarea>
+            <textarea id="resobsindiv-${idx}" placeholder="Observacions individuals..." rows="2" aria-label="Observacions individuals" class="camp">${esc(r.observacioIndividual)}</textarea>
+            <div class="grid grid-cols-4 gap-2">
+              <button onclick="desarResultat(${idx})" class="btn btn-prim col-span-2">Desar</button>
+              <button onclick="editarResultat(${idx})" class="btn btn-accent" title="Obrir a Avaluar amb tots els ítems">Ítems</button>
+              <button onclick="obrirModalCorreu(${idx})" class="btn btn-accent" title="Enviar correu" aria-label="Enviar correu">📧</button>
+            </div>
+            <button onclick="confirmarEsborrarResultat(${idx})" class="btn btn-perill w-full !py-2 text-[14px]">Esborrar el resultat d'aquest alumne</button>
+          </div></div>`;
       }).join('');
     }
 
-    function seleccionar(idx, marcat) {
-      if (marcat) seleccionats.add(idx); else seleccionats.delete(idx);
-      actualitzarSeleccionats();
-    }
-
-    function seleccionarTots(marcat) {
-      seleccionats = new Set(marcat ? resultatsSessio.map((_, i) => i) : []);
+    function obrirResultat(idx) {
+      resultatObert = resultatObert === idx ? -1 : idx;
       renderitzarDetallSessio();
-    }
-
-    function actualitzarSeleccionats() {
-      $('n-seleccionats').textContent = seleccionats.size || 'tots';
     }
 
     function alumneRef(r) { return { nom: r.nom, cognoms: r.cognoms, id: r.id }; }
@@ -1269,7 +1423,7 @@
         return;
       }
       if (notaVal !== '' && r.notaFinal !== '' && Number(notaVal) !== r.notaFinal && criterisSessio.length > 1 &&
-          !confirm('Si canvies la nota final a mà, deixarà de coincidir amb els ítems (quedarà marcada com a "Manual"). Per corregir un ítem, fes servir "✏️ Ítems". Continuar?')) return;
+          !confirm('Si canvies la nota final a mà, deixarà de coincidir amb els ítems (quedarà marcada com a "nota manual"). Per corregir un ítem, fes servir "Ítems". Continuar?')) return;
 
       try {
         const resposta = await api('actualitzarResultat', Object.assign(paramsSessio(sessioOberta), {
@@ -1280,7 +1434,7 @@
         r.observacioGrup = $(`resobsgrup-${idx}`).value;
         r.observacioIndividual = $(`resobsindiv-${idx}`).value;
         r.origen = resposta.origen;
-        renderitzarEstadistiques();
+        renderitzarResumSessio();
         renderitzarDetallSessio();
         const statusEl = $(`resstatus-${idx}`);
         if (statusEl) { statusEl.textContent = 'Desat ✓'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
@@ -1294,6 +1448,7 @@
       resultatsSessio = [];
       criterisSessio = [];
       $('detall-sessio-wrap').classList.add('hidden');
+      $('llista-sessions-wrap').classList.remove('hidden');
     }
 
     async function confirmarEsborrarResultat(idx) {
@@ -1313,7 +1468,6 @@
       if (!confirm(`Esborrar TOTA la sessió "${s.sessioAvaluada}" (${resultatsSessio.length} alumnes)? Aquesta acció no es pot desfer (l'historial es conservarà).`)) return;
       try {
         await api('eliminarSessio', paramsSessio(s));
-        tancarDetallSessio();
         cercarSessions();
       } catch (err) {
         mostrarAvis('Error en esborrar: ' + err.message, 'error');
@@ -1326,7 +1480,6 @@
       const s = sessioOberta;
       if (canvisPendents && !confirm('Tens notes sense exportar a Avaluar (estan com a esborrany en aquest dispositiu). Continuar?')) return;
 
-      canviarVista('avaluar');
       $('curs').value = s.curs;
       $('modul').value = s.modul;
       $('classe').value = s.classe;
@@ -1335,7 +1488,7 @@
       const alumne = alumneRef(r);
       const clau = clauAlumne(alumne);
       estudiants = [alumne];
-      grups = {}; coordinadors = {}; notes = {}; observacionsGrup = {}; observacionsIndividuals = {};
+      grups = {}; coordinadors = {}; notes = {}; observacionsGrup = {}; observacionsIndividuals = {}; observacioOberta = {};
       observacionsIndividuals[clau] = r.observacioIndividual || '';
       if (r.grup) {
         grups[clau] = Number(r.grup) || r.grup;
@@ -1343,9 +1496,10 @@
         observacionsGrup[grups[clau]] = r.observacioGrup || '';
       }
       canvisPendents = false;
-
-      renderitzarAssignacioGrups();
-      $('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500 animate-pulse">Carregant detall...</p>';
+      alumneObert = 0;
+      canviarVista('avaluar');
+      $('panell-config').classList.add('hidden');
+      $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant detall...</p>';
 
       try {
         const [criterisData, detallNotes] = await Promise.all([
@@ -1356,11 +1510,11 @@
         notes[clau] = Object.assign({}, detallNotes);
         sessioCarregada = configSessioActual();
         configSessioCanviada();
+        renderitzarAssignacioGrups();
         renderitzarLlista();
-        $('status').innerText = `Editant el resultat de ${r.cognoms}, ${r.nom}. Exporta per desar els canvis.`;
-        $('status').className = 'text-xs text-center font-medium text-indigo-600';
+        mostrarStatus(`Editant ${esc(r.cognoms)}, ${esc(r.nom)}. Exporta per desar els canvis.`, 't-accent');
       } catch (err) {
-        $('llista-alumnes').innerHTML = `<p class="text-sm text-red-500 text-center py-4">Error: ${esc(err.message)}</p>`;
+        $('llista-alumnes').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
     }
 
@@ -1384,14 +1538,14 @@
     async function crearPdfSessio() {
       const el = $('pdf-status');
       el.textContent = 'Generant PDF...';
-      el.className = 'text-xs text-center text-indigo-600 animate-pulse';
+      el.className = 'text-[14px] text-center t-accent animate-pulse';
       try {
         const r = await api('crearInformePdf', paramsSessio(sessioOberta));
         el.innerHTML = `PDF creat a Drive: <a href="${esc(r.url)}" target="_blank" rel="noopener" class="underline font-semibold">${esc(r.nom)}</a>`;
-        el.className = 'text-xs text-center text-green-600';
+        el.className = 'text-[14px] text-center t-ok';
       } catch (err) {
         el.textContent = 'Error: ' + err.message;
-        el.className = 'text-xs text-center text-red-600';
+        el.className = 'text-[14px] text-center t-ko';
       }
     }
 
@@ -1413,13 +1567,13 @@
       const classe = $('resultats-classe').value;
       const alumne = alumnesFitxa[Number($('fitxa-alumne').value)];
       const cont = $('fitxa-wrap');
-      if (!classe || !alumne) { mostrarAvis('Tria una classe i un alumne.', 'error'); return; }
+      if (!classe || !alumne) { cont.innerHTML = '<p class="text-center t3 py-6">Tria un alumne a dalt.</p>'; return; }
 
-      cont.innerHTML = '<p class="text-sm text-center py-4 text-slate-500 animate-pulse">Carregant fitxa...</p>';
+      cont.innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant fitxa...</p>';
       try {
         const sessions = await api('obtenirFitxaAlumne', { classe, alumne });
         if (sessions.length === 0) {
-          cont.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">${esc(alumne.nom)} encara no té cap sessió avaluada.</p>`;
+          cont.innerHTML = `<p class="text-center t3 py-6">${esc(alumne.nom)} encara no té cap sessió avaluada.</p>`;
           return;
         }
 
@@ -1432,50 +1586,54 @@
         const mitjanaGlobal = ambNota.length ? ambNota.reduce((a, s) => a + s.notaFinal, 0) / ambNota.length : null;
 
         const evolucio = ambNota.map(s => `
-          <div class="flex-1 flex flex-col items-center justify-end h-full min-w-[6px]" title="${esc(s.sessioAvaluada)} (${esc(s.data)}): ${s.notaFinal}">
-            <div class="w-full rounded-t ${s.notaFinal < NOTA_APROVAT ? 'bg-slate-400' : 'bg-indigo-500'}" style="height:${s.notaFinal * 10}%;min-height:2px"></div>
+          <div class="flex-1 flex flex-col items-center justify-end h-full min-w-[8px]" title="${esc(s.sessioAvaluada)} (${esc(s.data)}): ${fmt(s.notaFinal)}">
+            <div class="w-full rounded-t" style="height:${s.notaFinal * 10}%;min-height:2px;background:${s.notaFinal < NOTA_APROVAT ? 'var(--soft2)' : 'var(--accent)'}"></div>
           </div>`).join('');
 
         cont.innerHTML = `
-          <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-            <div class="flex justify-between items-baseline gap-2">
-              <h2 class="text-sm font-semibold text-slate-700">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</h2>
-              ${mitjanaGlobal !== null ? `<span class="text-xs text-slate-500">Mitjana global <b class="text-slate-800">${mitjanaGlobal.toFixed(2)}</b></span>` : ''}
+          <article class="card card-activa p-4 space-y-4">
+            <div class="flex items-center gap-3">
+              ${htmlAvatar(alumne, '', 52)}
+              <div class="flex-1 min-w-0">
+                <h2 class="text-[18px] font-bold truncate">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</h2>
+                <div class="text-[13px] t3">${sessions.length} sessió${sessions.length === 1 ? '' : 'ns'} avaluada${sessions.length === 1 ? '' : 'es'}</div>
+              </div>
+              ${mitjanaGlobal !== null ? `<div class="text-right"><div class="text-[28px] font-extrabold tabular-nums leading-none">${fmt(mitjanaGlobal)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
             </div>
             <div class="grid grid-cols-2 gap-2">
               ${Object.keys(perModul).map(m => {
                 const llista = perModul[m];
-                const mitj = llista.length ? (llista.reduce((a, b) => a + b, 0) / llista.length).toFixed(2) : '-';
-                return `<div class="bg-slate-50 rounded-lg p-2"><div class="text-[11px] text-slate-500 truncate">${esc(m)}</div><div class="text-base font-bold text-slate-800">${mitj}</div><div class="text-[10px] text-slate-400">${llista.length} sessió${llista.length === 1 ? '' : 'ns'}</div></div>`;
+                const mitj = llista.length ? llista.reduce((a, b) => a + b, 0) / llista.length : '';
+                return `<div class="rounded-xl p-3" style="background:var(--soft)"><div class="text-[13px] t2 truncate">${esc(m)}</div><div class="mt-1">${htmlNota(mitj)}</div><div class="text-[12px] t3 mt-1">${llista.length} sessió${llista.length === 1 ? '' : 'ns'}</div></div>`;
               }).join('')}
             </div>
             ${ambNota.length > 1 ? `
               <div>
-                <div class="text-[11px] font-semibold text-slate-500 mb-1">Evolució (ordre cronològic)</div>
-                <div class="flex items-end gap-1 h-16 border-b border-slate-200">${evolucio}</div>
+                <div class="text-[13px] font-semibold t2 mb-1">Evolució (ordre cronològic)</div>
+                <div class="flex items-end gap-1 h-20 border-b linia">${evolucio}</div>
               </div>` : ''}
-          </div>
-          <div class="space-y-2 mt-3">
+          </article>
+          <div class="space-y-2.5 mt-3">
             ${sessions.slice().reverse().map(s => `
-              <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+              <div class="card p-4 space-y-1">
                 <div class="flex justify-between items-center gap-2">
-                  <span class="text-sm font-semibold text-slate-800 truncate">${esc(s.sessioAvaluada)}</span>
-                  <span class="text-sm font-bold ${s.notaFinal !== '' && s.notaFinal < NOTA_APROVAT ? 'text-red-600' : 'text-slate-800'} shrink-0">${s.notaFinal !== '' ? s.notaFinal : '-'}</span>
+                  <span class="font-semibold truncate">${esc(s.sessioAvaluada)}</span>
+                  ${htmlNota(s.notaFinal)}
                 </div>
-                <div class="text-xs text-slate-500">${esc(s.modul)} · ${esc(s.data)}${s.grup ? ' · Grup ' + esc(s.grup) : ''}</div>
-                ${s.observacioGrup ? `<div class="text-xs text-slate-600 mt-1"><b>Grup:</b> ${esc(s.observacioGrup)}</div>` : ''}
-                ${s.observacioIndividual ? `<div class="text-xs text-slate-600 mt-1"><b>Individual:</b> ${esc(s.observacioIndividual)}</div>` : ''}
+                <div class="text-[13px] t3">${esc(s.modul)} · ${esc(s.data)}${s.grup ? ' · Grup ' + esc(s.grup) : ''}</div>
+                ${s.observacioGrup ? `<div class="text-[14px] t2"><b>Grup:</b> ${esc(s.observacioGrup)}</div>` : ''}
+                ${s.observacioIndividual ? `<div class="text-[14px] t2"><b>Individual:</b> ${esc(s.observacioIndividual)}</div>` : ''}
               </div>`).join('')}
           </div>`;
       } catch (err) {
-        cont.innerHTML = `<p class="text-sm text-red-500 text-center py-4">Error: ${esc(err.message)}</p>`;
+        cont.innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
     }
 
     // =====================================================================
     // CORREUS
     // =====================================================================
-    let destinatarisCorreu = [];
+    let destinatarisMarcats = new Set(); // índexs de resultatsSessio
 
     const PLANTILLA_COS = `Hola {{nom}},
 
@@ -1488,34 +1646,63 @@ Observacions individuals: {{observacions_individual}}
 
 Salutacions.`;
 
-    // Si es passa idx, el correu és només per a aquell alumne; si no, per als seleccionats (o tots)
+    // Si es passa idx, el correu és només per a aquell alumne; si no, per a tots
     async function obrirModalCorreu(idx) {
       const s = sessioOberta;
-      if (!s) return;
-      const indexs = idx !== undefined ? [idx] : (seleccionats.size ? Array.from(seleccionats).sort((a, b) => a - b) : resultatsSessio.map((_, i) => i));
-      destinatarisCorreu = indexs.map(i => resultatsSessio[i]);
-      if (!destinatarisCorreu.length) return;
+      if (!s || !resultatsSessio.length) return;
+      destinatarisMarcats = new Set(idx !== undefined ? [idx] : resultatsSessio.map((_, i) => i));
 
-      $('modal-correu-titol').textContent = destinatarisCorreu.length === 1
-        ? `Enviar correu a ${destinatarisCorreu[0].cognoms}, ${destinatarisCorreu[0].nom}`
-        : `Enviar correu a ${destinatarisCorreu.length} alumnes de "${s.sessioAvaluada}"`;
+      $('modal-correu-titol').textContent = `Enviar correu · ${s.sessioAvaluada}`;
       if (!$('modal-correu-assumpte').value) $('modal-correu-assumpte').value = 'Nota de {{sessio}}';
       if (!$('modal-correu-cos').value) $('modal-correu-cos').value = PLANTILLA_COS;
-      $('modal-correu-previ').innerHTML = destinatarisCorreu.map((r, i) => `<option value="${i}">${esc(r.cognoms)}, ${esc(r.nom)}</option>`).join('');
       $('modal-correu-status').textContent = '';
       $('boto-enviar-correu').disabled = false;
       $('modal-correu-quota').textContent = 'Consultant quota de correus...';
-      actualitzarPrevisualitzacio();
+      renderitzarDestinataris();
       $('modal-correu').classList.remove('hidden');
 
       try {
         const quota = await api('quotaCorreu');
-        $('modal-correu-quota').textContent = `Et queden ${quota} correus per avui (límit diari de Google).` +
-          (quota < destinatarisCorreu.length ? ' ⚠ No n\'hi ha prou per a tots els seleccionats.' : '');
-        $('modal-correu-quota').className = 'text-[11px] ' + (quota < destinatarisCorreu.length ? 'text-red-600 font-semibold' : 'text-slate-500');
+        $('modal-correu-quota').dataset.quota = quota;
+        actualitzarAvisQuota();
       } catch (err) {
         $('modal-correu-quota').textContent = '';
       }
+    }
+
+    function renderitzarDestinataris() {
+      $('modal-correu-dest').innerHTML = resultatsSessio.map((r, i) => `
+        <label class="flex items-center gap-2.5 px-3 py-2 text-[14px] cursor-pointer">
+          <input type="checkbox" ${destinatarisMarcats.has(i) ? 'checked' : ''} onchange="marcarDestinatari(${i}, this.checked)">
+          <span class="flex-1 truncate">${esc(r.cognoms)}, ${esc(r.nom)}</span>
+          ${htmlNota(r.notaFinal)}
+        </label>`).join('');
+      const indexs = Array.from(destinatarisMarcats).sort((a, b) => a - b);
+      $('modal-correu-n').textContent = indexs.length;
+      const anterior = $('modal-correu-previ').value;
+      $('modal-correu-previ').innerHTML = indexs.map(i => `<option value="${i}">${esc(resultatsSessio[i].cognoms)}, ${esc(resultatsSessio[i].nom)}</option>`).join('');
+      if (indexs.includes(Number(anterior))) $('modal-correu-previ').value = anterior;
+      actualitzarPrevisualitzacio();
+      actualitzarAvisQuota();
+    }
+
+    function marcarDestinatari(i, marcat) {
+      if (marcat) destinatarisMarcats.add(i); else destinatarisMarcats.delete(i);
+      renderitzarDestinataris();
+    }
+
+    function marcarTotsDestinataris() {
+      destinatarisMarcats = new Set(destinatarisMarcats.size === resultatsSessio.length ? [] : resultatsSessio.map((_, i) => i));
+      renderitzarDestinataris();
+    }
+
+    function actualitzarAvisQuota() {
+      const el = $('modal-correu-quota');
+      if (el.dataset.quota === undefined) return;
+      const quota = Number(el.dataset.quota);
+      const falta = quota < destinatarisMarcats.size;
+      el.textContent = `Et queden ${quota} correus per avui (límit diari de Google).` + (falta ? ' ⚠ No n\'hi ha prou per a tots els seleccionats.' : '');
+      el.className = 'text-[13px] ' + (falta ? 't-ko font-semibold' : 't3');
     }
 
     function valorsPlantilla(r, s) {
@@ -1532,51 +1719,52 @@ Salutacions.`;
 
     // Mateix format que l'HTML que envia enviarCorreus() a code.gs
     function actualitzarPrevisualitzacio() {
-      const r = destinatarisCorreu[Number($('modal-correu-previ').value) || 0];
+      const caixa = $('modal-correu-previsualitzacio');
+      const r = resultatsSessio[Number($('modal-correu-previ').value)];
       const s = sessioOberta;
-      if (!r || !s) return;
+      if (!r || !s || !destinatarisMarcats.size) { caixa.innerHTML = '<span class="t3">Cap destinatari seleccionat.</span>'; return; }
       const valors = valorsPlantilla(r, s);
       const valorsHtml = {};
       Object.keys(valors).forEach(k => { valorsHtml[k] = esc(valors[k]); });
-      valorsHtml.desglossament = '<table class="text-xs border-collapse my-1">' + criterisSessio.map(c =>
-        `<tr><td class="border border-slate-300 px-2 py-0.5">${esc(c.nom)}${c.pes !== '' ? ' (' + esc(c.pes) + '%)' : ''}</td><td class="border border-slate-300 px-2 py-0.5 text-center font-bold">${esc(esBuit(r.notes[c.nom]) ? '-' : r.notes[c.nom])}</td></tr>`
+      valorsHtml.desglossament = '<table class="text-[13px] border-collapse my-1">' + criterisSessio.map(c =>
+        `<tr><td>${esc(c.nom)}${c.pes !== '' ? ' (' + esc(c.pes) + '%)' : ''}</td><td class="text-center font-bold">${esc(esBuit(r.notes[c.nom]) ? '-' : r.notes[c.nom])}</td></tr>`
       ).join('') + '</table>';
 
-      $('modal-correu-previsualitzacio').innerHTML =
-        `<div class="text-xs text-slate-500">Assumpte: <b class="text-slate-700">${esc(substituir($('modal-correu-assumpte').value, valors))}</b></div>` +
-        `<div class="pt-1 border-t border-slate-200">${substituir(esc($('modal-correu-cos').value), valorsHtml).replace(/\n/g, '<br>')}</div>`;
+      caixa.innerHTML =
+        `<div class="text-[13px] t3">Assumpte: <b style="color:var(--text)">${esc(substituir($('modal-correu-assumpte').value, valors))}</b></div>` +
+        `<div class="pt-1 border-t linia">${substituir(esc($('modal-correu-cos').value), valorsHtml).replace(/\n/g, '<br>')}</div>`;
     }
 
     function tancarModalCorreu() {
       $('modal-correu').classList.add('hidden');
-      destinatarisCorreu = [];
     }
 
     async function confirmarEnviarCorreu() {
       const assumpte = $('modal-correu-assumpte').value.trim();
       const cos = $('modal-correu-cos').value.trim();
       const statusEl = $('modal-correu-status');
-      if (!assumpte || !cos) { mostrarAvis('Escriu l\'assumpte i el cos del missatge.', 'error'); return; }
-      if (destinatarisCorreu.length > 1 && !confirm(`S'enviaran ${destinatarisCorreu.length} correus. Continuar?`)) return;
+      const destinataris = Array.from(destinatarisMarcats).map(i => alumneRef(resultatsSessio[i]));
+      if (!destinataris.length) { mostrarAvis('Selecciona almenys un destinatari.', 'error'); return; }
+      if (!assumpte || !cos) { mostrarAvis('Escriu l\'assumpte i el missatge.', 'error'); return; }
+      if (destinataris.length > 1 && !confirm(`S'enviaran ${destinataris.length} correus. Continuar?`)) return;
 
       statusEl.textContent = 'Enviant...';
-      statusEl.className = 'text-xs text-center font-medium text-indigo-600 animate-pulse';
+      statusEl.className = 'text-[14px] text-center t-accent animate-pulse';
       $('boto-enviar-correu').disabled = true;
 
       try {
-        const r = await api('enviarCorreus', Object.assign(paramsSessio(sessioOberta), {
-          assumpte, cos, destinataris: destinatarisCorreu.map(alumneRef)
-        }));
+        const r = await api('enviarCorreus', Object.assign(paramsSessio(sessioOberta), { assumpte, cos, destinataris }));
         statusEl.textContent = `Enviats: ${r.enviats}.` +
           (r.senseCorreu.length ? ` Sense correu a "👤 Llistat": ${r.senseCorreu.join(', ')}.` : '') +
           (r.errors.length ? ` Errors: ${r.errors.join('; ')}.` : '') + ` Quota restant: ${r.quotaRestant}.`;
-        statusEl.className = 'text-xs text-center font-medium ' + (r.errors.length || r.senseCorreu.length ? 'text-amber-700' : 'text-green-600');
+        statusEl.className = 'text-[14px] text-center ' + (r.errors.length || r.senseCorreu.length ? 't-warn' : 't-ok');
         // Refresca les marques "📧 enviat"
-        const idx = sessionsListades.indexOf(sessioOberta);
-        if (idx >= 0) obrirSessio(idx);
+        const s = await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
+        resultatsSessio = s.alumnes;
+        renderitzarDetallSessio();
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
-        statusEl.className = 'text-xs text-center font-medium text-red-600';
+        statusEl.className = 'text-[14px] text-center t-ko';
       } finally {
         $('boto-enviar-correu').disabled = false;
       }
@@ -1606,12 +1794,12 @@ Salutacions.`;
     }
 
     function resumCriteris(llista) {
-      if (!llista.length) return '<p class="text-xs text-slate-400">Sense ítems: s\'avaluarà amb una sola "Nota" del 100%.</p>';
-      return `<ul class="space-y-1">${llista.map(c => `
-        <li class="flex justify-between gap-2 text-xs">
-          <span class="text-slate-700 min-w-0">${esc(c.nom)}${c.imprescindible ? ' <span class="text-red-600 font-bold" title="Imprescindible">★</span>' : ''}
-            <span class="text-slate-400">· ${esc(NOMS_TIPUS[c.tipus] || c.tipus)}</span></span>
-          <span class="font-semibold text-slate-600 shrink-0">${esc(c.pes)}%</span>
+      if (!llista.length) return '<p class="text-[14px] t3">Sense ítems: s\'avaluarà amb una sola "Nota" del 100%.</p>';
+      return `<ul class="divisor">${llista.map(c => `
+        <li class="flex justify-between gap-2 py-2 text-[15px]">
+          <span class="min-w-0">${esc(c.nom)}${c.imprescindible ? ' <span class="etiqueta t-ko" style="background:var(--ko-bg)">IMPRESCINDIBLE</span>' : ''}
+            <span class="block text-[13px] t3">${esc(NOMS_TIPUS[c.tipus] || c.tipus)}</span></span>
+          <span class="font-semibold t2 shrink-0">${esc(c.pes)}%</span>
         </li>`).join('')}</ul>`;
     }
 
@@ -1620,42 +1808,42 @@ Salutacions.`;
       const contCriteris = $('cfg-criteris-modul');
       const contSuposits = $('cfg-suposits');
       if (!m) {
-        contCriteris.innerHTML = '<p class="text-sm text-slate-400 text-center">Crea un mòdul per començar.</p>';
+        contCriteris.innerHTML = '<p class="text-center t3">Crea un mòdul per començar.</p>';
         contSuposits.innerHTML = '';
         return;
       }
 
       contCriteris.innerHTML = `
         <div class="flex justify-between items-center">
-          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Ítems del mòdul</h2>
-          <button onclick="obrirEditorModul()" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100">✏️ Editar</button>
+          <h2 class="titol-seccio">Ítems del mòdul</h2>
+          <button onclick="obrirEditorModul()" class="btn btn-accent !py-1.5 text-[14px]">Editar</button>
         </div>
-        <p class="text-[11px] text-slate-400">S'apliquen a tots els supòsits del mòdul que no tinguin ítems propis.</p>
+        <p class="text-[13px] t3">S'apliquen a tots els supòsits del mòdul que no tinguin ítems propis.</p>
         ${resumCriteris(m.criteris)}`;
 
       contSuposits.innerHTML = `
         <div class="flex justify-between items-center">
-          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Supòsits pràctics</h2>
-          <button onclick="obrirEditorSuposit()" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100">+ Nou supòsit</button>
+          <h2 class="titol-seccio">Supòsits pràctics</h2>
+          <button onclick="obrirEditorSuposit()" class="btn btn-accent !py-1.5 text-[14px]">+ Nou supòsit</button>
         </div>
         ${m.suposits.length ? m.suposits.map((s, i) => `
-          <div class="border border-slate-100 rounded-lg p-3 space-y-1.5 ${s.actiu ? '' : 'opacity-60'}">
+          <div class="rounded-xl p-3 space-y-2 ${s.actiu ? '' : 'opacity-60'}" style="background:var(--field)">
             <div class="flex justify-between items-start gap-2">
-              <span class="text-sm font-semibold text-slate-800">${esc(s.nom)}</span>
-              <span class="text-[11px] text-slate-400 shrink-0">${esc(s.data)}</span>
+              <span class="font-semibold">${esc(s.nom)}</span>
+              <span class="text-[13px] t3 shrink-0">${esc(s.data)}</span>
             </div>
-            <div class="flex flex-wrap gap-1 text-[10px] font-semibold">
-              ${s.criterisPropis ? `<span class="bg-indigo-100 text-indigo-700 px-1.5 rounded">${s.criteris.length} ítems propis</span>` : '<span class="bg-slate-100 text-slate-600 px-1.5 rounded">Ítems del mòdul</span>'}
-              ${s.actiu ? '' : '<span class="bg-slate-200 text-slate-600 px-1.5 rounded">Arxivat</span>'}
+            <div class="flex flex-wrap gap-1">
+              ${s.criterisPropis ? `<span class="etiqueta t-accent" style="background:var(--accent-soft)">${s.criteris.length} ítems propis</span>` : '<span class="etiqueta t2" style="background:var(--soft)">Ítems del mòdul</span>'}
+              ${s.actiu ? '' : '<span class="etiqueta t2" style="background:var(--soft2)">Arxivat</span>'}
             </div>
-            ${s.descripcio ? `<p class="text-xs text-slate-500 line-clamp-2">${esc(s.descripcio)}</p>` : ''}
-            <div class="flex flex-wrap gap-1.5 pt-1">
-              <button onclick="obrirEditorSuposit(${i})" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-100">✏️ Editar</button>
-              <button onclick="duplicarSupositConfig(${i})" class="text-xs border border-slate-200 text-slate-600 px-2 py-1 rounded hover:bg-slate-50">⧉ Duplicar</button>
-              <button onclick="arxivarSupositConfig(${i})" class="text-xs border border-slate-200 text-slate-600 px-2 py-1 rounded hover:bg-slate-50">${s.actiu ? 'Arxivar' : 'Reactivar'}</button>
-              <button onclick="eliminarSupositConfig(${i})" class="text-xs border border-red-200 text-red-600 px-2 py-1 rounded hover:bg-red-50">🗑</button>
+            ${s.descripcio ? `<p class="text-[14px] t2 line-clamp-2">${esc(s.descripcio)}</p>` : ''}
+            <div class="grid grid-cols-4 gap-1.5 pt-1">
+              <button onclick="obrirEditorSuposit(${i})" class="btn btn-accent !px-1 !py-1.5 text-[13px]">Editar</button>
+              <button onclick="duplicarSupositConfig(${i})" class="btn btn-suau !px-1 !py-1.5 text-[13px]">Duplicar</button>
+              <button onclick="arxivarSupositConfig(${i})" class="btn btn-suau !px-1 !py-1.5 text-[13px]">${s.actiu ? 'Arxivar' : 'Reactivar'}</button>
+              <button onclick="eliminarSupositConfig(${i})" class="btn btn-perill !px-1 !py-1.5 text-[13px]" aria-label="Eliminar">Eliminar</button>
             </div>
-          </div>`).join('') : '<p class="text-xs text-slate-400">Encara no hi ha supòsits. Crea\'n per poder-los triar a Avaluar sense haver d\'escriure el nom.</p>'}`;
+          </div>`).join('') : '<p class="text-[14px] t3">Encara no hi ha supòsits. Crea\'n per poder-los triar a Avaluar sense haver d\'escriure el nom.</p>'}`;
     }
 
     async function despresDeCanviConfig(modul) {
@@ -1811,30 +1999,27 @@ Salutacions.`;
 
     function renderitzarEditorCriteris() {
       $('editor-criteris').innerHTML = editor.criteris.map((c, j) => `
-        <div class="border border-slate-200 rounded-lg p-2 space-y-1.5">
-          <div class="flex gap-1.5">
-            <input type="text" value="${esc(c.nom)}" oninput="editorCamp(${j}, 'nom', this.value)" placeholder="Nom de l'ítem" aria-label="Nom de l'ítem"
-                   class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:outline-none focus:border-indigo-500">
-            <input type="number" inputmode="decimal" value="${esc(c.pes)}" oninput="editorCamp(${j}, 'pes', this.value)" aria-label="Pes (%)"
-                   class="w-14 shrink-0 bg-slate-50 border border-slate-200 rounded p-1.5 text-xs text-center focus:outline-none focus:border-indigo-500">
-            <span class="text-xs text-slate-400 self-center">%</span>
+        <div class="rounded-xl p-3 space-y-2" style="background:var(--field);border:1px solid var(--line)">
+          <div class="flex gap-2">
+            <input type="text" value="${esc(c.nom)}" oninput="editorCamp(${j}, 'nom', this.value)" placeholder="Nom de l'ítem" aria-label="Nom de l'ítem" class="camp flex-1 min-w-0 !py-2">
+            <input type="number" inputmode="decimal" value="${esc(c.pes)}" oninput="editorCamp(${j}, 'pes', this.value)" aria-label="Pes (%)" class="camp !w-16 !py-2 text-center">
+            <span class="t3 self-center">%</span>
           </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <select onchange="editorCamp(${j}, 'tipus', this.value); renderitzarEditorCriteris()" aria-label="Tipus" class="text-xs bg-slate-50 border border-slate-200 rounded p-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <select onchange="editorCamp(${j}, 'tipus', this.value); renderitzarEditorCriteris()" aria-label="Tipus" class="camp !w-auto !py-1.5 !text-[14px]">
               ${Object.keys(NOMS_TIPUS).map(t => `<option value="${t}" ${c.tipus === t ? 'selected' : ''}>${NOMS_TIPUS[t]}</option>`).join('')}
             </select>
-            <label class="flex items-center gap-1 text-[11px] text-slate-600">
-              <input type="checkbox" ${c.imprescindible ? 'checked' : ''} onchange="editorCamp(${j}, 'imprescindible', this.checked)" class="rounded border-slate-300"> Imprescindible
+            <label class="flex items-center gap-1.5 text-[14px] t2">
+              <input type="checkbox" ${c.imprescindible ? 'checked' : ''} onchange="editorCamp(${j}, 'imprescindible', this.checked)"> Imprescindible
             </label>
             <span class="ml-auto flex gap-1">
-              <button onclick="editorMoure(${j}, -1)" class="text-xs px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200" aria-label="Pujar">↑</button>
-              <button onclick="editorMoure(${j}, 1)" class="text-xs px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200" aria-label="Baixar">↓</button>
-              <button onclick="editorTreure(${j})" class="text-xs px-1.5 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100" aria-label="Treure">✕</button>
+              <button onclick="editorMoure(${j}, -1)" class="btn btn-suau !px-2.5 !py-1" aria-label="Pujar">↑</button>
+              <button onclick="editorMoure(${j}, 1)" class="btn btn-suau !px-2.5 !py-1" aria-label="Baixar">↓</button>
+              <button onclick="editorTreure(${j})" class="btn btn-perill !px-2.5 !py-1" aria-label="Treure">✕</button>
             </span>
           </div>
           ${c.tipus === 'rubrica' ? `
-            <input type="text" value="${esc(c.nivellsText)}" oninput="editorCamp(${j}, 'nivellsText', this.value)" placeholder="Insuficient=2; Suficient=5; Bé=7.5; Excel·lent=10" aria-label="Nivells de la rúbrica"
-                   class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs focus:outline-none focus:border-indigo-500">` : ''}
+            <input type="text" value="${esc(c.nivellsText)}" oninput="editorCamp(${j}, 'nivellsText', this.value)" placeholder="Insuficient=2; Suficient=5; Bé=7.5; Excel·lent=10" aria-label="Nivells de la rúbrica" class="camp !py-2 !text-[14px]">` : ''}
         </div>`).join('');
       actualitzarSumaEditor();
     }
@@ -1851,7 +2036,7 @@ Salutacions.`;
       const suma = Math.round(editor.criteris.reduce((a, c) => a + (Number(c.pes) || 0), 0) * 100) / 100;
       const el = $('editor-suma');
       el.textContent = suma === 100 ? 'Total 100% ✓' : (suma < 100 ? `Total ${suma}% · falten ${Math.round((100 - suma) * 100) / 100}%` : `Total ${suma}% · sobren ${Math.round((suma - 100) * 100) / 100}%`);
-      el.className = 'text-xs font-bold ' + (suma === 100 ? 'text-green-600' : 'text-red-600');
+      el.className = 'text-[14px] font-bold ' + (suma === 100 ? 't-ok' : 't-ko');
     }
 
     function editorAfegir() {
@@ -1884,7 +2069,7 @@ Salutacions.`;
     async function desarEditor() {
       const statusEl = $('editor-status');
       statusEl.textContent = 'Desant...';
-      statusEl.className = 'text-xs text-center font-medium text-indigo-600 animate-pulse';
+      statusEl.className = 'text-[14px] text-center t-accent animate-pulse';
       try {
         if (editor.tipus === 'modul') {
           await api('desarCriteris', { modul: editor.modul, suposit: '', criteris: criterisEditorPerDesar() });
@@ -1905,12 +2090,12 @@ Salutacions.`;
         despresDeCanviConfig(modul);
       } catch (err) {
         statusEl.textContent = err.message;
-        statusEl.className = 'text-xs text-center font-medium text-red-600';
+        statusEl.className = 'text-[14px] text-center t-ko';
       }
     }
 
     // =====================================================================
-    // IMPORTAR DES DE CLASSROOM
+    // ALUMNAT: IMPORTAR DES DE CLASSROOM
     // =====================================================================
     async function carregarCursosClassroom() {
       const sel = $('importar-curs-classroom');
@@ -1923,7 +2108,7 @@ Salutacions.`;
       } catch (err) {
         sel.innerHTML = '<option value="">Error</option>';
         statusEl.textContent = 'Error en carregar cursos: ' + err.message;
-        statusEl.className = 'text-xs text-center font-medium text-red-600';
+        statusEl.className = 'text-[14px] text-center t-ko';
       }
     }
 
@@ -1938,26 +2123,24 @@ Salutacions.`;
       if (!classe) { mostrarAvis('Escriu el nom de la classe (tal com vols que aparegui a l\'app).', 'error'); return; }
 
       statusEl.textContent = 'Important...';
-      statusEl.className = 'text-xs text-center font-medium text-indigo-600 animate-pulse';
+      statusEl.className = 'text-[14px] text-center t-accent animate-pulse';
       try {
         const r = await api('importarAlumnesClassroom', { courseId, curs, classe, desdoblament });
         statusEl.textContent = `Fet: ${r.importats} alumnes nous, ${r.actualitzats} actualitzats (de ${r.total} al curs de Classroom).`;
-        statusEl.className = 'text-xs text-center font-medium text-green-600';
+        statusEl.className = 'text-[14px] text-center t-ok';
         carregarClasses();
       } catch (err) {
         statusEl.textContent = 'Error en importar: ' + err.message;
-        statusEl.className = 'text-xs text-center font-medium text-red-600';
+        statusEl.className = 'text-[14px] text-center t-ko';
       }
     }
 
     // =====================================================================
     // INICI
     // =====================================================================
-
     $('curs').value = cursPerDefecte();
     $('importar-curs').value = cursPerDefecte();
     canviarVista('avaluar');
-    canviarModeResultats('sessio');
     carregarModuls();
     carregarClasses();
   </script>
