@@ -361,25 +361,32 @@
   <script>
     // =====================================================================
     // COMUNICACIÓ AMB EL SERVIDOR
-    // L'app la serveix el mateix projecte de Apps Script (HtmlService), així que Google ja sap
-    // qui és l'usuari. No hi ha cap token: el servidor comprova el correu a cada crida.
+    // Aquesta pàgina està a GitHub Pages; el servidor és el projecte de Apps Script (code.gs).
     // =====================================================================
-    function api(action, params) {
-      return new Promise((resolve, reject) => {
-        if (!window.google || !google.script || !google.script.run) {
-          reject(new Error('Obre l\'app des de l\'enllaç del desplegament de Apps Script (/exec).'));
-          return;
-        }
-        google.script.run
-          .withSuccessHandler(text => {
-            try {
-              const r = JSON.parse(text);
-              if (r.error) reject(new Error(r.message)); else resolve(r.resultat);
-            } catch (e) { reject(e); }
-          })
-          .withFailureHandler(err => reject(err instanceof Error ? err : new Error(String((err && err.message) || err))))
-          .api(action, params || {});
-      });
+
+    // URL /exec de la implementació de Apps Script (Implementar → Gestionar implementacions)
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz-hUG84Bwtu8n8iefOE1LqDEXO-Bq0ybMw4At1kd_jLtJrtOwblgu-BwD1u_qlo9vC/exec';
+
+    // Totes les crides són POST amb Content-Type text/plain per evitar la comprovació prèvia CORS
+    async function api(action, params) {
+      let resposta;
+      try {
+        resposta = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, params: params || {} })
+        });
+      } catch (err) {
+        throw new Error('No s\'ha pogut connectar amb el servidor. Comprova la connexió i que la implementació de Apps Script tingui accés "Qualsevol usuari".');
+      }
+      let dades;
+      try {
+        dades = await resposta.json();
+      } catch (err) {
+        throw new Error('El servidor no ha respost bé (' + resposta.status + '). Comprova que API_URL apunta a la URL /exec i que has creat una versió nova de la implementació.');
+      }
+      if (dades.error) throw new Error(dades.message);
+      return dades.resultat;
     }
 
     // =====================================================================
@@ -1946,24 +1953,6 @@ Salutacions.`;
     // =====================================================================
     // INICI
     // =====================================================================
-
-    // Adreça de l'app a Apps Script (Implementar → Gestionar implementacions → URL de l'aplicació web).
-    // Només s'usa per redirigir-hi si algú obre aquest fitxer des d'una altra adreça (p. ex. l'antiga
-    // de GitHub Pages), on l'app no pot funcionar.
-    const URL_APP = 'https://script.google.com/macros/s/AKfycbz-hUG84Bwtu8n8iefOE1LqDEXO-Bq0ybMw4At1kd_jLtJrtOwblgu-BwD1u_qlo9vC/exec';
-
-    if (!window.google || !google.script || !google.script.run) {
-      document.querySelector('main').innerHTML = `
-        <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 space-y-3 text-center">
-          <h2 class="text-base font-bold text-slate-800">Aquesta adreça ja no és la de l'app</h2>
-          <p class="text-sm text-slate-600">Ara l'app s'obre des de Google Apps Script. T'hi portem automàticament...</p>
-          <a href="${esc(URL_APP)}" class="inline-block bg-indigo-600 text-white font-semibold text-sm py-2 px-4 rounded-lg">Obrir l'app</a>
-          <p class="text-xs text-slate-400">Guarda aquest nou enllaç a les adreces d'interès o a la pantalla d'inici.</p>
-        </section>`;
-      document.getElementById('pestanyes').classList.add('hidden');
-      setTimeout(() => { window.location.replace(URL_APP); }, 1500);
-      throw new Error('Pàgina oberta fora de Apps Script: redirigint a ' + URL_APP);
-    }
 
     $('curs').value = cursPerDefecte();
     $('importar-curs').value = cursPerDefecte();

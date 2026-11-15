@@ -97,6 +97,7 @@ function crearEntorn(opts = {}) {
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
     MailApp: { getRemainingDailyQuota: () => opts.quota === undefined ? 100 : opts.quota, sendEmail: m => enviats.push(m) },
     DriveApp: { createFile: b => { fitxers.push(b); return { getUrl: () => 'https://drive/' + b.name }; }, getRootFolder: () => ({ getName: () => 'root' }) },
+    ContentService: { createTextOutput: t => ({ text: t, setMimeType() { return this; } }), MimeType: { JSON: 'json' } },
     HtmlService: { createHtmlOutput: h => ({ setTitle: () => ({ html: h }) }), createHtmlOutputFromFile: () => ({ setTitle() { return this; }, addMetaTag() { return this; } }) },
     Classroom: {
       Courses: {

@@ -6,5 +6,6 @@
      ejecutar funciones como `configurarRegistre` o `autoritzarTot`, crear una nueva versión de la
      implementación, permisos, etc.). Si no hay nada que hacer, dilo explícitamente.
   2. **Archivos modificados**: cada archivo tocado y qué ha cambiado en él.
-- Recuerda que la app se despliega en Apps Script: cualquier cambio en `code.gs`, `index.html` o
-  `appsscript.json` no llega a la app hasta que se copia al editor y se crea una nueva versión.
+- Despliegue: `index.html` está en GitHub Pages y se publica solo al llegar a la rama que publica Pages.
+  `code.gs` y `appsscript.json` viven en Apps Script: no llegan a la app hasta que se copian al editor y
+  se crea una nueva versión de la implementación (siempre editando la existente, para no cambiar la URL `/exec`).

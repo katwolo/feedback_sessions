@@ -1,22 +1,15 @@
 // ID del Google Sheet on s'exporten les avaluacions
 var SPREADSHEET_ID = '1CBaAA7ew3zWmthPP8Xba5prZDJ8_IdNfLj8mIUONylg';
 
-// ============ SEGURETAT ============
-// L'app ja no és una API pública: la pàgina (index.html) la serveix aquest mateix projecte amb
-// HtmlService i parla amb el servidor amb google.script.run. Google s'encarrega d'identificar
-// qui l'obre segons l'"accés" del desplegament (appsscript.json):
-//   - "MYSELF": només el propietari del script (opció per defecte, la més segura).
-//   - "DOMAIN": qualsevol usuari del teu domini de Google Workspace, però NOMÉS entren
-//     els correus que posis a PROFESSORS_AUTORITZATS (a més del propietari).
-var PROFESSORS_AUTORITZATS = [
-  // 'professor1@elteucentre.cat',
-];
+// ============ ARQUITECTURA I ACCÉS ============
+// - La pàgina (index.html) està allotjada a GitHub Pages: qualsevol canvi a GitHub es publica sol.
+// - Aquest script només fa d'API: la pàgina li envia peticions POST amb { action, params } i rep JSON.
+// - La implementació ha de ser "Executar com: Jo" i "Qui hi té accés: Qualsevol usuari".
+// ATENCIÓ: qualsevol persona que tingui l'enllaç de la pàgina (o la URL /exec) pot veure noms, notes i
+// correus de l'alumnat, esborrar resultats i enviar correus des del teu compte. No el publiquis.
 
-// true = pot fer servir l'app qualsevol persona que tingui l'enllaç (cal que la implementació tingui
-// "Qui hi té accés: Qualsevol usuari"). ATENCIÓ: qui tingui l'enllaç podrà veure noms, notes i correus
-// de l'alumnat, esborrar resultats i enviar correus des del teu compte. No comparteixis l'enllaç en llocs públics.
-// false = només el propietari i PROFESSORS_AUTORITZATS.
-var ACCES_OBERT = true;
+// Adreça de la pàgina a GitHub Pages (només per mostrar-ne l'enllaç si algú obre la URL /exec directament)
+var URL_FRONTEND = 'https://katwolo.github.io/feedback_sessions/';
 
 var NOM_LLISTAT = "👤 Llistat";
 var NOM_CONFIGURACIO = "🔧 Configuració";
@@ -55,46 +48,34 @@ var H = { DATA: 0, CURS: 1, MODUL: 2, CLASSE: 3, DESD: 4, NOM: 5, COGNOMS: 6, SE
 
 // ============ ENTRADA DE L'APP ============
 
-function doGet() {
+// Peticions de la pàgina: POST amb cos JSON { action, params }.
+// El client l'envia amb Content-Type "text/plain" per evitar la comprovació prèvia CORS.
+function doPost(e) {
+  var cos = {};
   try {
-    comprovarAcces();
+    cos = JSON.parse(e.postData.contents);
   } catch (err) {
-    return HtmlService.createHtmlOutput('<p style="font-family:sans-serif;padding:2rem">' +
-        escaparHtml(err.message) + '</p>').setTitle('Sense accés');
+    return respostaJson(JSON.stringify({ error: true, message: 'Petició no vàlida' }));
   }
-  return HtmlService.createHtmlOutputFromFile('index')
-      .setTitle('Sessions/Supòsits')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return respostaJson(api(cos.action, cos.params));
 }
 
-// Comprova que qui fa servir l'app és el propietari o un professor autoritzat
-function comprovarAcces() {
-  var correu = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  if (ACCES_OBERT) return correu || 'anònim';
-
-  var propietari = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
-  var autoritzats = PROFESSORS_AUTORITZATS.map(function(c) { return String(c).toLowerCase().trim(); });
-  if (propietari) autoritzats.push(propietari);
-
-  if (!correu) {
-    throw new Error('No s\'ha pogut identificar el teu compte de Google. Revisa que la implementació tingui ' +
-        '"Qui hi té accés: Només jo" (o el teu domini) i, si tens diversos comptes oberts al navegador, ' +
-        'obre l\'app en una finestra on només hi hagi el compte propietari (' + propietari + ').');
-  }
-  if (autoritzats.indexOf(correu) === -1) {
-    throw new Error('No tens permís per fer servir aquesta aplicació (' + correu + '). ' +
-        'Demana al propietari (' + propietari + ') que t\'afegeixi a PROFESSORS_AUTORITZATS.');
-  }
-  return correu;
+// Si algú obre la URL /exec al navegador, li indiquem on és l'app
+function doGet() {
+  return HtmlService.createHtmlOutput('<p style="font-family:sans-serif;padding:2rem">Aquesta és l\'API de ' +
+      'l\'avaluador. L\'app és a <a href="' + escaparHtml(URL_FRONTEND) + '">' + escaparHtml(URL_FRONTEND) + '</a>.</p>')
+      .setTitle('Sessions/Supòsits');
 }
 
-// Punt d'entrada únic des del client: google.script.run.api(action, params).
-// Retorna sempre un JSON en text (google.script.run no admet objectes Date com a retorn).
+function respostaJson(text) {
+  return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON);
+}
+
+// Executa una acció i retorna sempre un JSON en text: { error, resultat } o { error, message }
 function api(action, params) {
   params = params || {};
   try {
-    comprovarAcces();
-    var accio = ACCIONS[action];
+    var accio = ACCIONS.hasOwnProperty(action) ? ACCIONS[action] : null;
     if (!accio) throw new Error('Acció desconeguda: ' + action);
     return JSON.stringify({ error: false, resultat: accio(params) });
   } catch (err) {

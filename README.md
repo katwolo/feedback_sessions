@@ -2,29 +2,31 @@
 
 App para evaluar supuestos prácticos y sesiones desde el móvil. Guarda todo en un Google Sheet.
 
-## Cómo se despliega (importante: ha cambiado)
+## Cómo está montada
 
-La app **ya no funciona desde GitHub Pages**. Antes la API estaba abierta a cualquiera que tuviera
-la URL y el token, y el token era visible en el `index.html` público. Ahora la página la sirve el mismo
-proyecto de Apps Script y Google identifica a quien la abre.
+| Parte | Dónde vive | Cómo se actualiza |
+|---|---|---|
+| `index.html` (la página) | **GitHub Pages** | Automáticamente al subir cambios a la rama que publica GitHub Pages. |
+| `code.gs` + `appsscript.json` (el servidor) | **Apps Script** | A mano: copiar al editor y crear una **nueva versión** de la implementación. |
 
-1. En el editor de Apps Script del proyecto:
-   - Sustituye `code.gs` y `appsscript.json` (Configuración del proyecto → "Mostrar archivo de manifiesto").
-   - Crea un archivo HTML llamado **`index`** (Archivo → nuevo → HTML) y pega el contenido de `index.html`.
-2. Ejecuta **una vez** `configurarRegistre` (añade las columnas y pestañas nuevas al Sheet sin tocar
-   tus datos) y después `autoritzarTot` (pide los permisos nuevos de Drive para los PDF).
-3. **Implementar → Gestionar implementaciones → Editar → Nueva versión**. Abre la URL `/exec`: esa es la app.
-4. Si en el paso 3 editaste la implementación existente, la URL `/exec` sigue siendo la misma y ya ejecuta
-   el código nuevo (el token antiguo deja de funcionar solo). **No la archives.** Archiva únicamente otras
-   implementaciones antiguas que aparezcan en la lista, si las hay.
-5. Si alguien abre la antigua dirección de GitHub Pages, la página redirige sola a la URL de `URL_APP`
-   (al final de `index.html`). Si tu URL `/exec` es otra, cámbiala ahí.
+La página llama al servidor con `fetch` (POST) a la URL `/exec`, configurada en la constante `API_URL`
+al principio del script de `index.html`.
+
+### Configurar la implementación de Apps Script
+
+1. Copia `code.gs` y `appsscript.json` al editor y guarda.
+2. Ejecuta una vez `configurarRegistre` y `autoritzarTot`.
+3. **Implementar → Gestionar implementaciones → editar**:
+   - Ejecutar como: **Yo**.
+   - Quién tiene acceso: **Cualquier usuario**.
+   - Versión: **Nueva versión**.
+   Así la URL `/exec` no cambia y no hace falta tocar `API_URL`.
+4. El archivo HTML `index` del editor de Apps Script ya no se usa: puedes borrarlo.
 
 ### Quién puede entrar
 
-- Por defecto (`ACCES_OBERT = true` en `code.gs` y `"access": "ANYONE_ANONYMOUS"`) entra cualquiera que tenga el enlace. Quien lo tenga ve los datos del alumnado y puede enviar correos desde tu cuenta: no lo publiques.
-- Para restringirlo: pon `ACCES_OBERT = false` (solo tú) o cambia a `"access": "DOMAIN"` y
-  añade sus correos a `PROFESSORS_AUTORITZATS` al principio de `code.gs`.
+Cualquiera que tenga el enlace de la página (o la URL `/exec`) puede ver los datos del alumnado,
+borrar resultados y enviar correos desde tu cuenta. Comparte el enlace solo con quien lo necesite.
 
 ## Pestañas del Sheet
 
