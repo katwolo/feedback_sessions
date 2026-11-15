@@ -2,616 +2,1169 @@
 <html lang="ca">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1e1b4b" media="(prefers-color-scheme: dark)">
   <title>Sessions/Supòsits</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-</head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-16">
+  <style>
+    /* ---------- Colors (clar / fosc automàtic segons el mòbil) ---------- */
+    :root {
+      color-scheme: light dark;
+      --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --text2: #475569; --text3: #64748b;
+      --line: #e2e8f0; --field: #f8fafc; --soft: #f1f5f9; --soft2: #e2e8f0;
+      --accent: #4f46e5; --accent-soft: #eef2ff; --accent-text: #4338ca; --hdr: #4f46e5;
+      --ok-bg: #ecfdf5; --ok: #047857; --ok-fort: #059669;
+      --ko-bg: #fef2f2; --ko: #b91c1c;
+      --warn-bg: #fffbeb; --warn: #b45309; --manual: #7e22ce;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #020617; --card: #0f172a; --text: #f1f5f9; --text2: #cbd5e1; --text3: #94a3b8;
+        --line: #1e293b; --field: #1e293b; --soft: #1e293b; --soft2: #334155;
+        --accent: #6366f1; --accent-soft: #1e1b4b; --accent-text: #a5b4fc; --hdr: #1e1b4b;
+        --ok-bg: #022c22; --ok: #6ee7b7; --ok-fort: #059669;
+        --ko-bg: #450a0a; --ko: #fca5a5;
+        --warn-bg: #451a03; --warn: #fcd34d; --manual: #d8b4fe;
+      }
+    }
 
-  <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50 px-4 py-3">
-    <div class="max-w-md mx-auto flex justify-between items-center">
-      <h1 class="text-lg font-bold flex items-center gap-2">
-        <span class="material-icons">fact_check</span> Sessions/Supòsits
-      </h1>
-    </div>
-    <div class="max-w-md mx-auto flex gap-2 mt-3">
-      <button id="tab-avaluar" onclick="canviarVista('avaluar')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-white text-indigo-600">Avaluar</button>
-      <button id="tab-resultats" onclick="canviarVista('resultats')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-indigo-500 text-white">Resultats</button>
-      <button id="tab-importar" onclick="canviarVista('importar')" class="flex-1 text-sm font-semibold py-1.5 rounded-lg bg-indigo-500 text-white">Importar</button>
+    /* Si el CDN de Tailwind no carrega, que almenys els elements amagats continuïn amagats */
+    .hidden { display: none !important; }
+
+    body { background: var(--bg); color: var(--text); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           font-size: 16px; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    .card { background: var(--card); border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.06); }
+    .card-activa { box-shadow: 0 0 0 2px var(--accent), 0 4px 12px rgba(15,23,42,.12); }
+    .t2 { color: var(--text2); } .t3 { color: var(--text3); }
+    .t-ok { color: var(--ok); } .t-ko { color: var(--ko); } .t-warn { color: var(--warn); } .t-manual { color: var(--manual); } .t-accent { color: var(--accent-text); }
+    .linia { border-color: var(--line) !important; }
+    .divisor > * + * { border-top: 1px solid var(--line); }
+    .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 4px; }
+    .titol-seccio { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text3); }
+
+    .camp { width: 100%; background: var(--field); color: var(--text); border: 1px solid var(--line); border-radius: .75rem;
+            padding: .6rem .75rem; font-size: 16px; }
+    .camp:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--card); }
+    textarea.camp { font-size: 15px; resize: vertical; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: .75rem;
+           font-weight: 600; padding: .6rem .9rem; font-size: 15px; transition: filter .15s, background .15s; }
+    .btn:active { filter: brightness(.95); }
+    .btn:disabled { opacity: .5; }
+    .btn-suau { background: var(--soft); color: var(--text); }
+    .btn-accent { background: var(--accent-soft); color: var(--accent-text); }
+    .btn-prim { background: var(--accent); color: #fff; }
+    .btn-ok { background: var(--ok-fort); color: #fff; }
+    .btn-perill { background: var(--ko-bg); color: var(--ko); }
+    .btn-vora { background: transparent; color: var(--text2); border: 1px dashed var(--soft2); }
+
+    /* Botons de nota */
+    .opcio { background: var(--soft); color: var(--text); border-radius: .75rem; font-weight: 600; min-height: 44px; }
+    .opcio-activa { background: var(--accent) !important; color: #fff !important; }
+    .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; padding: 3px; border-radius: .9rem; background: var(--soft); }
+    .seg button { min-height: 42px; border-radius: .7rem; font-weight: 600; color: var(--text3); }
+    .seg .seg-si { background: var(--card); color: var(--ok); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .seg .seg-no { background: var(--card); color: var(--ko); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .seg .seg-neutre { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .seg .seg-tab { background: var(--card); color: var(--accent-text); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+
+    /* Nota final */
+    .pill { display: inline-flex; align-items: center; gap: .25rem; border-radius: .75rem; padding: .2rem .6rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pill-ok { background: var(--ok-bg); color: var(--ok); }
+    .pill-ko { background: var(--ko-bg); color: var(--ko); }
+    .pill-buit { background: var(--soft); color: var(--text3); }
+    .etiqueta { display: inline-block; font-size: 11px; font-weight: 700; border-radius: .4rem; padding: .05rem .4rem; }
+
+    /* Avatars: color segons el grup */
+    .av { flex: none; width: 44px; height: 44px; border-radius: 9999px; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+    .g0 { background: var(--soft); color: var(--text2); }
+    .g1 { background: #fef3c7; color: #92400e; } .g2 { background: #e0f2fe; color: #075985; } .g3 { background: #fce7f3; color: #9d174d; }
+    .g4 { background: #dcfce7; color: #166534; } .g5 { background: #ede9fe; color: #5b21b6; } .g6 { background: #ffedd5; color: #9a3412; }
+    @media (prefers-color-scheme: dark) {
+      .g1 { background: #78350f; color: #fde68a; } .g2 { background: #0c4a6e; color: #bae6fd; } .g3 { background: #831843; color: #fbcfe8; }
+      .g4 { background: #14532d; color: #bbf7d0; } .g5 { background: #4c1d95; color: #ddd6fe; } .g6 { background: #7c2d12; color: #fed7aa; }
+    }
+
+    .barra { height: 6px; border-radius: 9999px; background: var(--soft); overflow: hidden; }
+    .barra > div { height: 100%; border-radius: 9999px; background: var(--accent); transition: width .2s; }
+    .barra-ok > div { background: var(--ok-fort); }
+
+    /* Capçalera i navegació */
+    .capcalera { background: var(--hdr); color: #fff; padding-top: env(safe-area-inset-top); }
+    .xip { background: rgba(255,255,255,.16); color: #fff; border-radius: 9999px; padding: .2rem .7rem; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .xip-select { appearance: none; -webkit-appearance: none; background: rgba(255,255,255,.16); color: #fff; border: 0; border-radius: 9999px;
+                  padding: .3rem 1.6rem .3rem .8rem; font-size: 14px; font-weight: 600; max-width: 100%;
+                  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+                  background-repeat: no-repeat; background-position: right .55rem center; }
+    .xip-select option { color: #0f172a; }
+    .xip-select-actiu { background-color: #fff; color: var(--accent); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+    .nav-inferior { background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+    .nav-inferior button { color: var(--text3); }
+    .nav-inferior button[aria-current="page"] { color: var(--accent-text); }
+    .ico { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    .ico-s { width: 17px; height: 17px; }
+
+    .full-inferior { background: var(--card); border-radius: 1.25rem 1.25rem 0 0; }
+    @media (min-width: 640px) { .full-inferior { border-radius: 1.25rem; } }
+    .previ { background: var(--field); border: 1px solid var(--line); }
+    .previ table td { border: 1px solid var(--soft2); padding: 2px 8px; }
+    input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ============================ CAPÇALERA ============================ -->
+  <header class="capcalera sticky top-0 z-30 shadow-md">
+    <div class="max-w-md mx-auto px-4 py-3">
+
+      <!-- Avaluar: resum de la sessió -->
+      <div id="cap-avaluar">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-[11px] uppercase tracking-wider opacity-75" id="cap-avaluar-etiqueta">Nova sessió</div>
+            <div class="text-lg font-bold leading-tight truncate" id="cap-avaluar-titol">Configura la sessió</div>
+          </div>
+          <button id="boto-canviar-sessio" onclick="obrirConfigSessio()" class="hidden shrink-0 xip !py-1.5 !px-3 flex items-center gap-1.5 font-semibold">
+            <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Canviar
+          </button>
+        </div>
+        <div id="cap-avaluar-xips" class="hidden flex flex-wrap gap-1.5 mt-2"></div>
+      </div>
+
+      <!-- Resultats: filtres com a xips -->
+      <div id="cap-resultats" class="hidden">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-lg font-bold">Resultats</div>
+          <button id="boto-mode-resultats" onclick="canviarModeResultats(modeResultats === 'sessio' ? 'alumne' : 'sessio')" class="xip !py-1 font-semibold">Per alumne</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          <select id="resultats-classe" aria-label="Classe" onchange="carregarAlumnesFitxa(); cercarResultats()" class="xip-select xip-select-actiu"><option value="">Carregant...</option></select>
+          <select id="resultats-modul" aria-label="Mòdul" onchange="cercarResultats()" class="xip-select"><option value="">Tots els mòduls</option></select>
+          <select id="fitxa-alumne" aria-label="Alumne" onchange="cercarResultats()" class="xip-select hidden"><option value="">-</option></select>
+        </div>
+      </div>
+
+      <!-- Configurar / Alumnat -->
+      <div id="cap-simple" class="hidden">
+        <div class="text-lg font-bold" id="cap-simple-titol"></div>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-md mx-auto p-4 space-y-4">
+  <main class="max-w-md mx-auto p-3 space-y-3 pb-48">
 
-    <div id="vista-avaluar" class="space-y-4">
+    <!-- ============================ AVALUAR ============================ -->
+    <div id="vista-avaluar" class="space-y-3">
 
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Configuració de Sessió</h2>
-
+      <section id="panell-config" class="card p-4 space-y-3">
+        <h2 class="titol-seccio">Configuració de la sessió</h2>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Curs</label>
-            <input type="text" id="curs" value="26/27" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+            <label for="curs" class="lbl">Curs</label>
+            <input type="text" id="curs" onchange="configSessioCanviada()" class="camp">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Mòdul</label>
-            <select id="modul" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Carregant...</option>
-            </select>
+            <label for="modul" class="lbl">Mòdul</label>
+            <select id="modul" onchange="carregarSupositsAvaluar(); configSessioCanviada()" class="camp"><option value="">Carregant...</option></select>
+          </div>
+          <div>
+            <label for="classe" class="lbl">Classe</label>
+            <select id="classe" onchange="carregarDesdoblaments(this.value); configSessioCanviada()" class="camp"><option value="">Carregant...</option></select>
+          </div>
+          <div>
+            <label for="desdoblament" class="lbl">Desdoblament</label>
+            <select id="desdoblament" onchange="configSessioCanviada()" class="camp"><option value="General">General (tota la classe)</option></select>
           </div>
         </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
-            <select id="classe" onchange="carregarDesdoblaments(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Carregant...</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Desdoblament</label>
-            <select id="desdoblament" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="General">General (tota la classe)</option>
-            </select>
-          </div>
-        </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Sessió avaluada</label>
-          <input type="text" id="sessio-avaluada" placeholder="Ex: Supòsit pràctic aigua 1" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-        </div>
-
-        <button onclick="carregarAlumnes()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
-          Carregar Alumnes
-        </button>
-      </section>
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <div class="flex justify-between items-center">
-          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Grups Temporals (d'aquest treball)</h2>
-          <span class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded">Opcional</span>
-        </div>
-
-        <div class="flex items-end gap-2">
-          <div class="flex-1">
-            <label class="block text-xs font-bold text-slate-600 mb-1">Nombre de grups</label>
-            <input type="number" id="nombre-grups" min="1" max="12" value="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-          </div>
-          <button onclick="crearGrupsAutomatics()" class="border border-dashed border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 shrink-0">
-            <span class="material-icons text-xs">shuffle</span> Crear grups
-          </button>
-          <button onclick="desferGrups()" class="border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1 shrink-0">
-            <span class="material-icons text-xs">clear</span> Desfer
-          </button>
-        </div>
-
-        <div id="llista-assignacio-grups" class="divide-y divide-slate-50">
-          <p class="text-xs text-slate-400 text-center py-2">Carrega els alumnes per poder formar grups.</p>
-        </div>
-      </section>
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Panell de Qualificació</h2>
-
-        <div id="llista-alumnes" class="divide-y divide-slate-100">
-          <p class="text-sm text-slate-400 py-4 text-center">Prem "Carregar Alumnes" per començar.</p>
-        </div>
-      </section>
-
-      <section class="space-y-3">
-        <button onclick="exportarDades()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
-          <span class="material-icons">trending_flat</span> Exportar a Google Sheets
-        </button>
-        <p id="status" class="text-xs text-center font-medium text-slate-500"></p>
-      </section>
-
-    </div>
-
-    <div id="vista-resultats" class="space-y-4 hidden">
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Cercar Resultats</h2>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
-            <select id="resultats-classe" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Carregant...</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Mòdul</label>
-            <select id="resultats-modul" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">Tots</option>
-            </select>
-          </div>
-        </div>
-
-        <button onclick="cercarSessions()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
-          Cercar
-        </button>
-      </section>
-
-      <section id="llista-sessions-wrap" class="space-y-2">
-        <p class="text-sm text-slate-400 text-center py-4">Selecciona una classe i prem "Cercar".</p>
-      </section>
-
-      <section id="detall-sessio-wrap" class="hidden bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <div class="flex justify-between items-center">
-          <h2 id="detall-sessio-titol" class="text-sm font-semibold text-slate-700"></h2>
-          <button onclick="tancarDetallSessio()" class="text-xs text-slate-400 hover:text-slate-600">✕ Tancar</button>
-        </div>
-        <div id="detall-sessio-alumnes" class="divide-y divide-slate-100"></div>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="obrirModalCorreuMassiu()" class="border border-indigo-200 text-indigo-600 text-xs py-2 rounded-lg hover:bg-indigo-50">
-            📧 Enviar correu a tots
-          </button>
-          <button onclick="confirmarEsborrarSessio()" class="border border-red-200 text-red-600 text-xs py-2 rounded-lg hover:bg-red-50">
-            🗑 Esborrar tota la sessió
-          </button>
-        </div>
-      </section>
-
-    </div>
-
-    <div id="vista-importar" class="space-y-4 hidden">
-
-      <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Importar de Google Classroom</h2>
-        <p class="text-xs text-slate-500">
-          Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat".
-          Si un alumne ja hi és (mateix nom, cognoms i classe), s'actualitza en lloc de duplicar-se.
-        </p>
-
-        <button onclick="carregarCursosClassroom()" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-sm py-2 px-4 rounded-lg transition">
-          Carregar cursos de Classroom
-        </button>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Curs de Classroom</label>
-          <select id="importar-curs-classroom" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-            <option value="">Prem "Carregar cursos de Classroom"</option>
+          <label for="sessio-select" class="lbl">Supòsit / sessió avaluada</label>
+          <select id="sessio-select" onchange="canviSessioSelect(); configSessioCanviada()" class="camp">
+            <option value="__altre__">✎ Altre (text lliure)</option>
           </select>
+          <input type="text" id="sessio-avaluada" onchange="configSessioCanviada()" placeholder="Ex: Supòsit pràctic aigua 1" class="camp hidden mt-2">
+          <p id="sessio-descripcio" class="hidden mt-2 text-[14px] t2 rounded-xl p-3 whitespace-pre-line" style="background:var(--soft)"></p>
         </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Curs (any acadèmic)</label>
-            <input type="text" id="importar-curs" value="26/27" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Classe</label>
-            <input type="text" id="importar-classe" placeholder="Ex: 1º A" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Desdoblament</label>
-          <input type="text" id="importar-desdoblament" value="General" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-        </div>
-
-        <button onclick="importarDeClassroom()" class="w-full bg-green-600 text-white hover:bg-green-700 font-bold py-2.5 px-4 rounded-xl shadow-md transition">
-          Importar alumnat a Llistat
-        </button>
-        <p id="importar-status" class="text-xs text-center font-medium text-slate-500"></p>
+        <button onclick="carregarAlumnes()" class="btn btn-prim w-full">Carregar alumnes</button>
+        <p id="avis-config" class="hidden text-[14px] t-warn rounded-xl p-3" style="background:var(--warn-bg)">Has canviat la configuració de la sessió. Prem "Carregar alumnes" perquè s'apliquin els ítems correctes.</p>
       </section>
 
-    </div>
+      <section id="panell-grups" class="card hidden">
+        <button onclick="grupsOberts = !grupsOberts; renderitzarAssignacioGrups()" class="w-full flex items-center justify-between gap-2 p-4 text-left">
+          <span>
+            <span class="block font-semibold">Grups temporals</span>
+            <span id="resum-grups" class="block text-[13px] t3"></span>
+          </span>
+          <svg id="fletxa-grups" class="ico t3 transition" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div id="contingut-grups" class="hidden px-4 pb-4 space-y-3">
+          <div class="flex items-end gap-2">
+            <div class="w-24">
+              <label for="nombre-grups" class="lbl">Nº de grups</label>
+              <input type="number" id="nombre-grups" min="1" max="12" value="2" onchange="renderitzarAssignacioGrups()" class="camp">
+            </div>
+            <button onclick="crearGrupsAutomatics()" class="btn btn-accent flex-1">
+              <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg> Crear a l'atzar
+            </button>
+            <button onclick="desferGrups()" class="btn btn-suau">Desfer</button>
+          </div>
+          <p class="text-[13px] t3">El/la coordinador/a (★) propaga les seves notes al grup, però no sobreescriu una nota que ja hagis posat a mà a un altre membre.</p>
+          <div id="llista-assignacio-grups" class="divisor"></div>
+        </div>
+      </section>
 
-    <div id="modal-correu" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-4 space-y-3">
-        <h3 id="modal-correu-titol" class="text-sm font-bold text-slate-700"></h3>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Assumpte</label>
-          <input type="text" id="modal-correu-assumpte" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Cos del missatge</label>
-          <textarea id="modal-correu-cos" rows="7" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500"></textarea>
-          <p id="modal-correu-ajuda" class="text-[10px] text-slate-400 mt-1"></p>
-        </div>
-        <div class="flex gap-2">
-          <button onclick="tancarModalCorreu()" class="flex-1 border border-slate-200 text-slate-500 text-sm py-2 rounded-lg hover:bg-slate-50">Cancel·lar</button>
-          <button onclick="confirmarEnviarCorreu()" class="flex-1 bg-green-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-green-700">Enviar</button>
-        </div>
-        <p id="modal-correu-status" class="text-xs text-center font-medium"></p>
+      <div id="eines-panell" class="hidden flex gap-2">
+        <label class="card flex-1 min-w-0 flex items-center gap-2 px-3">
+          <svg class="ico ico-s t3" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="cerca-alumne" oninput="aplicarVisibilitat()" placeholder="Cerca alumne" aria-label="Cerca alumne" class="flex-1 min-w-0 bg-transparent py-2.5 outline-none text-[16px]">
+        </label>
+        <button id="boto-pendents" onclick="filtrePendents = !filtrePendents; aplicarVisibilitat()" class="card shrink-0 px-4 font-semibold text-[15px]" aria-pressed="false">Pendents</button>
+      </div>
+
+      <div id="llista-alumnes" class="space-y-2.5">
+        <p class="text-center t3 py-6">Tria la sessió i prem "Carregar alumnes" per començar.</p>
       </div>
     </div>
 
+    <!-- ============================ RESULTATS ============================ -->
+    <div id="vista-resultats" class="hidden space-y-3">
+      <div id="res-per-sessio" class="space-y-3">
+        <section id="llista-sessions-wrap" class="space-y-2.5">
+          <p class="text-center t3 py-6">Tria una classe per veure'n les sessions.</p>
+        </section>
+        <section id="detall-sessio-wrap" class="hidden space-y-3">
+          <button onclick="tancarDetallSessio()" class="btn btn-suau !py-1.5 !px-3 text-[14px]">‹ Totes les sessions</button>
+          <div id="detall-sessio-resum"></div>
+          <p id="pdf-status" class="text-[14px] text-center"></p>
+          <div id="detall-sessio-alumnes" class="card divisor overflow-hidden"></div>
+        </section>
+      </div>
+      <div id="res-per-alumne" class="hidden">
+        <section id="fitxa-wrap"><p class="text-center t3 py-6">Tria un alumne a dalt.</p></section>
+      </div>
+    </div>
+
+    <!-- ============================ CONFIGURAR ============================ -->
+    <div id="vista-configurar" class="hidden space-y-3">
+      <div class="seg text-[14px]" role="tablist">
+        <button id="cfg-tab-moduls" role="tab" onclick="canviarSubConfig('moduls')">Mòduls i supòsits</button>
+        <button id="cfg-tab-desd" role="tab" onclick="canviarSubConfig('desd')">Desdoblaments</button>
+      </div>
+
+      <div id="cfg-desdoblaments" class="hidden space-y-3">
+        <section class="card p-4 space-y-3">
+          <label for="desd-classe" class="titol-seccio block">Classe</label>
+          <select id="desd-classe" onchange="carregarDesdoblamentsClasse()" class="camp"><option value="">Carregant...</option></select>
+          <p class="text-[14px] t2">Tria a quin desdoblament va cada alumne. Quan avaluïs <b>General</b> sortirà tota la classe; si tries un desdoblament, només els seus alumnes.</p>
+          <div id="desd-resum" class="flex flex-wrap gap-1.5"></div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="afegirDesdoblament()" class="btn btn-accent">+ Desdoblament</button>
+            <button onclick="repartirPerMeitats()" class="btn btn-suau">Repartir per meitats</button>
+          </div>
+        </section>
+        <section id="desd-llista" class="card divisor overflow-hidden"></section>
+        <button id="boto-desar-desd" onclick="desarDesdoblamentsClasse()" class="btn btn-ok w-full" disabled>Desar desdoblaments</button>
+      </div>
+
+      <div id="cfg-moduls" class="space-y-3">
+      <section class="card p-4 space-y-3">
+        <label for="cfg-modul" class="titol-seccio block">Mòdul</label>
+        <select id="cfg-modul" onchange="renderitzarConfiguracio()" class="camp"><option value="">Carregant...</option></select>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="nouModul()" class="btn btn-accent">+ Nou</button>
+          <button onclick="renomenarModulActual()" class="btn btn-suau">Reanomenar</button>
+          <button onclick="eliminarModulActual()" class="btn btn-perill">Eliminar</button>
+          <button onclick="exportarPlantilla()" class="btn btn-suau">⬇ Plantilla</button>
+          <label class="btn btn-suau col-span-2 cursor-pointer">⬆ Importar plantilla
+            <input type="file" accept=".json,application/json" class="hidden" onchange="importarPlantillaFitxer(this)">
+          </label>
+        </div>
+      </section>
+      <section id="cfg-criteris-modul" class="card p-4 space-y-3"></section>
+      <section id="cfg-suposits" class="card p-4 space-y-3"></section>
+      </div>
+    </div>
+
+    <!-- ============================ ALUMNAT (importar) ============================ -->
+    <div id="vista-importar" class="hidden space-y-3">
+      <section class="card p-4 space-y-3">
+        <h2 class="titol-seccio">Importar de Google Classroom</h2>
+        <p class="text-[14px] t2">Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat". El correu identifica cada alumne, així dos alumnes amb el mateix nom no es barregen. Si tornes a importar una classe, els alumnes que ja hi eren conserven el seu desdoblament; per canviar-los, ves a Configurar → Desdoblaments.</p>
+        <button onclick="carregarCursosClassroom()" class="btn btn-accent w-full">Carregar cursos de Classroom</button>
+        <div>
+          <label for="importar-curs-classroom" class="lbl">Curs de Classroom</label>
+          <select id="importar-curs-classroom" class="camp"><option value="">Prem "Carregar cursos de Classroom"</option></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="importar-curs" class="lbl">Curs (any acadèmic)</label>
+            <input type="text" id="importar-curs" class="camp">
+          </div>
+          <div>
+            <label for="importar-classe" class="lbl">Classe</label>
+            <input type="text" id="importar-classe" placeholder="Ex: 1r A" class="camp">
+          </div>
+        </div>
+        <div>
+          <label for="importar-desdoblament" class="lbl">Desdoblament</label>
+          <input type="text" id="importar-desdoblament" value="General" class="camp">
+        </div>
+        <button onclick="importarDeClassroom()" class="btn btn-ok w-full">Importar alumnat a Llistat</button>
+        <p id="importar-status" class="text-[14px] text-center"></p>
+      </section>
+    </div>
   </main>
 
+  <!-- ============================ BARRA FIXA D'EXPORTAR ============================ -->
+  <div id="barra-exportar" class="hidden fixed inset-x-0 z-20 px-3" style="bottom: calc(64px + env(safe-area-inset-bottom))">
+    <div class="max-w-md mx-auto card p-2.5 space-y-1.5" style="border:1px solid var(--soft2);box-shadow:0 8px 24px rgba(15,23,42,.25)">
+      <div class="flex items-center gap-3">
+        <div class="flex-1 min-w-0">
+          <div id="progres" class="text-[14px] font-semibold"></div>
+          <div class="barra barra-ok mt-1"><div id="progres-barra" style="width:0%"></div></div>
+        </div>
+        <button onclick="exportarDades()" class="btn btn-ok">
+          <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Exportar
+        </button>
+      </div>
+      <p id="status" class="hidden text-[13px] text-center" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- ============================ NAVEGACIÓ INFERIOR ============================ -->
+  <nav id="pestanyes" class="nav-inferior fixed bottom-0 inset-x-0 z-30">
+    <div class="max-w-md mx-auto grid grid-cols-4 text-[12px] font-semibold">
+      <button data-vista="avaluar" onclick="canviarVista('avaluar')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Avaluar</button>
+      <button data-vista="resultats" onclick="canviarVista('resultats')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg>Resultats</button>
+      <button data-vista="configurar" onclick="canviarVista('configurar')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="16" r="3"/></svg>Configurar</button>
+      <button data-vista="importar" onclick="canviarVista('importar')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>Alumnat</button>
+    </div>
+  </nav>
+
+  <!-- ============================ MODAL CORREU ============================ -->
+  <div id="modal-correu" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div class="full-inferior w-full max-w-md p-4 space-y-3 max-h-[94vh] overflow-y-auto">
+      <div class="flex justify-between items-start gap-2">
+        <h3 id="modal-correu-titol" class="font-bold">Enviar correu</h3>
+        <button onclick="tancarModalCorreu()" class="t3 text-xl leading-none" aria-label="Tancar">✕</button>
+      </div>
+      <p id="modal-correu-quota" class="text-[13px] t3"></p>
+      <div>
+        <div class="flex justify-between items-center">
+          <span class="lbl">Destinataris (<span id="modal-correu-n">0</span>)</span>
+          <button onclick="marcarTotsDestinataris()" class="text-[13px] font-semibold t-accent">Tots / cap</button>
+        </div>
+        <div id="modal-correu-dest" class="rounded-xl divisor max-h-40 overflow-y-auto" style="background:var(--field)"></div>
+      </div>
+      <div>
+        <label for="modal-correu-assumpte" class="lbl">Assumpte</label>
+        <input type="text" id="modal-correu-assumpte" oninput="actualitzarPrevisualitzacio()" class="camp">
+      </div>
+      <div>
+        <label for="modal-correu-cos" class="lbl">Missatge</label>
+        <textarea id="modal-correu-cos" rows="7" oninput="actualitzarPrevisualitzacio()" class="camp"></textarea>
+        <p class="text-[12px] t3 mt-1">Etiquetes: {{nom}}, {{cognoms}}, {{nota}}, {{grup}}, {{desglossament}}, {{observacions_grup}}, {{observacions_individual}}, {{sessio}}, {{modul}}, {{classe}}, {{curs}}</p>
+      </div>
+      <div>
+        <div class="flex justify-between items-center gap-2 mb-1">
+          <span class="lbl !mb-0">Previsualització</span>
+          <select id="modal-correu-previ" onchange="actualitzarPrevisualitzacio()" class="camp !w-auto !py-1 !text-[14px] max-w-[60%]"></select>
+        </div>
+        <div id="modal-correu-previsualitzacio" class="previ rounded-xl p-3 text-[14px] space-y-1"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="tancarModalCorreu()" class="btn btn-suau">Cancel·lar</button>
+        <button id="boto-enviar-correu" onclick="confirmarEnviarCorreu()" class="btn btn-ok">Enviar</button>
+      </div>
+      <p id="modal-correu-status" class="text-[14px] text-center"></p>
+    </div>
+  </div>
+
+  <!-- ============================ MODAL EDITOR D'ÍTEMS ============================ -->
+  <div id="modal-editor" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div class="full-inferior w-full max-w-md p-4 space-y-3 max-h-[94vh] overflow-y-auto">
+      <div class="flex justify-between items-start gap-2">
+        <h3 id="editor-titol" class="font-bold"></h3>
+        <button onclick="tancarEditor()" class="t3 text-xl leading-none" aria-label="Tancar">✕</button>
+      </div>
+      <div id="editor-suposit" class="space-y-3">
+        <div>
+          <label for="editor-nom" class="lbl">Nom del supòsit</label>
+          <input type="text" id="editor-nom" class="camp">
+        </div>
+        <div class="grid grid-cols-2 gap-3 items-end">
+          <div>
+            <label for="editor-data" class="lbl">Data</label>
+            <input type="date" id="editor-data" class="camp">
+          </div>
+          <label class="flex items-center gap-2 text-[14px] t2 pb-3">
+            <input type="checkbox" id="editor-actiu"> Actiu (surt a Avaluar)
+          </label>
+        </div>
+        <div>
+          <label for="editor-descripcio" class="lbl">Descripció / enunciat</label>
+          <textarea id="editor-descripcio" rows="3" class="camp"></textarea>
+        </div>
+        <label class="flex items-start gap-2 text-[14px] font-semibold">
+          <input type="checkbox" id="editor-propis" onchange="canviarItemsPropis(this.checked)" class="mt-0.5">
+          Aquest supòsit té ítems propis (si no, fa servir els del mòdul)
+        </label>
+      </div>
+      <div id="editor-criteris-wrap" class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="lbl !mb-0">Ítems d'avaluació</span>
+          <span id="editor-suma" class="text-[14px] font-bold"></span>
+        </div>
+        <div id="editor-criteris" class="space-y-2"></div>
+        <button onclick="editorAfegir()" class="btn btn-vora w-full">+ Afegir ítem</button>
+        <p class="text-[12px] t3">Rúbrica: escriu els nivells com <i>Insuficient=2; Suficient=5; Bé=7.5; Excel·lent=10</i>. Imprescindible: si es treu menys d'un 5, la nota final queda limitada a un 4.</p>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="tancarEditor()" class="btn btn-suau">Cancel·lar</button>
+        <button onclick="desarEditor()" class="btn btn-ok">Desar</button>
+      </div>
+      <p id="editor-status" class="text-[14px] text-center"></p>
+    </div>
+  </div>
+
+  <div id="avis" class="hidden fixed left-3 right-3 max-w-md mx-auto z-[60] text-[15px] rounded-xl shadow-lg px-4 py-3" role="status"></div>
+
   <script>
-    // URL /exec del NOU desplegament de Apps Script (API, amb el code.gs actualitzat amb el dispatcher).
-    // IMPORTANT: substitueix-la per la teva pròpia URL de desplegament.
+    // =====================================================================
+    // COMUNICACIÓ AMB EL SERVIDOR
+    // Aquesta pàgina està a GitHub Pages; el servidor és el projecte de Apps Script (code.gs).
+    // =====================================================================
+
+    // URL /exec de la implementació de Apps Script (Implementar → Gestionar implementacions)
     const API_URL = 'https://script.google.com/macros/s/AKfycbz-hUG84Bwtu8n8iefOE1LqDEXO-Bq0ybMw4At1kd_jLtJrtOwblgu-BwD1u_qlo9vC/exec';
-    // Ha de coincidir exactament amb TOKEN_APP a code.gs
-    const TOKEN_APP = 'vLBdWTmjvBCu85fbmiT-v58qQVmAWJtD';
 
-    // Petició de lectura (GET, sense cos)
-    async function cridarGet(action, params) {
-      const url = new URL(API_URL);
-      url.searchParams.set('action', action);
-      url.searchParams.set('token', TOKEN_APP);
-      Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v == null ? '' : v));
-
-      const resposta = await fetch(url);
-      const dades = await resposta.json();
+    // Totes les crides són POST amb Content-Type text/plain per evitar la comprovació prèvia CORS
+    async function api(action, params) {
+      let resposta;
+      try {
+        resposta = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, params: params || {} })
+        });
+      } catch (err) {
+        throw new Error('No s\'ha pogut connectar amb el servidor. Comprova la connexió i que la implementació de Apps Script tingui accés "Qualsevol usuari".');
+      }
+      let dades;
+      try {
+        dades = await resposta.json();
+      } catch (err) {
+        throw new Error('El servidor no ha respost bé (' + resposta.status + '). Comprova que API_URL apunta a la URL /exec i que has creat una versió nova de la implementació.');
+      }
       if (dades.error) throw new Error(dades.message);
       return dades.resultat;
     }
 
-    // Petició d'escriptura (POST). Content-Type text/plain per evitar el preflight CORS.
-    async function cridarPost(action, cos) {
-      const resposta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(Object.assign({ action: action, token: TOKEN_APP }, cos || {}))
+    // =====================================================================
+    // UTILITATS
+    // =====================================================================
+    const NOTA_MAXIMA = 10, NOTA_APROVAT = 5, NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE = 4;
+    const NOTES_RAPIDES = [4, 5, 6, 7, 8, 9, 10];
+
+    function esc(text) {
+      return String(text === null || text === undefined ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function $(id) { return document.getElementById(id); }
+    function esBuit(v) { return v === undefined || v === null || v === ''; }
+    function normalitzar(t) { return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+    function fmt(n, decimals) { return Number(n).toFixed(decimals === undefined ? 2 : decimals).replace('.', ','); }
+    function fmtValor(v) { return esBuit(v) ? '–' : String(v).replace('.', ','); }
+
+    function clauAlumne(a) {
+      return a.id ? 'id:' + String(a.id).toLowerCase() : 'nom:' + a.nom + '||' + a.cognoms;
+    }
+
+    function inicials(a) {
+      const primera = t => (String(t || '').trim()[0] || '').toUpperCase();
+      return primera(a.nom) + primera(a.cognoms);
+    }
+
+    // Classe de color de l'avatar segons el grup (g0 = sense grup)
+    function classeGrup(grup) {
+      const n = parseInt(grup);
+      return isNaN(n) || n < 1 ? 'g0' : 'g' + (((n - 1) % 6) + 1);
+    }
+
+    function htmlAvatar(a, grup, mida) {
+      const estil = mida ? `style="width:${mida}px;height:${mida}px;font-size:${Math.round(mida / 3)}px"` : '';
+      return `<div class="av ${classeGrup(grup)}" ${estil} aria-hidden="true">${esc(inicials(a))}</div>`;
+    }
+
+    // Nota final amb color + icona (no només color): ✓ aprovat, ✕ suspès, – pendent
+    function htmlNota(nota, mida, titol) {
+      const t = titol ? ` title="${esc(titol)}"` : '';
+      const text = mida === 'gran' ? 'text-xl' : 'text-[15px]';
+      if (esBuit(nota)) return `<span class="pill pill-buit ${text}"${t}>–</span>`;
+      const ok = Number(nota) >= NOTA_APROVAT;
+      return `<span class="pill ${ok ? 'pill-ok' : 'pill-ko'} ${text}"${t}><span aria-hidden="true">${ok ? '✓' : '✕'}</span>${fmt(nota)}<span class="sr-only">${ok ? ' aprovat' : ' suspès'}</span></span>`;
+    }
+
+    function cursPerDefecte() {
+      const ara = new Date();
+      const any = ara.getFullYear() % 100;
+      const inici = ara.getMonth() >= 7 ? any : any - 1; // a partir d'agost, curs nou
+      return String(inici).padStart(2, '0') + '/' + String(inici + 1).padStart(2, '0');
+    }
+
+    // Barreja uniforme (Fisher-Yates)
+    function barrejar(llista) {
+      const a = llista.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    let avisTimeout = null;
+    function mostrarAvis(text, tipus) {
+      const el = $('avis');
+      const colors = { error: 'background:#b91c1c;color:#fff', ok: 'background:#047857;color:#fff', info: 'background:#1e293b;color:#fff' };
+      el.style.cssText = (colors[tipus] || colors.info) + ';bottom:' + (vistaActual === 'avaluar' && estudiants.length ? 150 : 76) + 'px';
+      el.textContent = text;
+      el.classList.remove('hidden');
+      clearTimeout(avisTimeout);
+      avisTimeout = setTimeout(() => el.classList.add('hidden'), tipus === 'error' ? 7000 : 4500);
+    }
+
+    function opcions(llista, valorFn, textFn) {
+      return llista.map(x => `<option value="${esc(valorFn(x))}">${esc(textFn(x))}</option>`).join('');
+    }
+
+    function descarregarFitxer(nom, contingut, tipus) {
+      const blob = new Blob([contingut], { type: tipus });
+      const enllac = document.createElement('a');
+      enllac.href = URL.createObjectURL(blob);
+      enllac.download = nom;
+      document.body.appendChild(enllac);
+      enllac.click();
+      setTimeout(() => { URL.revokeObjectURL(enllac.href); enllac.remove(); }, 1000);
+    }
+
+    // Mateixa lògica que calcularNotaFinal() a code.gs
+    function calcularNotaFinal(criteris, notesAlumne) {
+      let suma = 0, completes = criteris.length > 0, suspenImprescindible = false;
+      criteris.forEach(c => {
+        const v = notesAlumne[c.nom];
+        if (esBuit(v) || isNaN(Number(v))) { completes = false; return; }
+        const n = Number(v);
+        suma += n * (c.pes / 100);
+        if (c.imprescindible && n < NOTA_APROVAT) suspenImprescindible = true;
       });
-      const dades = await resposta.json();
-      if (dades.error) throw new Error(dades.message);
-      return dades.resultat;
+      if (!completes) return { nota: '', limitada: false };
+      const nota = Math.round(suma * 100) / 100;
+      const limitada = suspenImprescindible && nota > NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE;
+      return { nota: limitada ? NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE : nota, limitada };
     }
 
-    // ---- Estat "Avaluar" ----
-    let estudiants = [];        // [{ nom, cognoms }]
-    let criteris = [];          // [{ nom, pes }]
-    let notes = {};             // { clauAlumne: { nomCriteri: valorString } }
-    let observacionsIndividuals = {}; // { clauAlumne: text }
-    let observacionsGrup = {};        // { grupId: text }
-    let grups = {};              // { clauAlumne: grupId }
-    let coordinadors = {};       // { grupId: clauAlumne }
-    let guardarEsborranyTimeout = null;
-
-    // ---- Estat "Resultats" ----
-    let sessionsListades = [];
-    let sessioOberta = null;
-    let resultatsSessio = [];
-
-    function clauAlumne(nom, cognoms) { return nom + '||' + cognoms; }
-    function idSegur(text) { return text.replace(/[^a-zA-Z0-9]/g, '_'); }
+    // =====================================================================
+    // NAVEGACIÓ
+    // =====================================================================
+    let vistaActual = 'avaluar';
+    let resultatsCercats = false;
 
     function canviarVista(v) {
-      document.getElementById('vista-avaluar').classList.toggle('hidden', v !== 'avaluar');
-      document.getElementById('vista-resultats').classList.toggle('hidden', v !== 'resultats');
-      document.getElementById('vista-importar').classList.toggle('hidden', v !== 'importar');
-      document.getElementById('tab-avaluar').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
-        (v === 'avaluar' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
-      document.getElementById('tab-resultats').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
-        (v === 'resultats' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
-      document.getElementById('tab-importar').className = 'flex-1 text-sm font-semibold py-1.5 rounded-lg ' +
-        (v === 'importar' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white');
+      vistaActual = v;
+      ['avaluar', 'resultats', 'configurar', 'importar'].forEach(nom => $('vista-' + nom).classList.toggle('hidden', nom !== v));
+      document.querySelectorAll('#pestanyes button').forEach(b => {
+        if (b.dataset.vista === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      });
+      $('cap-avaluar').classList.toggle('hidden', v !== 'avaluar');
+      $('cap-resultats').classList.toggle('hidden', v !== 'resultats');
+      $('cap-simple').classList.toggle('hidden', v === 'avaluar' || v === 'resultats');
+      $('cap-simple-titol').textContent = v === 'configurar' ? 'Configurar' : 'Alumnat';
+      $('barra-exportar').classList.toggle('hidden', v !== 'avaluar' || estudiants.length === 0);
+      if (v === 'configurar') { if (!configuracio) carregarConfiguracio(); canviarSubConfig(subConfig); }
+      if (v === 'resultats' && !resultatsCercats) cercarResultats();
+      window.scrollTo(0, 0);
     }
 
-    // ---------------- CÀRREGA DE DESPLEGABLES ----------------
+    // =====================================================================
+    // DESPLEGABLES
+    // =====================================================================
+    let modulsDisponibles = [];
 
-    async function carregarModuls() {
-      const sel = document.getElementById('modul');
-      const selResultats = document.getElementById('resultats-modul');
+    async function carregarModuls(seleccionat) {
+      const sel = $('modul');
+      const selResultats = $('resultats-modul');
       try {
-        const moduls = await cridarGet('listarModuls');
-        if (moduls.length === 0) {
+        modulsDisponibles = await api('listarModuls');
+        if (modulsDisponibles.length === 0) {
           sel.innerHTML = '<option value="">Cap mòdul configurat</option>';
-          return;
+          selResultats.innerHTML = '<option value="">Tots els mòduls</option>';
+        } else {
+          const anterior = seleccionat || sel.value;
+          sel.innerHTML = opcions(modulsDisponibles, m => m, m => m);
+          if (anterior && modulsDisponibles.includes(anterior)) sel.value = anterior;
+          const anteriorRes = selResultats.value;
+          selResultats.innerHTML = '<option value="">Tots els mòduls</option>' + opcions(modulsDisponibles, m => m, m => m);
+          if (anteriorRes && modulsDisponibles.includes(anteriorRes)) selResultats.value = anteriorRes;
         }
-        sel.innerHTML = moduls.map(m => `<option value="${m}">${m}</option>`).join('');
-        selResultats.innerHTML = '<option value="">Tots</option>' + moduls.map(m => `<option value="${m}">${m}</option>`).join('');
+        await carregarSupositsAvaluar();
       } catch (err) {
         sel.innerHTML = '<option value="">Error</option>';
-        alert('No s\'han pogut carregar els mòduls: ' + err.message);
+        mostrarAvis('No s\'han pogut carregar els mòduls: ' + err.message, 'error');
       }
     }
 
     async function carregarClasses() {
-      const sel = document.getElementById('classe');
-      const selResultats = document.getElementById('resultats-classe');
+      const sel = $('classe');
+      const selResultats = $('resultats-classe');
       try {
-        const classes = await cridarGet('listarClasses');
+        const classes = await api('listarClasses');
         if (classes.length === 0) {
-          sel.innerHTML = '<option value="">Cap classe al Llistat</option>';
-          selResultats.innerHTML = '<option value="">Cap classe al Llistat</option>';
+          sel.innerHTML = selResultats.innerHTML = $('desd-classe').innerHTML = '<option value="">Cap classe al Llistat</option>';
           return;
         }
-        sel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
-        selResultats.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+        const anteriorDesd = $('desd-classe').value;
+        sel.innerHTML = selResultats.innerHTML = $('desd-classe').innerHTML = opcions(classes, c => c, c => c);
+        if (anteriorDesd && classes.includes(anteriorDesd)) $('desd-classe').value = anteriorDesd;
         carregarDesdoblaments(classes[0]);
+        carregarAlumnesFitxa();
       } catch (err) {
         sel.innerHTML = '<option value="">Error</option>';
-        alert('No s\'han pogut carregar les classes: ' + err.message);
+        mostrarAvis('No s\'han pogut carregar les classes: ' + err.message, 'error');
       }
     }
 
     async function carregarDesdoblaments(classe, valorSeleccionat) {
-      const sel = document.getElementById('desdoblament');
+      const sel = $('desdoblament');
       if (!classe) {
         sel.innerHTML = '<option value="General">General (tota la classe)</option>';
         return;
       }
       try {
-        const desdoblaments = await cridarGet('listarDesdoblaments', { classe });
-        sel.innerHTML = desdoblaments.map(d =>
-          `<option value="${d}">${d === 'General' ? 'General (tota la classe)' : d}</option>`).join('');
+        const desdoblaments = await api('listarDesdoblaments', { classe });
+        sel.innerHTML = opcions(desdoblaments, d => d, d => d === 'General' ? 'General (tota la classe)' : d);
         if (valorSeleccionat) sel.value = valorSeleccionat;
       } catch (err) {
         sel.innerHTML = '<option value="General">General (tota la classe)</option>';
       }
     }
 
-    // ---------------- AVALUAR: CÀRREGA D'ALUMNES ----------------
+    // ---- Supòsits del mòdul (desplegable "Supòsit / sessió avaluada") ----
+    let supositsAvaluar = [];
 
-    async function carregarAlumnes() {
-      const classe = document.getElementById('classe').value;
-      const desdoblament = document.getElementById('desdoblament').value;
-      const modul = document.getElementById('modul').value;
-
-      if (!classe) {
-        alert('Selecciona una classe primer.');
-        return;
+    async function carregarSupositsAvaluar(valorSeleccionat) {
+      const modul = $('modul').value;
+      const sel = $('sessio-select');
+      supositsAvaluar = [];
+      if (modul) {
+        try { supositsAvaluar = await api('listarSuposits', { modul }); } catch (err) { /* sense supòsits */ }
       }
+      sel.innerHTML = opcions(supositsAvaluar, s => s.nom, s => s.nom + (s.data ? ' · ' + s.data : '')) +
+        '<option value="__altre__">✎ Altre (text lliure)</option>';
+      if (valorSeleccionat !== undefined) posarSessio(valorSeleccionat);
+      canviSessioSelect();
+    }
 
-      document.getElementById('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant alumnes...</p>';
-      document.getElementById('status').innerText = '';
+    function posarSessio(nom) {
+      const sel = $('sessio-select');
+      if (supositsAvaluar.some(s => s.nom === nom)) {
+        sel.value = nom;
+      } else {
+        sel.value = '__altre__';
+        $('sessio-avaluada').value = nom;
+      }
+      canviSessioSelect();
+    }
+
+    function canviSessioSelect() {
+      const valor = $('sessio-select').value;
+      $('sessio-avaluada').classList.toggle('hidden', valor !== '__altre__');
+      const s = supositsAvaluar.find(x => x.nom === valor);
+      const desc = $('sessio-descripcio');
+      desc.textContent = s && s.descripcio ? s.descripcio : '';
+      desc.classList.toggle('hidden', !(s && s.descripcio));
+    }
+
+    function obtenirSessio() {
+      const valor = $('sessio-select').value;
+      return (valor === '__altre__' ? $('sessio-avaluada').value : valor).trim();
+    }
+
+    // =====================================================================
+    // AVALUAR: ESTAT
+    // =====================================================================
+    let estudiants = [];               // [{ nom, cognoms, id }]
+    let criteris = [];                 // [{ nom, pes, tipus, nivells, imprescindible }]
+    let notes = {};                    // { clauAlumne: { nomCriteri: valor } }
+    let observacionsIndividuals = {};  // { clauAlumne: text }
+    let observacionsGrup = {};         // { grupId: text }
+    let grups = {};                    // { clauAlumne: grupId }
+    let coordinadors = {};             // { grupId: clauAlumne }
+    let sessioCarregada = null;        // configuració amb què s'han carregat els alumnes
+    let canvisPendents = false;
+    let alumneObert = -1;              // índex de la targeta oberta
+    let filtrePendents = false;
+    let grupsOberts = false;
+    let observacioOberta = {};         // { índex: true } quan s'ha premut "Afegir observació"
+    let guardarEsborranyTimeout = null;
+
+    function configSessioActual() {
+      return [$('curs').value, $('modul').value, $('classe').value, $('desdoblament').value, obtenirSessio()].join('|');
+    }
+
+    function configSessioCanviada() {
+      $('avis-config').classList.toggle('hidden', !sessioCarregada || sessioCarregada === configSessioActual());
+    }
+
+    function marcarCanvis() { canvisPendents = true; }
+
+    window.addEventListener('beforeunload', e => {
+      if (canvisPendents || desdCanvis) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    // Capçalera de la vista Avaluar: resum de la sessió carregada
+    function actualitzarCapcaleraAvaluar() {
+      const carregada = estudiants.length > 0;
+      $('cap-avaluar-etiqueta').textContent = carregada ? 'Avaluant' : 'Nova sessió';
+      $('cap-avaluar-titol').textContent = carregada ? (obtenirSessio() || 'Sessió sense nom') : 'Configura la sessió';
+      $('boto-canviar-sessio').classList.toggle('hidden', !carregada);
+      const xips = $('cap-avaluar-xips');
+      xips.classList.toggle('hidden', !carregada);
+      if (carregada) {
+        const desd = $('desdoblament').value;
+        xips.innerHTML = [$('modul').value, $('classe').value + (desd && desd !== 'General' ? ' · ' + desd : ''), $('curs').value]
+          .filter(Boolean).map(t => `<span class="xip">${esc(t)}</span>`).join('');
+      }
+    }
+
+    function obrirConfigSessio() {
+      $('panell-config').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // =====================================================================
+    // AVALUAR: CÀRREGA D'ALUMNES
+    // =====================================================================
+    async function carregarAlumnes() {
+      const classe = $('classe').value;
+      const desdoblament = $('desdoblament').value;
+      const modul = $('modul').value;
+      const sessio = obtenirSessio();
+
+      if (!classe) { mostrarAvis('Selecciona una classe primer.', 'error'); return; }
+      if (canvisPendents && !confirm('Tens notes sense exportar (estan guardades com a esborrany en aquest dispositiu). Vols carregar igualment?')) return;
+
+      $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant alumnes...</p>';
+      mostrarStatus('');
 
       try {
         const [alumnesData, criterisData] = await Promise.all([
-          cridarGet('obtenirAlumnes', { classe, desdoblament }),
-          cridarGet('obtenirCriteris', { modul })
+          api('obtenirAlumnes', { classe, desdoblament }),
+          api('obtenirCriteris', { modul, suposit: sessio })
         ]);
         estudiants = alumnesData;
         criteris = criterisData;
-        grups = {};
-        coordinadors = {};
-        notes = {};
-        observacionsIndividuals = {};
-        observacionsGrup = {};
+        grups = {}; coordinadors = {}; notes = {}; observacionsIndividuals = {}; observacionsGrup = {};
+        observacioOberta = {};
+        canvisPendents = false;
         restaurarEsborrany();
+        sessioCarregada = configSessioActual();
+        configSessioCanviada();
+        avisarNomsDuplicats();
+        alumneObert = seguentPendent(-1);
+        if (estudiants.length) $('panell-config').classList.add('hidden');
         renderitzarAssignacioGrups();
         renderitzarLlista();
       } catch (err) {
-        document.getElementById('llista-alumnes').innerHTML =
-          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+        $('llista-alumnes').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
+    }
+
+    function avisarNomsDuplicats() {
+      const vistos = {}, duplicats = [];
+      estudiants.forEach(a => {
+        const k = a.nom + ' ' + a.cognoms;
+        if (vistos[k] && !(a.id && vistos[k].id)) duplicats.push(k);
+        vistos[k] = a;
+      });
+      if (duplicats.length) mostrarAvis(`Hi ha alumnes amb el mateix nom i sense correu (${duplicats.join(', ')}). Importa'ls de Classroom o posa'ls el correu a "👤 Llistat" perquè no es barregin.`, 'error');
     }
 
     function obtenirNota(clau, nomCriteri) {
-      return (notes[clau] && notes[clau][nomCriteri]) || '';
+      const v = notes[clau] ? notes[clau][nomCriteri] : undefined;
+      return esBuit(v) ? '' : v; // un 0 és una nota vàlida, no un camp buit
     }
 
-    // Renderitza la llista d'avaluació a la pantalla, amb un input per criteri i la nota final calculada
+    function posarValorNota(clau, nomCriteri, valor) {
+      if (!notes[clau]) notes[clau] = {};
+      if (esBuit(valor)) delete notes[clau][nomCriteri]; else notes[clau][nomCriteri] = valor;
+    }
+
+    function itemsOmplerts(i) {
+      const n = notes[clauAlumne(estudiants[i])] || {};
+      return criteris.filter(c => !esBuit(n[c.nom])).length;
+    }
+    function esComplet(i) { return itemsOmplerts(i) === criteris.length; }
+
+    // =====================================================================
+    // AVALUAR: TARGETES D'ALUMNE
+    // =====================================================================
+    function htmlCriteri(i, j, c, clau) {
+      const valor = obtenirNota(clau, c.nom);
+      const capcalera = `
+        <div class="flex justify-between items-baseline gap-2 mb-1.5">
+          <span class="font-medium text-[15px]">${esc(c.nom)}${c.imprescindible ? ' <span class="etiqueta t-ko" style="background:var(--ko-bg)">IMPRESCINDIBLE</span>' : ''}</span>
+          <span class="t3 text-[14px] shrink-0">${esc(c.pes)}%</span>
+        </div>`;
+
+      if (c.tipus === 'sino') {
+        const esSi = valor !== '' && Number(valor) === NOTA_MAXIMA;
+        const esNo = valor !== '' && Number(valor) === 0;
+        return `<div data-crit="${j}">${capcalera}
+          <div class="seg text-[15px]" role="group" aria-label="${esc(c.nom)}">
+            <button type="button" onclick="clicNota(${i}, ${j}, ${NOTA_MAXIMA})" aria-pressed="${esSi}" class="${esSi ? 'seg-si' : ''}">✓ Sí</button>
+            <button type="button" onclick="clicNota(${i}, ${j}, 0)" aria-pressed="${esNo}" class="${esNo ? 'seg-no' : ''}">✕ No</button>
+          </div></div>`;
+      }
+
+      if (c.tipus === 'rubrica') {
+        const cols = Math.min(c.nivells.length, 4);
+        const botons = c.nivells.map(n => {
+          const actiu = valor !== '' && Number(valor) === Number(n.valor);
+          return `<button type="button" onclick="clicNota(${i}, ${j}, ${Number(n.valor)})" aria-pressed="${actiu}" title="${esc(n.nom)} = ${esc(n.valor)}"
+                    class="opcio ${actiu ? 'opcio-activa' : ''} px-1 py-1.5 leading-tight text-[14px]">${esc(n.nom)}<br><span class="text-[12px] font-normal opacity-80">${fmtValor(n.valor)}</span></button>`;
+        }).join('');
+        return `<div data-crit="${j}">${capcalera}<div class="grid gap-1.5" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${botons}</div></div>`;
+      }
+
+      const rapides = NOTES_RAPIDES.map(v => {
+        const actiu = valor !== '' && Number(valor) === v;
+        return `<button type="button" data-v="${v}" onclick="clicNota(${i}, ${j}, ${v})" aria-pressed="${actiu}" class="opcio ${actiu ? 'opcio-activa' : ''} text-[15px]">${v}</button>`;
+      }).join('');
+      return `<div data-crit="${j}">${capcalera}
+        <div class="grid grid-cols-7 gap-1.5">${rapides}</div>
+        <label class="flex items-center gap-2 mt-1.5 text-[14px] t3">o escriu-la:
+          <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" aria-label="${esc(c.nom)}"
+                 id="nota-${i}-${j}" value="${esc(valor)}" oninput="escriureNota(${i}, ${j}, this)" placeholder="–"
+                 class="camp !w-20 !py-1 text-center font-bold">
+        </label></div>`;
+    }
+
+    function textSubtitol(i) {
+      const clau = clauAlumne(estudiants[i]);
+      const grupId = grups[clau];
+      const parts = [];
+      if (grupId) parts.push('Grup ' + grupId + (coordinadors[grupId] === clau ? ' ★ coord.' : ''));
+      const fets = itemsOmplerts(i);
+      parts.push(fets === 0 ? 'pendent' : `${fets}/${criteris.length} ítems`);
+      return parts.join(' · ');
+    }
+
+    function htmlNotaAlumne(i) {
+      const r = calcularNotaFinal(criteris, notes[clauAlumne(estudiants[i])] || {});
+      return htmlNota(r.nota, 'gran', r.limitada ? `Limitada a ${NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE} per un ítem imprescindible suspès` : '');
+    }
+
+    function htmlTarjeta(i) {
+      const alumne = estudiants[i];
+      const clau = clauAlumne(alumne);
+      const grupId = grups[clau] || null;
+      const esCoordinador = grupId && coordinadors[grupId] === clau;
+      const obert = i === alumneObert;
+      const percent = criteris.length ? Math.round(itemsOmplerts(i) / criteris.length * 100) : 0;
+
+      const cap = `
+        <button type="button" onclick="obrirAlumne(${i})" aria-expanded="${obert}" class="w-full flex items-center gap-3 text-left p-3.5">
+          ${htmlAvatar(alumne, grupId)}
+          <span class="flex-1 min-w-0">
+            <span class="block font-semibold ${obert ? 'text-[17px]' : 'text-[16px]'} truncate">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</span>
+            <span id="sub-${i}" class="block text-[13px] t3 truncate">${esc(textSubtitol(i))}</span>
+          </span>
+          <span id="final-${i}">${htmlNotaAlumne(i)}</span>
+        </button>`;
+
+      if (!obert) return cap;
+
+      const obs = observacionsIndividuals[clau] || '';
+      const obsHtml = obs || observacioOberta[i]
+        ? `<textarea placeholder="Observacions de ${esc(alumne.nom)}..." rows="2" aria-label="Observacions individuals"
+                     oninput="canviarObservacioIndividual(${i}, this.value)" class="camp">${esc(obs)}</textarea>`
+        : `<button type="button" onclick="observacioOberta[${i}] = true; renderitzarTarjeta(${i}); document.querySelector('#tarjeta-${i} textarea').focus()" class="btn btn-vora w-full !justify-start">
+             <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Afegir observació</button>`;
+
+      return `${cap}
+        <div class="px-4 pb-4 space-y-4">
+          <div class="barra"><div id="barra-${i}" style="width:${percent}%"></div></div>
+          ${criteris.map((c, j) => htmlCriteri(i, j, c, clau)).join('')}
+          ${obsHtml}
+          ${esCoordinador ? `
+            <div>
+              <span class="lbl t-warn">★ Observacions del grup ${grupId} (s'apliquen a tot el grup)</span>
+              <textarea placeholder="Observacions del grup..." rows="2" aria-label="Observacions del grup"
+                        oninput="canviarObservacioGrup(${grupId}, this.value)" class="camp">${esc(observacionsGrup[grupId] || '')}</textarea>
+            </div>` : ''}
+          <button type="button" onclick="anarSeguentPendent(${i})" class="btn btn-accent w-full">Següent pendent ›</button>
+        </div>`;
+    }
+
     function renderitzarLlista() {
-      const contenidor = document.getElementById('llista-alumnes');
-      contenidor.innerHTML = '';
+      const contenidor = $('llista-alumnes');
+      $('eines-panell').classList.toggle('hidden', estudiants.length === 0);
+      $('panell-grups').classList.toggle('hidden', estudiants.length === 0);
+      $('barra-exportar').classList.toggle('hidden', vistaActual !== 'avaluar' || estudiants.length === 0);
+      actualitzarCapcaleraAvaluar();
 
       if (estudiants.length === 0) {
-        contenidor.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">No hi ha alumnes carregats.</p>';
+        contenidor.innerHTML = '<p class="text-center t3 py-6">No hi ha alumnes en aquesta classe / desdoblament.</p>';
+        actualitzarProgres();
         return;
       }
 
-      estudiants.forEach(alumne => {
-        const clau = clauAlumne(alumne.nom, alumne.cognoms);
-        const idSegurAlumne = idSegur(clau);
-        const grupId = grups[clau] || null;
-        const esCoordinador = grupId && coordinadors[grupId] === clau;
-
-        const div = document.createElement('div');
-        div.className = "py-3 flex flex-col gap-2";
-
-        const clauEsc = clau.replace(/'/g, "\\'");
-
-        const inputsCriteris = criteris.map((c, idx) => `
-          <div class="flex items-center gap-2">
-            <span class="flex-1 min-w-0 text-xs text-slate-600">${c.nom} <span class="text-slate-400">(${c.pes}%)</span></span>
-            <button type="button" onclick="posarNotaMaxima('${clauEsc}', ${idx})"
-                    class="shrink-0 text-[10px] font-bold bg-green-50 text-green-700 px-2 py-1.5 rounded-lg hover:bg-green-100">MÀX</button>
-            <input type="number" step="0.1" min="0" max="10"
-                   id="nota-${idSegurAlumne}-${idx}"
-                   oninput="canviarNota('${clauEsc}', ${idx}, this.value)"
-                   value="${obtenirNota(clau, c.nom)}"
-                   class="w-14 shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-1.5 text-center text-xs font-bold focus:outline-none focus:bg-white focus:border-indigo-500"
-                   placeholder="-">
-          </div>
-        `).join('');
-
-        div.innerHTML = `
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-sm font-semibold text-slate-800 min-w-0 truncate">${alumne.cognoms}, ${alumne.nom}</span>
-            <div class="flex items-center gap-2 shrink-0">
-              ${grupId ? `<span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Grup ${grupId}</span>` : ''}
-              <span class="text-xs bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 font-bold text-amber-700">Final: <span id="final-${idSegurAlumne}">-</span></span>
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            ${inputsCriteris}
-          </div>
-
-          <textarea placeholder="Observacions individuals de ${alumne.nom}..." rows="1"
-                    oninput="canviarObservacioIndividual('${clau.replace(/'/g, "\\'")}', this.value)"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-indigo-500 resize-none">${observacionsIndividuals[clau] || ''}</textarea>
-
-          ${grupId ? `
-            ${esCoordinador ? `
-              <div class="text-[10px] text-amber-600 font-bold uppercase tracking-wider pl-2">Representant del grup (Propaga Notes)</div>
-              <textarea placeholder="Observacions del grup (s'aplicarà a tot el grup)..." rows="1"
-                        oninput="canviarObservacioGrup(${grupId}, this.value)"
-                        class="w-full bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-xs focus:outline-none focus:bg-white focus:border-amber-400 resize-none">${observacionsGrup[grupId] || ''}</textarea>
-            ` : ''}
-          ` : ''}
-        `;
-        contenidor.appendChild(div);
-      });
-
-      estudiants.forEach(alumne => actualitzarNotaFinal(clauAlumne(alumne.nom, alumne.cognoms)));
+      contenidor.innerHTML = estudiants.map((a, i) =>
+        `<article id="tarjeta-${i}" data-cerca="${esc(normalitzar(a.nom + ' ' + a.cognoms))}" class="card ${i === alumneObert ? 'card-activa' : ''}">${htmlTarjeta(i)}</article>`
+      ).join('');
+      aplicarVisibilitat();
+      actualitzarProgres();
     }
 
-    // Recalcula i mostra la nota final ponderada d'un alumne segons els criteris configurats
-    function actualitzarNotaFinal(clau) {
-      const el = document.getElementById(`final-${idSegur(clau)}`);
+    function renderitzarTarjeta(i) {
+      const el = $('tarjeta-' + i);
       if (!el) return;
-
-      const notesAlumne = notes[clau] || {};
-      let suma = 0;
-      let completes = criteris.length > 0;
-
-      criteris.forEach(c => {
-        const valor = parseFloat(notesAlumne[c.nom]);
-        if (isNaN(valor)) {
-          completes = false;
-        } else {
-          suma += valor * (c.pes / 100);
-        }
-      });
-
-      el.textContent = completes ? suma.toFixed(2) : '-';
+      el.innerHTML = htmlTarjeta(i);
+      el.classList.toggle('card-activa', i === alumneObert);
     }
 
-    // Renderitza, dins de "Grups Temporals", la llista d'alumnes amb el seu desplegable de grup
-    // i (si ja tenen grup) la casella de coordinador/a. Es fa ABANS del panell de qualificació.
-    function renderitzarAssignacioGrups() {
-      const cont = document.getElementById('llista-assignacio-grups');
+    // Actualitza només la capçalera d'una targeta (sense tocar els camps que s'estan escrivint)
+    function actualitzarCapTarjeta(i) {
+      if ($('final-' + i)) $('final-' + i).innerHTML = htmlNotaAlumne(i);
+      if ($('sub-' + i)) $('sub-' + i).textContent = textSubtitol(i);
+      if ($('barra-' + i)) $('barra-' + i).style.width = (criteris.length ? Math.round(itemsOmplerts(i) / criteris.length * 100) : 0) + '%';
+    }
 
-      if (estudiants.length === 0) {
-        cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">Carrega els alumnes per poder formar grups.</p>';
+    function obrirAlumne(i) {
+      const anterior = alumneObert;
+      alumneObert = alumneObert === i ? -1 : i;
+      if (anterior >= 0) renderitzarTarjeta(anterior);
+      if (alumneObert >= 0) {
+        renderitzarTarjeta(alumneObert);
+        const el = $('tarjeta-' + alumneObert);
+        if (el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }
+
+    function seguentPendent(desDe) {
+      for (let k = 1; k <= estudiants.length; k++) {
+        const i = (desDe + k + estudiants.length) % estudiants.length;
+        if (!esComplet(i) && visible(i)) return i;
+      }
+      return -1;
+    }
+
+    function anarSeguentPendent(i) {
+      const seg = seguentPendent(i);
+      if (seg === -1 || seg === i) {
+        mostrarAvis(seg === -1 ? 'Tots els alumnes estan avaluats. Ja pots exportar.' : 'Aquest és l\'últim alumne pendent.', 'ok');
+        if (seg === -1) obrirAlumne(i); // plega la targeta
         return;
       }
+      obrirAlumne(seg);
+    }
 
-      const nGrups = Math.max(1, parseInt(document.getElementById('nombre-grups').value) || 1);
-      const opcions = Array.from({ length: nGrups }, (_, i) => i + 1);
+    function actualitzarProgres() {
+      const total = estudiants.length;
+      let complets = 0;
+      estudiants.forEach((_, i) => { if (esComplet(i)) complets++; });
+      $('progres').textContent = total ? `${complets} de ${total} avaluats` : '';
+      $('progres-barra').style.width = (total ? Math.round(complets / total * 100) : 0) + '%';
+    }
 
-      cont.innerHTML = estudiants.map(alumne => {
-        const clau = clauAlumne(alumne.nom, alumne.cognoms);
-        const clauEsc = clau.replace(/'/g, "\\'");
+    function mostrarStatus(html, color) {
+      const el = $('status');
+      el.innerHTML = html;
+      el.className = 'text-[13px] text-center ' + (color || 't2') + (html ? '' : ' hidden');
+    }
+
+    // ---- Cerca i filtre de pendents ----
+    function visible(i) {
+      const el = $('tarjeta-' + i);
+      const cerca = normalitzar(($('cerca-alumne').value || '').trim());
+      const coincideix = !cerca || (el ? el.dataset.cerca : normalitzar(estudiants[i].nom + ' ' + estudiants[i].cognoms)).includes(cerca);
+      return coincideix && (!filtrePendents || !esComplet(i) || i === alumneObert);
+    }
+
+    function aplicarVisibilitat() {
+      estudiants.forEach((_, i) => {
+        const el = $('tarjeta-' + i);
+        if (el) el.classList.toggle('hidden', !visible(i));
+      });
+      const boto = $('boto-pendents');
+      boto.setAttribute('aria-pressed', filtrePendents);
+      boto.style.background = filtrePendents ? 'var(--accent)' : '';
+      boto.style.color = filtrePendents ? '#fff' : '';
+    }
+
+    // =====================================================================
+    // AVALUAR: GRUPS
+    // =====================================================================
+    function renderitzarAssignacioGrups() {
+      const cont = $('llista-assignacio-grups');
+      $('contingut-grups').classList.toggle('hidden', !grupsOberts);
+      $('fletxa-grups').style.transform = grupsOberts ? 'rotate(180deg)' : '';
+
+      const nAssignats = Object.keys(grups).length;
+      const nGrupsUsats = new Set(Object.values(grups)).size;
+      $('resum-grups').textContent = nAssignats ? `${nGrupsUsats} grup${nGrupsUsats === 1 ? '' : 's'} · ${nAssignats} de ${estudiants.length} alumnes assignats` : 'Opcional · sense grups';
+
+      if (estudiants.length === 0) { cont.innerHTML = ''; return; }
+
+      const nGrups = Math.max(1, parseInt($('nombre-grups').value) || 1);
+      const opcionsGrup = Array.from({ length: nGrups }, (_, k) => k + 1);
+
+      cont.innerHTML = estudiants.map((alumne, i) => {
+        const clau = clauAlumne(alumne);
         const grupId = grups[clau] || '';
         const esCoordinador = grupId && coordinadors[grupId] === clau;
-
         return `
-          <div class="flex items-center justify-between gap-2 py-1.5">
-            <span class="text-xs text-slate-700 truncate flex-1 min-w-0">${alumne.cognoms}, ${alumne.nom}</span>
-            <select onchange="assignarGrupManual('${clauEsc}', this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-600 shrink-0">
+          <div class="flex items-center gap-2 py-2">
+            ${htmlAvatar(alumne, grupId, 32)}
+            <span class="text-[14px] truncate flex-1 min-w-0">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</span>
+            <select onchange="assignarGrupManual(${i}, this.value)" aria-label="Grup de ${esc(alumne.nom)}" class="camp !w-auto !py-1 !px-2 !text-[14px]">
               <option value="">Cap</option>
-              ${opcions.map(g => `<option value="${g}" ${Number(grupId) === g ? 'selected' : ''}>Grup ${g}</option>`).join('')}
+              ${opcionsGrup.map(g => `<option value="${g}" ${Number(grupId) === g ? 'selected' : ''}>Grup ${g}</option>`).join('')}
             </select>
             ${grupId ? `
-              <label class="flex items-center gap-1 text-[10px] text-amber-600 font-semibold cursor-pointer shrink-0">
-                <input type="checkbox" name="coord-${grupId}" ${esCoordinador ? 'checked' : ''}
-                       onchange="assignarCoordinador('${clauEsc}', ${grupId}, this.checked)"
-                       class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                Coord.
-              </label>
-            ` : '<span class="w-12 shrink-0"></span>'}
-          </div>
-        `;
+              <label class="flex items-center gap-1 text-[13px] t-warn font-semibold cursor-pointer shrink-0">
+                <input type="checkbox" ${esCoordinador ? 'checked' : ''} onchange="assignarCoordinador(${i}, this.checked)"> ★
+              </label>` : '<span class="w-9 shrink-0"></span>'}
+          </div>`;
       }).join('');
     }
 
-    function assignarGrupManual(clau, grupVal) {
-      if (grupVal === "") {
-        delete grups[clau];
-        Object.keys(coordinadors).forEach(g => { if (coordinadors[g] === clau) delete coordinadors[g]; });
-      } else {
-        grups[clau] = parseInt(grupVal);
-      }
+    function despresDeCanviGrups() {
+      marcarCanvis();
       guardarEsborrany();
       renderitzarAssignacioGrups();
       renderitzarLlista();
     }
 
-    // Distribueix tots els alumnes de manera aleatòria i equilibrada entre el nombre de grups triat
+    function assignarGrupManual(i, grupVal) {
+      const clau = clauAlumne(estudiants[i]);
+      Object.keys(coordinadors).forEach(g => { if (coordinadors[g] === clau) delete coordinadors[g]; });
+      if (grupVal === '') delete grups[clau]; else grups[clau] = parseInt(grupVal);
+      despresDeCanviGrups();
+    }
+
+    // Reparteix tots els alumnes de manera aleatòria i equilibrada; el primer de cada grup coordina
     function crearGrupsAutomatics() {
       if (estudiants.length === 0) return;
-
-      const nGrups = Math.max(1, parseInt(document.getElementById('nombre-grups').value) || 1);
-      grups = {};
-      coordinadors = {};
-      observacionsGrup = {};
-
-      const clausMesclades = estudiants.map(a => clauAlumne(a.nom, a.cognoms)).sort(() => Math.random() - 0.5);
-      const coordinadorAssignat = {};
-
-      clausMesclades.forEach((clau, idx) => {
+      if (Object.keys(grups).length && !confirm('Això substituirà els grups actuals. Continuar?')) return;
+      const nGrups = Math.max(1, parseInt($('nombre-grups').value) || 1);
+      grups = {}; coordinadors = {}; observacionsGrup = {};
+      barrejar(estudiants.map(clauAlumne)).forEach((clau, idx) => {
         const grupId = (idx % nGrups) + 1;
         grups[clau] = grupId;
-        if (!coordinadorAssignat[grupId]) {
-          coordinadors[grupId] = clau;
-          coordinadorAssignat[grupId] = true;
-        }
+        if (!coordinadors[grupId]) coordinadors[grupId] = clau;
       });
-
-      guardarEsborrany();
-      renderitzarAssignacioGrups();
-      renderitzarLlista();
+      despresDeCanviGrups();
     }
 
     function desferGrups() {
-      grups = {};
-      coordinadors = {};
-      observacionsGrup = {};
-      guardarEsborrany();
-      renderitzarAssignacioGrups();
-      renderitzarLlista();
+      grups = {}; coordinadors = {}; observacionsGrup = {};
+      despresDeCanviGrups();
     }
 
-    function assignarCoordinador(clau, grupId, checked) {
-      if (checked) {
-        coordinadors[grupId] = clau;
-      } else if (coordinadors[grupId] === clau) {
-        delete coordinadors[grupId];
+    function assignarCoordinador(i, checked) {
+      const clau = clauAlumne(estudiants[i]);
+      const grupId = grups[clau];
+      if (checked) coordinadors[grupId] = clau;
+      else if (coordinadors[grupId] === clau) delete coordinadors[grupId];
+      despresDeCanviGrups();
+    }
+
+    // =====================================================================
+    // AVALUAR: NOTES
+    // =====================================================================
+
+    // Clic a una nota ràpida, Sí/No o nivell de rúbrica. Tornar a clicar l'opció activa l'esborra.
+    function clicNota(i, j, valor) {
+      const clau = clauAlumne(estudiants[i]);
+      const actual = obtenirNota(clau, criteris[j].nom);
+      const nou = actual !== '' && Number(actual) === valor ? '' : valor;
+      canviarNota(i, j, nou);
+      renderitzarTarjeta(i);
+    }
+
+    // Escriptura al camp numèric: es limita a 0-10 sense perdre el focus
+    function escriureNota(i, j, input) {
+      let valor = input.value;
+      if (valor !== '') {
+        const n = Number(valor);
+        if (isNaN(n)) return;
+        if (n > NOTA_MAXIMA) { valor = NOTA_MAXIMA; input.value = valor; }
+        if (n < 0) { valor = 0; input.value = valor; }
       }
-      guardarEsborrany();
-      renderitzarAssignacioGrups();
-      renderitzarLlista();
+      canviarNota(i, j, valor);
+      document.querySelectorAll(`#tarjeta-${i} [data-crit="${j}"] button[data-v]`).forEach(b => {
+        const actiu = valor !== '' && Number(valor) === Number(b.dataset.v);
+        b.classList.toggle('opcio-activa', actiu);
+        b.setAttribute('aria-pressed', actiu);
+      });
     }
 
-    // Guarda la nota d'un criteri i, si l'alumne és coordinador del seu grup, la propaga a la resta
-    // Posa directament la nota màxima (10) a un criteri, com si l'haguessis escrit tu
-    function posarNotaMaxima(clau, criteriIdx) {
-      const input = document.getElementById(`nota-${idSegur(clau)}-${criteriIdx}`);
-      if (input) input.value = 10;
-      canviarNota(clau, criteriIdx, '10');
-    }
-
-    function canviarNota(clau, criteriIdx, valor) {
-      const nomCriteri = criteris[criteriIdx].nom;
-      if (!notes[clau]) notes[clau] = {};
-      notes[clau][nomCriteri] = valor;
-      actualitzarNotaFinal(clau);
+    // Desa la nota i, si l'alumne coordina el seu grup, la propaga als altres membres
+    // que la tenien buida o igual que el coordinador (no trepitja notes posades a mà)
+    function canviarNota(i, j, valor) {
+      const clau = clauAlumne(estudiants[i]);
+      const nomCriteri = criteris[j].nom;
+      const anterior = obtenirNota(clau, nomCriteri);
+      posarValorNota(clau, nomCriteri, valor);
+      actualitzarCapTarjeta(i);
 
       const grupId = grups[clau];
       if (grupId && coordinadors[grupId] === clau) {
-        estudiants.forEach(altre => {
-          const clauAltre = clauAlumne(altre.nom, altre.cognoms);
-          if (grups[clauAltre] === grupId && clauAltre !== clau) {
-            if (!notes[clauAltre]) notes[clauAltre] = {};
-            notes[clauAltre][nomCriteri] = valor;
-            const input = document.getElementById(`nota-${idSegur(clauAltre)}-${criteriIdx}`);
-            if (input) input.value = valor;
-            actualitzarNotaFinal(clauAltre);
+        const respectats = [];
+        estudiants.forEach((altre, k) => {
+          const clauAltre = clauAlumne(altre);
+          if (k === i || grups[clauAltre] !== grupId) return;
+          const seva = obtenirNota(clauAltre, nomCriteri);
+          if (seva === '' || String(seva) === String(anterior)) {
+            posarValorNota(clauAltre, nomCriteri, valor);
+            renderitzarTarjeta(k);
+          } else if (String(seva) !== String(valor)) {
+            respectats.push(altre.nom);
           }
         });
+        if (respectats.length) {
+          mostrarAvis(`"${nomCriteri}": no s'ha sobreescrit la nota de ${respectats.join(', ')} perquè ja en tenia una de diferent.`);
+        }
       }
 
+      marcarCanvis();
+      actualitzarProgres();
       guardarEsborrany();
     }
 
-    function canviarObservacioIndividual(clau, valor) {
-      observacionsIndividuals[clau] = valor;
+    function canviarObservacioIndividual(i, valor) {
+      observacionsIndividuals[clauAlumne(estudiants[i])] = valor;
+      marcarCanvis();
       guardarEsborrany();
     }
 
     function canviarObservacioGrup(grupId, valor) {
       observacionsGrup[grupId] = valor;
+      marcarCanvis();
       guardarEsborrany();
     }
 
-    // ---------------- ESBORRANY LOCAL ----------------
-
+    // =====================================================================
+    // ESBORRANY LOCAL (només en aquest dispositiu)
+    // =====================================================================
     function clauEsborrany() {
-      const curs = document.getElementById('curs').value;
-      const modul = document.getElementById('modul').value;
-      const classe = document.getElementById('classe').value;
-      const desdoblament = document.getElementById('desdoblament').value;
-      const sessio = document.getElementById('sessio-avaluada').value;
-      return `avaluador_esborrany_${curs}_${modul}_${classe}_${desdoblament}_${sessio}`;
+      return 'avaluador_esborrany_v2_' + configSessioActual();
     }
 
     function guardarEsborrany() {
@@ -619,339 +1172,319 @@
       guardarEsborranyTimeout = setTimeout(() => {
         if (estudiants.length === 0) return;
         const esborrany = { estudiants, notes, grups, coordinadors, observacionsIndividuals, observacionsGrup, guardatEn: new Date().toISOString() };
-        localStorage.setItem(clauEsborrany(), JSON.stringify(esborrany));
+        try { localStorage.setItem(clauEsborrany(), JSON.stringify(esborrany)); } catch (e) { /* sense emmagatzematge */ }
       }, 400);
     }
 
     function restaurarEsborrany() {
-      const guardat = localStorage.getItem(clauEsborrany());
+      let guardat = null;
+      try { guardat = localStorage.getItem(clauEsborrany()); } catch (e) { return; }
       if (!guardat) return;
-
       try {
         const esborrany = JSON.parse(guardat);
         (esborrany.estudiants || []).forEach(a => {
-          if (!estudiants.some(e => e.nom === a.nom && e.cognoms === a.cognoms)) estudiants.push(a);
+          if (!estudiants.some(e => clauAlumne(e) === clauAlumne(a))) estudiants.push(a);
         });
         notes = esborrany.notes || {};
         grups = esborrany.grups || {};
         coordinadors = esborrany.coordinadors || {};
         observacionsIndividuals = esborrany.observacionsIndividuals || {};
         observacionsGrup = esborrany.observacionsGrup || {};
-
+        canvisPendents = true;
         const data = new Date(esborrany.guardatEn);
-        const hh = String(data.getHours()).padStart(2, '0');
-        const mm = String(data.getMinutes()).padStart(2, '0');
-        const statusText = document.getElementById('status');
-        statusText.innerText = `Esborrany restaurat (guardat a les ${hh}:${mm})`;
-        statusText.className = "text-xs text-center font-medium text-indigo-600";
-      } catch (e) {
-        // Esborrany corrupte: s'ignora
-      }
+        mostrarStatus(`Esborrany restaurat (${String(data.getHours()).padStart(2, '0')}:${String(data.getMinutes()).padStart(2, '0')}). Recorda exportar.`, 't-accent');
+      } catch (e) { /* esborrany corrupte: s'ignora */ }
     }
 
     function esborrarEsborrany() {
-      localStorage.removeItem(clauEsborrany());
+      try { localStorage.removeItem(clauEsborrany()); } catch (e) { /* res */ }
     }
 
-    // ---------------- EXPORTACIÓ ----------------
-
+    // =====================================================================
+    // EXPORTACIÓ
+    // =====================================================================
     async function exportarDades(confirmat) {
-      if (estudiants.length === 0) {
-        alert('Carrega o afegeix primer els alumnes d\'aquesta sessió.');
-        return;
-      }
+      if (estudiants.length === 0) { mostrarAvis('Carrega primer els alumnes d\'aquesta sessió.', 'error'); return; }
+      const sessioAvaluada = obtenirSessio();
+      if (!sessioAvaluada) { mostrarAvis('Tria o escriu el supòsit / sessió avaluada.', 'error'); obrirConfigSessio(); return; }
+      if (sessioCarregada && sessioCarregada !== configSessioActual() &&
+          !confirm('Has canviat la configuració de la sessió després de carregar els alumnes. Exportar igualment amb la configuració actual?')) return;
 
-      const sessioAvaluada = document.getElementById('sessio-avaluada').value.trim();
-      if (!sessioAvaluada) {
-        alert('Escriu el nom de la sessió avaluada.');
-        return;
-      }
-
-      const statusText = document.getElementById('status');
-      statusText.innerText = "Exportant dades, espera si us plau...";
-      statusText.className = "text-xs text-center font-medium text-indigo-600 animate-pulse";
-
-      const evaluacions = estudiants.map(alumne => {
-        const clau = clauAlumne(alumne.nom, alumne.cognoms);
-        return {
-          nom: alumne.nom,
-          cognoms: alumne.cognoms,
-          notes: notes[clau] || {},
-          observacioGrup: grups[clau] ? (observacionsGrup[grups[clau]] || '') : '',
-          observacioIndividual: observacionsIndividuals[clau] || ''
-        };
-      });
+      mostrarStatus('Exportant, espera si us plau...', 't-accent animate-pulse');
 
       const dades = {
-        curs: document.getElementById('curs').value,
-        modul: document.getElementById('modul').value,
-        classe: document.getElementById('classe').value,
-        desdoblament: document.getElementById('desdoblament').value,
-        sessioAvaluada: sessioAvaluada,
-        evaluacions: evaluacions
+        curs: $('curs').value.trim(),
+        modul: $('modul').value,
+        classe: $('classe').value,
+        desdoblament: $('desdoblament').value,
+        sessioAvaluada,
+        evaluacions: estudiants.map(a => {
+          const clau = clauAlumne(a);
+          return {
+            nom: a.nom, cognoms: a.cognoms, id: a.id || '', grup: grups[clau] || '',
+            notes: notes[clau] || {},
+            observacioGrup: grups[clau] ? (observacionsGrup[grups[clau]] || '') : '',
+            observacioIndividual: observacionsIndividuals[clau] || ''
+          };
+        })
       };
 
       try {
-        const response = await cridarPost('exportarAGoogleSheets', { dades, confirmat: confirmat === true });
-
-        if (response.necessitaConfirmacio) {
-          const ultima = response.ultimaActualitzacio ? ` (última actualització: ${response.ultimaActualitzacio})` : '';
-          if (confirm(`Ja existeix una avaluació per aquesta sessió${ultima}. Vols sobreescriure-la?`)) {
+        const r = await api('exportarAGoogleSheets', { dades, confirmat: confirmat === true });
+        if (r.necessitaConfirmacio) {
+          if (confirm(`Ja existeix una avaluació per aquesta sessió (última actualització: ${r.ultimaActualitzacio}). Vols sobreescriure-la?`)) {
             exportarDades(true);
           } else {
-            statusText.innerText = "Exportació cancel·lada.";
-            statusText.className = "text-xs text-center font-medium text-slate-500";
+            mostrarStatus('Exportació cancel·lada.');
           }
           return;
         }
-
-        statusText.innerHTML = `Guardat amb èxit! <a href="${response.url}" target="_blank" class="underline text-green-600 font-bold">Obrir Google Sheets</a>`;
-        statusText.className = "text-xs text-center font-medium text-green-600";
+        mostrarStatus(`✓ Guardat (${r.exportats} alumnes). <a href="${esc(r.url)}" target="_blank" rel="noopener" class="underline font-bold">Obrir el full</a>` +
+          (r.limitades.length ? `<br><span class="t-warn">Nota limitada per ítem imprescindible: ${esc(r.limitades.join(', '))}</span>` : ''), 't-ok');
+        canvisPendents = false;
+        resultatsCercats = false;
         esborrarEsborrany();
       } catch (err) {
-        statusText.innerText = "Error en exportar: " + err.message;
-        statusText.className = "text-xs text-center font-medium text-red-600";
+        mostrarStatus('Error en exportar: ' + esc(err.message), 't-ko');
       }
     }
 
-    // ---------------- RESULTATS: CERCA, EDICIÓ I ESBORRAT ----------------
+    // =====================================================================
+    // RESULTATS
+    // =====================================================================
+    let modeResultats = 'sessio';
+    let sessionsListades = [];
+    let sessioOberta = null;
+    let resultatsSessio = [];      // [{ nom, cognoms, id, notaFinal, grup, origen, correuEnviat, notes, ... }]
+    let criterisSessio = [];       // [{ nom, pes }]
+    let resultatObert = -1;
+    let alumnesFitxa = [];
+
+    function canviarModeResultats(mode) {
+      modeResultats = mode;
+      $('res-per-sessio').classList.toggle('hidden', mode !== 'sessio');
+      $('res-per-alumne').classList.toggle('hidden', mode !== 'alumne');
+      $('resultats-modul').classList.toggle('hidden', mode !== 'sessio');
+      $('fitxa-alumne').classList.toggle('hidden', mode !== 'alumne');
+      $('boto-mode-resultats').textContent = mode === 'sessio' ? 'Per alumne' : 'Per sessió';
+      if (vistaActual === 'resultats') cercarResultats();
+    }
+
+    function cercarResultats() {
+      if (vistaActual !== 'resultats') { resultatsCercats = false; return; }
+      resultatsCercats = true;
+      if (modeResultats === 'sessio') cercarSessions(); else veureFitxaAlumne();
+    }
 
     async function cercarSessions() {
-      const classe = document.getElementById('resultats-classe').value;
-      const modul = document.getElementById('resultats-modul').value;
-
-      if (!classe) {
-        alert('Selecciona una classe.');
-        return;
-      }
-
+      const classe = $('resultats-classe').value;
+      const modul = $('resultats-modul').value;
+      if (!classe) return;
       tancarDetallSessio();
-      document.getElementById('llista-sessions-wrap').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Cercant...</p>';
-
+      $('llista-sessions-wrap').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Cercant...</p>';
       try {
-        sessionsListades = await cridarGet('llistarSessions', { classe, modul });
+        sessionsListades = await api('llistarSessions', { classe, modul });
         renderitzarSessions();
       } catch (err) {
-        document.getElementById('llista-sessions-wrap').innerHTML =
-          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+        $('llista-sessions-wrap').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
     }
 
     function renderitzarSessions() {
-      const cont = document.getElementById('llista-sessions-wrap');
-
+      const cont = $('llista-sessions-wrap');
       if (sessionsListades.length === 0) {
-        cont.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">No hi ha sessions avaluades per aquesta cerca.</p>';
+        cont.innerHTML = '<p class="text-center t3 py-6">Encara no hi ha sessions avaluades amb aquests filtres.</p>';
         return;
       }
-
       cont.innerHTML = sessionsListades.map((s, idx) => `
-        <button onclick="obrirSessio(${idx})" class="w-full bg-white p-3 rounded-xl shadow-sm border border-slate-100 text-left hover:border-indigo-300 transition">
-          <div class="flex justify-between items-center gap-2">
-            <span class="text-sm font-semibold text-slate-800 truncate">${s.sessioAvaluada}</span>
-            <span class="text-xs text-slate-400 shrink-0">${s.data}</span>
-          </div>
-          <div class="text-xs text-slate-500 mt-1">${s.modul} · ${s.classe}${s.desdoblament !== 'General' ? ' (' + s.desdoblament + ')' : ''} · ${s.nAlumnes} alumne${s.nAlumnes === 1 ? '' : 's'}</div>
-        </button>
-      `).join('');
+        <button onclick="obrirSessio(${idx})" class="card w-full p-4 text-left flex items-center gap-3">
+          <span class="flex-1 min-w-0">
+            <span class="block font-bold text-[16px] truncate">${esc(s.sessioAvaluada)}</span>
+            <span class="block text-[13px] t3">${esc(s.modul)}${s.desdoblament !== 'General' ? ' · ' + esc(s.desdoblament) : ''} · ${esc(String(s.data).split(' ')[0])} · ${s.nAlumnes} alumne${s.nAlumnes === 1 ? '' : 's'}</span>
+          </span>
+          ${s.mitjana !== '' ? `<span class="text-right shrink-0"><span class="block text-2xl font-extrabold tabular-nums leading-none">${fmt(s.mitjana)}</span><span class="block text-[11px] uppercase tracking-wider t3 mt-0.5">mitjana</span></span>` : ''}
+          <span class="t3 text-xl">›</span>
+        </button>`).join('');
     }
 
     async function obrirSessio(idx) {
       const s = sessionsListades[idx];
       sessioOberta = s;
-
-      document.getElementById('detall-sessio-titol').textContent = `${s.sessioAvaluada} — ${s.classe}`;
-      document.getElementById('detall-sessio-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant...</p>';
-      document.getElementById('detall-sessio-wrap').classList.remove('hidden');
-
+      resultatObert = -1;
+      $('pdf-status').textContent = '';
+      $('llista-sessions-wrap').classList.add('hidden');
+      $('detall-sessio-wrap').classList.remove('hidden');
+      $('detall-sessio-resum').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant...</p>';
+      $('detall-sessio-alumnes').innerHTML = '';
+      window.scrollTo(0, 0);
       try {
-        resultatsSessio = await cridarGet('obtenirResultatsSessio', {
-          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessioAvaluada: s.sessioAvaluada
-        });
+        const r = await api('obtenirResultatsSessio', paramsSessio(s));
+        resultatsSessio = r.alumnes;
+        criterisSessio = r.criteris;
+        renderitzarResumSessio();
         renderitzarDetallSessio();
       } catch (err) {
-        document.getElementById('detall-sessio-alumnes').innerHTML =
-          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+        $('detall-sessio-resum').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
+    }
+
+    // ---- Resum de la sessió: mitjana, aprovats/suspesos i ítems del més fluix al més fort ----
+    function renderitzarResumSessio() {
+      const s = sessioOberta;
+      const notesFinals = resultatsSessio.map(r => r.notaFinal).filter(n => n !== '');
+      const mitjana = notesFinals.length ? notesFinals.reduce((a, b) => a + b, 0) / notesFinals.length : null;
+      const aprovats = notesFinals.filter(n => n >= NOTA_APROVAT).length;
+
+      const perItem = criterisSessio.map(c => {
+        const valors = resultatsSessio.map(r => r.notes[c.nom]).filter(v => !esBuit(v) && !isNaN(Number(v))).map(Number);
+        return { nom: c.nom, mitjana: valors.length ? valors.reduce((a, b) => a + b, 0) / valors.length : null };
+      }).filter(x => x.mitjana !== null).sort((a, b) => a.mitjana - b.mitjana);
+
+      const accio = (onclick, etiqueta, path, classe) => `
+        <button onclick="${onclick}" class="btn ${classe || 'btn-suau'} flex-col !gap-1 !py-2.5 text-[13px]">
+          <svg class="ico" viewBox="0 0 24 24">${path}</svg>${etiqueta}</button>`;
+
+      $('detall-sessio-resum').innerHTML = `
+        <article class="card card-activa p-4 space-y-4">
+          <div class="flex justify-between items-start gap-3">
+            <div class="min-w-0">
+              <h2 class="text-[18px] font-bold">${esc(s.sessioAvaluada)}</h2>
+              <div class="text-[13px] t3">${esc(s.modul)} · ${esc(s.classe)}${s.desdoblament !== 'General' ? ' (' + esc(s.desdoblament) + ')' : ''} · ${esc(String(s.data).split(' ')[0])} · ${resultatsSessio.length} alumnes</div>
+            </div>
+            ${mitjana !== null ? `<div class="text-right shrink-0"><div class="text-[32px] font-extrabold tabular-nums leading-none">${fmt(mitjana)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
+          </div>
+          ${notesFinals.length ? `
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="rounded-xl py-2 pill-ok"><div class="text-lg font-bold">${aprovats}</div><div class="text-[12px]">✓ aprovats</div></div>
+            <div class="rounded-xl py-2 pill-ko"><div class="text-lg font-bold">${notesFinals.length - aprovats}</div><div class="text-[12px]">✕ suspesos</div></div>
+            <div class="rounded-xl py-2" style="background:var(--soft)"><div class="text-lg font-bold tabular-nums">${fmt(Math.min(...notesFinals), 1)}–${fmt(Math.max(...notesFinals), 1)}</div><div class="text-[12px] t3">rang</div></div>
+          </div>` : ''}
+          ${perItem.length ? `
+          <div class="space-y-2.5">
+            <div class="text-[13px] font-semibold t2">Ítems (del més fluix al més fort)</div>
+            ${perItem.map((x, k) => `
+              <div title="${esc(x.nom)}: ${fmt(x.mitjana)}">
+                <div class="flex justify-between gap-2 text-[14px]"><span class="min-w-0">${esc(x.nom)}${k === 0 && perItem.length > 1 ? ' <span class="text-[12px] font-semibold t-warn">a reforçar</span>' : ''}</span><b class="tabular-nums shrink-0">${fmt(x.mitjana)}</b></div>
+                <div class="barra mt-1" style="height:8px"><div style="width:${x.mitjana * 10}%"></div></div>
+              </div>`).join('')}
+          </div>` : ''}
+          <div class="grid grid-cols-4 gap-2">
+            ${accio('obrirModalCorreu()', 'Correu', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>')}
+            ${accio('crearPdfSessio()', 'PDF', '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>')}
+            ${accio('descarregarCsvSessio()', 'CSV', '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>')}
+            ${accio('confirmarEsborrarSessio()', 'Esborrar', '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>', 'btn-perill')}
+          </div>
+        </article>`;
+    }
+
+    function textEtiquetesResultat(r) {
+      const parts = [];
+      if (r.grup) parts.push(`<span>Grup ${esc(r.grup)}</span>`);
+      if (r.origen === 'Manual') parts.push('<span class="t-manual font-semibold" title="Nota final ajustada a mà; ja no coincideix amb els ítems">nota manual</span>');
+      if (r.origen.indexOf('limitada') !== -1) parts.push('<span class="t-ko font-semibold">★ imprescindible suspès</span>');
+      if (r.correuEnviat) parts.push(`<span>📧 enviat ${esc(String(r.correuEnviat).split(' ')[0])}</span>`);
+      return parts.join(' · ');
     }
 
     function renderitzarDetallSessio() {
-      const cont = document.getElementById('detall-sessio-alumnes');
-
+      const cont = $('detall-sessio-alumnes');
       if (resultatsSessio.length === 0) {
-        cont.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Sense alumnes.</p>';
+        cont.innerHTML = '<p class="text-center t3 py-6">Sense alumnes.</p>';
         return;
       }
+      cont.innerHTML = resultatsSessio.map((r, idx) => {
+        const obert = idx === resultatObert;
+        const etiquetes = textEtiquetesResultat(r);
+        const fila = `
+          <button onclick="obrirResultat(${idx})" aria-expanded="${obert}" class="w-full flex items-center gap-3 px-4 py-3 text-left">
+            ${htmlAvatar(r, r.grup, 38)}
+            <span class="flex-1 min-w-0">
+              <span class="block font-semibold text-[15px] truncate">${esc(r.cognoms)}, ${esc(r.nom)}</span>
+              ${etiquetes ? `<span class="block text-[12px] t3">${etiquetes}</span>` : ''}
+            </span>
+            ${htmlNota(r.notaFinal)}
+            <span class="t3 transition" style="${obert ? 'transform:rotate(90deg)' : ''}">›</span>
+          </button>`;
+        if (!obert) return `<div>${fila}</div>`;
 
-      cont.innerHTML = resultatsSessio.map((r, idx) => `
-        <div class="py-3 flex flex-col gap-1.5">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-sm font-semibold text-slate-800 truncate">${r.cognoms}, ${r.nom}</span>
-            <div class="flex gap-1 shrink-0">
-              <button onclick="editarResultat(${idx})" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-100">✏️ Editar</button>
-              <button onclick="confirmarEsborrarResultat(${idx})" class="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100">🗑</button>
+        const desglossament = criterisSessio.map(c =>
+          `<span class="rounded-lg px-2 py-1 text-[13px]" style="background:var(--soft)">${esc(c.nom)}: <b>${fmtValor(r.notes[c.nom])}</b></span>`).join('');
+
+        return `<div style="background:var(--field)">${fila}
+          <div class="px-4 pb-4 space-y-3">
+            ${desglossament ? `<div class="flex flex-wrap gap-1.5">${desglossament}</div>` : ''}
+            <div class="flex items-center gap-2">
+              <label for="resnota-${idx}" class="lbl !mb-0">Nota final</label>
+              <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" id="resnota-${idx}" value="${esc(r.notaFinal)}" placeholder="–"
+                     class="camp !w-20 !py-1.5 text-center font-bold">
+              <span id="resstatus-${idx}" class="text-[13px] t-ok font-semibold"></span>
             </div>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <label class="text-[10px] text-slate-400 uppercase font-semibold shrink-0">Nota final</label>
-            <input type="number" step="0.1" min="0" max="10" id="resnota-${idx}"
-                   value="${r.notaFinal !== '' ? r.notaFinal : ''}"
-                   class="w-16 bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-center text-xs font-bold text-amber-700 focus:outline-none focus:bg-white focus:border-amber-400"
-                   placeholder="-">
-            <span id="resstatus-${idx}" class="text-[10px] text-green-600 font-semibold"></span>
-            <button onclick="desarResultat(${idx})" class="ml-auto text-xs bg-slate-700 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-800">💾 Desar</button>
-            <button onclick="obrirModalCorreuIndividual(${idx})" class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-indigo-100">📧</button>
-          </div>
-
-          <textarea id="resobsgrup-${idx}" placeholder="Observacions de grup..." rows="1"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs resize-none focus:outline-none focus:bg-white focus:border-indigo-500">${r.observacioGrup || ''}</textarea>
-          <textarea id="resobsindiv-${idx}" placeholder="Observacions individuals..." rows="1"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs resize-none focus:outline-none focus:bg-white focus:border-indigo-500">${r.observacioIndividual || ''}</textarea>
-        </div>
-      `).join('');
+            <textarea id="resobsgrup-${idx}" placeholder="Observacions de grup..." rows="2" aria-label="Observacions de grup" class="camp">${esc(r.observacioGrup)}</textarea>
+            <textarea id="resobsindiv-${idx}" placeholder="Observacions individuals..." rows="2" aria-label="Observacions individuals" class="camp">${esc(r.observacioIndividual)}</textarea>
+            <div class="grid grid-cols-4 gap-2">
+              <button onclick="desarResultat(${idx})" class="btn btn-prim col-span-2">Desar</button>
+              <button onclick="editarResultat(${idx})" class="btn btn-accent" title="Obrir a Avaluar amb tots els ítems">Ítems</button>
+              <button onclick="obrirModalCorreu(${idx})" class="btn btn-accent" title="Enviar correu" aria-label="Enviar correu">📧</button>
+            </div>
+            <button onclick="confirmarEsborrarResultat(${idx})" class="btn btn-perill w-full !py-2 text-[14px]">Esborrar el resultat d'aquest alumne</button>
+          </div></div>`;
+      }).join('');
     }
 
-    // Desa directament la nota final i les observacions d'un alumne des de la vista de Resultats
+    function obrirResultat(idx) {
+      resultatObert = resultatObert === idx ? -1 : idx;
+      renderitzarDetallSessio();
+    }
+
+    function alumneRef(r) { return { nom: r.nom, cognoms: r.cognoms, id: r.id }; }
+    function paramsSessio(s) {
+      return { curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessioAvaluada: s.sessioAvaluada };
+    }
+
     async function desarResultat(idx) {
       const r = resultatsSessio[idx];
-      const s = sessioOberta;
-      const notaInput = document.getElementById(`resnota-${idx}`);
-      const obsGrupInput = document.getElementById(`resobsgrup-${idx}`);
-      const obsIndivInput = document.getElementById(`resobsindiv-${idx}`);
-      const statusEl = document.getElementById(`resstatus-${idx}`);
-
-      try {
-        await cridarPost('actualitzarResultat', {
-          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
-          nom: r.nom, cognoms: r.cognoms, sessioAvaluada: s.sessioAvaluada,
-          notaFinal: notaInput.value, observacioGrup: obsGrupInput.value, observacioIndividual: obsIndivInput.value
-        });
-        r.notaFinal = notaInput.value === '' ? '' : parseFloat(notaInput.value);
-        r.observacioGrup = obsGrupInput.value;
-        r.observacioIndividual = obsIndivInput.value;
-        if (statusEl) {
-          statusEl.textContent = 'Desat ✓';
-          setTimeout(() => { statusEl.textContent = ''; }, 2000);
-        }
-      } catch (err) {
-        alert('Error en desar: ' + err.message);
-      }
-    }
-
-    // ---------------- CORREUS ----------------
-
-    let modalCorreuMode = null; // 'individual' | 'massiu'
-    let modalCorreuIdx = null;
-
-    function obrirModalCorreuIndividual(idx) {
-      const r = resultatsSessio[idx];
-      const s = sessioOberta;
-      modalCorreuMode = 'individual';
-      modalCorreuIdx = idx;
-
-      document.getElementById('modal-correu-titol').textContent = `Enviar correu a ${r.cognoms}, ${r.nom}`;
-      document.getElementById('modal-correu-assumpte').value = `Nota de ${s.sessioAvaluada}`;
-      document.getElementById('modal-correu-cos').value =
-`Hola ${r.nom},
-
-La teva nota de "${s.sessioAvaluada}" (${s.modul}) és: ${r.notaFinal !== '' ? r.notaFinal : '-'}
-${r.observacioGrup ? '\nObservacions del grup: ' + r.observacioGrup : ''}
-${r.observacioIndividual ? '\nObservacions individuals: ' + r.observacioIndividual : ''}
-
-Salutacions.`;
-      document.getElementById('modal-correu-ajuda').textContent = '';
-      document.getElementById('modal-correu-status').textContent = '';
-      document.getElementById('modal-correu').classList.remove('hidden');
-    }
-
-    function obrirModalCorreuMassiu() {
-      const s = sessioOberta;
-      if (!s) return;
-      modalCorreuMode = 'massiu';
-      modalCorreuIdx = null;
-
-      document.getElementById('modal-correu-titol').textContent = `Enviar correu a tots els alumnes de "${s.sessioAvaluada}"`;
-      document.getElementById('modal-correu-assumpte').value = `Nota de ${s.sessioAvaluada}`;
-      document.getElementById('modal-correu-cos').value =
-`Hola {{nom}},
-
-La teva nota de "{{sessio}}" ({{modul}}) és: {{nota}}
-
-Observacions del grup: {{observacions_grup}}
-Observacions individuals: {{observacions_individual}}
-
-Salutacions.`;
-      document.getElementById('modal-correu-ajuda').textContent =
-        'Etiquetes disponibles (es personalitzen per alumne): {{nom}}, {{cognoms}}, {{nota}}, {{observacions_grup}}, {{observacions_individual}}, {{sessio}}, {{modul}}, {{classe}}, {{curs}}';
-      document.getElementById('modal-correu-status').textContent = '';
-      document.getElementById('modal-correu').classList.remove('hidden');
-    }
-
-    function tancarModalCorreu() {
-      document.getElementById('modal-correu').classList.add('hidden');
-      modalCorreuMode = null;
-      modalCorreuIdx = null;
-    }
-
-    async function confirmarEnviarCorreu() {
-      const assumpte = document.getElementById('modal-correu-assumpte').value.trim();
-      const cos = document.getElementById('modal-correu-cos').value.trim();
-      const statusEl = document.getElementById('modal-correu-status');
-
-      if (!assumpte || !cos) {
-        alert('Escriu l\'assumpte i el cos del missatge.');
+      const notaVal = $(`resnota-${idx}`).value;
+      if (notaVal !== '' && (Number(notaVal) < 0 || Number(notaVal) > NOTA_MAXIMA)) {
+        mostrarAvis(`La nota ha d'estar entre 0 i ${NOTA_MAXIMA}.`, 'error');
         return;
       }
-
-      statusEl.textContent = 'Enviant...';
-      statusEl.className = 'text-xs text-center font-medium text-indigo-600';
-
-      const s = sessioOberta;
+      if (notaVal !== '' && r.notaFinal !== '' && Number(notaVal) !== r.notaFinal && criterisSessio.length > 1 &&
+          !confirm('Si canvies la nota final a mà, deixarà de coincidir amb els ítems (quedarà marcada com a "nota manual"). Per corregir un ítem, fes servir "Ítems". Continuar?')) return;
 
       try {
-        if (modalCorreuMode === 'individual') {
-          const r = resultatsSessio[modalCorreuIdx];
-          await cridarPost('enviarCorreuAlumne', {
-            classe: s.classe, nom: r.nom, cognoms: r.cognoms, assumpte, cos
-          });
-          statusEl.textContent = 'Correu enviat!';
-          statusEl.className = 'text-xs text-center font-medium text-green-600';
-          setTimeout(tancarModalCorreu, 1200);
-        } else {
-          const resultat = await cridarPost('enviarCorreusMassius', {
-            curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
-            sessioAvaluada: s.sessioAvaluada, assumpte, cos
-          });
-          statusEl.textContent = `Enviats: ${resultat.enviats}` +
-            (resultat.senseCorreu.length ? `. Sense correu configurat: ${resultat.senseCorreu.join(', ')}` : '');
-          statusEl.className = 'text-xs text-center font-medium text-green-600';
-        }
+        const resposta = await api('actualitzarResultat', Object.assign(paramsSessio(sessioOberta), {
+          alumne: alumneRef(r), notaFinal: notaVal,
+          observacioGrup: $(`resobsgrup-${idx}`).value, observacioIndividual: $(`resobsindiv-${idx}`).value
+        }));
+        r.notaFinal = notaVal === '' ? '' : parseFloat(notaVal);
+        r.observacioGrup = $(`resobsgrup-${idx}`).value;
+        r.observacioIndividual = $(`resobsindiv-${idx}`).value;
+        r.origen = resposta.origen;
+        renderitzarResumSessio();
+        renderitzarDetallSessio();
+        const statusEl = $(`resstatus-${idx}`);
+        if (statusEl) { statusEl.textContent = 'Desat ✓'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
       } catch (err) {
-        statusEl.textContent = 'Error: ' + err.message;
-        statusEl.className = 'text-xs text-center font-medium text-red-600';
+        mostrarAvis('Error en desar: ' + err.message, 'error');
       }
     }
 
     function tancarDetallSessio() {
       sessioOberta = null;
       resultatsSessio = [];
-      document.getElementById('detall-sessio-wrap').classList.add('hidden');
+      criterisSessio = [];
+      $('detall-sessio-wrap').classList.add('hidden');
+      $('llista-sessions-wrap').classList.remove('hidden');
     }
 
     async function confirmarEsborrarResultat(idx) {
       const r = resultatsSessio[idx];
-      const s = sessioOberta;
       if (!confirm(`Esborrar el resultat de ${r.cognoms}, ${r.nom}? (L'historial per criteri es conservarà)`)) return;
-
       try {
-        await cridarPost('eliminarResultat', {
-          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
-          nom: r.nom, cognoms: r.cognoms, sessioAvaluada: s.sessioAvaluada
-        });
-        obrirSessio(sessionsListades.indexOf(s));
+        await api('eliminarResultat', Object.assign(paramsSessio(sessioOberta), { alumne: alumneRef(r) }));
+        obrirSessio(sessionsListades.indexOf(sessioOberta));
       } catch (err) {
-        alert('Error en esborrar: ' + err.message);
+        mostrarAvis('Error en esborrar: ' + err.message, 'error');
       }
     }
 
@@ -959,118 +1492,806 @@ Salutacions.`;
       if (!sessioOberta) return;
       const s = sessioOberta;
       if (!confirm(`Esborrar TOTA la sessió "${s.sessioAvaluada}" (${resultatsSessio.length} alumnes)? Aquesta acció no es pot desfer (l'historial es conservarà).`)) return;
-
       try {
-        await cridarPost('eliminarSessio', {
-          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessioAvaluada: s.sessioAvaluada
-        });
-        tancarDetallSessio();
+        await api('eliminarSessio', paramsSessio(s));
         cercarSessions();
       } catch (err) {
-        alert('Error en esborrar: ' + err.message);
+        mostrarAvis('Error en esborrar: ' + err.message, 'error');
       }
     }
 
-    // Obre el resultat d'un alumne concret al panell d'Avaluar per poder-lo corregir i reexportar
-    function editarResultat(idx) {
+    // Obre el resultat d'un alumne a Avaluar amb tots els seus ítems, per corregir-lo i reexportar
+    async function editarResultat(idx) {
       const r = resultatsSessio[idx];
       const s = sessioOberta;
+      if (canvisPendents && !confirm('Tens notes sense exportar a Avaluar (estan com a esborrany en aquest dispositiu). Continuar?')) return;
 
-      canviarVista('avaluar');
+      $('curs').value = s.curs;
+      $('modul').value = s.modul;
+      $('classe').value = s.classe;
+      await Promise.all([carregarDesdoblaments(s.classe, s.desdoblament), carregarSupositsAvaluar(s.sessioAvaluada)]);
 
-      document.getElementById('curs').value = s.curs;
-      document.getElementById('modul').value = s.modul;
-      document.getElementById('classe').value = s.classe;
-      document.getElementById('sessio-avaluada').value = s.sessioAvaluada;
-      carregarDesdoblaments(s.classe, s.desdoblament);
-
-      estudiants = [{ nom: r.nom, cognoms: r.cognoms }];
-      grups = {};
-      coordinadors = {};
-      notes = {};
-      observacionsGrup = {};
-      observacionsIndividuals = {};
-
-      const clau = clauAlumne(r.nom, r.cognoms);
+      const alumne = alumneRef(r);
+      const clau = clauAlumne(alumne);
+      estudiants = [alumne];
+      grups = {}; coordinadors = {}; notes = {}; observacionsGrup = {}; observacionsIndividuals = {}; observacioOberta = {};
       observacionsIndividuals[clau] = r.observacioIndividual || '';
+      if (r.grup) {
+        grups[clau] = Number(r.grup) || r.grup;
+        coordinadors[grups[clau]] = clau;
+        observacionsGrup[grups[clau]] = r.observacioGrup || '';
+      }
+      canvisPendents = false;
+      alumneObert = 0;
+      canviarVista('avaluar');
+      $('panell-config').classList.add('hidden');
+      $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant detall...</p>';
 
-      renderitzarAssignacioGrups();
-      document.getElementById('llista-alumnes').innerHTML = '<p class="text-sm text-center py-4 text-slate-500">Carregant detall...</p>';
-
-      Promise.all([
-        cridarGet('obtenirCriteris', { modul: s.modul }),
-        cridarGet('obtenirDetallAlumne', {
-          curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament,
-          nom: r.nom, cognoms: r.cognoms, sessioAvaluada: s.sessioAvaluada
-        })
-      ]).then(([criterisData, detallNotes]) => {
+      try {
+        const [criterisData, detallNotes] = await Promise.all([
+          api('obtenirCriteris', { modul: s.modul, suposit: s.sessioAvaluada }),
+          api('obtenirDetallAlumne', Object.assign(paramsSessio(s), { alumne }))
+        ]);
         criteris = criterisData;
-        notes[clau] = {};
-        Object.keys(detallNotes).forEach(k => { notes[clau][k] = detallNotes[k]; });
+        notes[clau] = Object.assign({}, detallNotes);
+        sessioCarregada = configSessioActual();
+        configSessioCanviada();
+        renderitzarAssignacioGrups();
         renderitzarLlista();
+        mostrarStatus(`Editant ${esc(r.cognoms)}, ${esc(r.nom)}. Exporta per desar els canvis.`, 't-accent');
+      } catch (err) {
+        $('llista-alumnes').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
+      }
+    }
 
-        const statusText = document.getElementById('status');
-        statusText.innerText = `Editant el resultat de ${r.cognoms}, ${r.nom}. Exporta per desar els canvis.`;
-        statusText.className = "text-xs text-center font-medium text-indigo-600";
-      }).catch((err) => {
-        document.getElementById('llista-alumnes').innerHTML =
-          '<p class="text-sm text-red-500 text-center py-4">Error: ' + err.message + '</p>';
+    // ---- CSV i PDF ----
+    function descarregarCsvSessio() {
+      const s = sessioOberta;
+      if (!s) return;
+      const cel = v => {
+        const t = String(v === null || v === undefined ? '' : v);
+        return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+      };
+      const numero = v => esBuit(v) ? '' : String(v).replace('.', ',');
+      const capcalera = ['Cognoms', 'Nom', 'Grup'].concat(criterisSessio.map(c => c.nom + (c.pes !== '' ? ` (${c.pes}%)` : '')),
+        ['Nota final', 'Origen nota', 'Observacions grup', 'Observacions individual']);
+      const files = resultatsSessio.map(r => [r.cognoms, r.nom, r.grup].concat(criterisSessio.map(c => numero(r.notes[c.nom])),
+        [numero(r.notaFinal), r.origen, r.observacioGrup, r.observacioIndividual]));
+      const csv = '﻿' + [capcalera].concat(files).map(f => f.map(cel).join(';')).join('\r\n');
+      descarregarFitxer(`${s.sessioAvaluada} - ${s.classe}.csv`.replace(/[\\/:*?"<>|]/g, '_'), csv, 'text/csv;charset=utf-8');
+    }
+
+    async function crearPdfSessio() {
+      const el = $('pdf-status');
+      el.textContent = 'Generant PDF...';
+      el.className = 'text-[14px] text-center t-accent animate-pulse';
+      try {
+        const r = await api('crearInformePdf', paramsSessio(sessioOberta));
+        el.innerHTML = `PDF creat a Drive: <a href="${esc(r.url)}" target="_blank" rel="noopener" class="underline font-semibold">${esc(r.nom)}</a>`;
+        el.className = 'text-[14px] text-center t-ok';
+      } catch (err) {
+        el.textContent = 'Error: ' + err.message;
+        el.className = 'text-[14px] text-center t-ko';
+      }
+    }
+
+    // ---- Fitxa de l'alumne ----
+    async function carregarAlumnesFitxa() {
+      const classe = $('resultats-classe').value;
+      const sel = $('fitxa-alumne');
+      if (!classe) { sel.innerHTML = '<option value="">-</option>'; return; }
+      try {
+        alumnesFitxa = await api('obtenirAlumnes', { classe, desdoblament: 'General' });
+        sel.innerHTML = alumnesFitxa.length ? alumnesFitxa.map((a, i) => `<option value="${i}">${esc(a.cognoms)}, ${esc(a.nom)}</option>`).join('')
+          : '<option value="">Sense alumnes</option>';
+      } catch (err) {
+        sel.innerHTML = '<option value="">Error</option>';
+      }
+    }
+
+    async function veureFitxaAlumne() {
+      const classe = $('resultats-classe').value;
+      const alumne = alumnesFitxa[Number($('fitxa-alumne').value)];
+      const cont = $('fitxa-wrap');
+      if (!classe || !alumne) { cont.innerHTML = '<p class="text-center t3 py-6">Tria un alumne a dalt.</p>'; return; }
+
+      cont.innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant fitxa...</p>';
+      try {
+        const sessions = await api('obtenirFitxaAlumne', { classe, alumne });
+        if (sessions.length === 0) {
+          cont.innerHTML = `<p class="text-center t3 py-6">${esc(alumne.nom)} encara no té cap sessió avaluada.</p>`;
+          return;
+        }
+
+        const perModul = {};
+        sessions.forEach(s => {
+          if (!perModul[s.modul]) perModul[s.modul] = [];
+          if (s.notaFinal !== '') perModul[s.modul].push(s.notaFinal);
+        });
+        const ambNota = sessions.filter(s => s.notaFinal !== '');
+        const mitjanaGlobal = ambNota.length ? ambNota.reduce((a, s) => a + s.notaFinal, 0) / ambNota.length : null;
+
+        const evolucio = ambNota.map(s => `
+          <div class="flex-1 flex flex-col items-center justify-end h-full min-w-[8px]" title="${esc(s.sessioAvaluada)} (${esc(s.data)}): ${fmt(s.notaFinal)}">
+            <div class="w-full rounded-t" style="height:${s.notaFinal * 10}%;min-height:2px;background:${s.notaFinal < NOTA_APROVAT ? 'var(--soft2)' : 'var(--accent)'}"></div>
+          </div>`).join('');
+
+        cont.innerHTML = `
+          <article class="card card-activa p-4 space-y-4">
+            <div class="flex items-center gap-3">
+              ${htmlAvatar(alumne, '', 52)}
+              <div class="flex-1 min-w-0">
+                <h2 class="text-[18px] font-bold truncate">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</h2>
+                <div class="text-[13px] t3">${sessions.length} sessió${sessions.length === 1 ? '' : 'ns'} avaluada${sessions.length === 1 ? '' : 'es'}</div>
+              </div>
+              ${mitjanaGlobal !== null ? `<div class="text-right"><div class="text-[28px] font-extrabold tabular-nums leading-none">${fmt(mitjanaGlobal)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              ${Object.keys(perModul).map(m => {
+                const llista = perModul[m];
+                const mitj = llista.length ? llista.reduce((a, b) => a + b, 0) / llista.length : '';
+                return `<div class="rounded-xl p-3" style="background:var(--soft)"><div class="text-[13px] t2 truncate">${esc(m)}</div><div class="mt-1">${htmlNota(mitj)}</div><div class="text-[12px] t3 mt-1">${llista.length} sessió${llista.length === 1 ? '' : 'ns'}</div></div>`;
+              }).join('')}
+            </div>
+            ${ambNota.length > 1 ? `
+              <div>
+                <div class="text-[13px] font-semibold t2 mb-1">Evolució (ordre cronològic)</div>
+                <div class="flex items-end gap-1 h-20 border-b linia">${evolucio}</div>
+              </div>` : ''}
+          </article>
+          <div class="space-y-2.5 mt-3">
+            ${sessions.slice().reverse().map(s => `
+              <div class="card p-4 space-y-1">
+                <div class="flex justify-between items-center gap-2">
+                  <span class="font-semibold truncate">${esc(s.sessioAvaluada)}</span>
+                  ${htmlNota(s.notaFinal)}
+                </div>
+                <div class="text-[13px] t3">${esc(s.modul)} · ${esc(s.data)}${s.grup ? ' · Grup ' + esc(s.grup) : ''}</div>
+                ${s.observacioGrup ? `<div class="text-[14px] t2"><b>Grup:</b> ${esc(s.observacioGrup)}</div>` : ''}
+                ${s.observacioIndividual ? `<div class="text-[14px] t2"><b>Individual:</b> ${esc(s.observacioIndividual)}</div>` : ''}
+              </div>`).join('')}
+          </div>`;
+      } catch (err) {
+        cont.innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
+      }
+    }
+
+    // =====================================================================
+    // CORREUS
+    // =====================================================================
+    let destinatarisMarcats = new Set(); // índexs de resultatsSessio
+
+    const PLANTILLA_COS = `Hola {{nom}},
+
+La teva nota de "{{sessio}}" ({{modul}}) és: {{nota}}
+
+{{desglossament}}
+
+Observacions del grup: {{observacions_grup}}
+Observacions individuals: {{observacions_individual}}
+
+Salutacions.`;
+
+    // Si es passa idx, el correu és només per a aquell alumne; si no, per a tots
+    async function obrirModalCorreu(idx) {
+      const s = sessioOberta;
+      if (!s || !resultatsSessio.length) return;
+      destinatarisMarcats = new Set(idx !== undefined ? [idx] : resultatsSessio.map((_, i) => i));
+
+      $('modal-correu-titol').textContent = `Enviar correu · ${s.sessioAvaluada}`;
+      if (!$('modal-correu-assumpte').value) $('modal-correu-assumpte').value = 'Nota de {{sessio}}';
+      if (!$('modal-correu-cos').value) $('modal-correu-cos').value = PLANTILLA_COS;
+      $('modal-correu-status').textContent = '';
+      $('boto-enviar-correu').disabled = false;
+      $('modal-correu-quota').textContent = 'Consultant quota de correus...';
+      renderitzarDestinataris();
+      $('modal-correu').classList.remove('hidden');
+
+      try {
+        const quota = await api('quotaCorreu');
+        $('modal-correu-quota').dataset.quota = quota;
+        actualitzarAvisQuota();
+      } catch (err) {
+        $('modal-correu-quota').textContent = '';
+      }
+    }
+
+    function renderitzarDestinataris() {
+      $('modal-correu-dest').innerHTML = resultatsSessio.map((r, i) => `
+        <label class="flex items-center gap-2.5 px-3 py-2 text-[14px] cursor-pointer">
+          <input type="checkbox" ${destinatarisMarcats.has(i) ? 'checked' : ''} onchange="marcarDestinatari(${i}, this.checked)">
+          <span class="flex-1 truncate">${esc(r.cognoms)}, ${esc(r.nom)}</span>
+          ${htmlNota(r.notaFinal)}
+        </label>`).join('');
+      const indexs = Array.from(destinatarisMarcats).sort((a, b) => a - b);
+      $('modal-correu-n').textContent = indexs.length;
+      const anterior = $('modal-correu-previ').value;
+      $('modal-correu-previ').innerHTML = indexs.map(i => `<option value="${i}">${esc(resultatsSessio[i].cognoms)}, ${esc(resultatsSessio[i].nom)}</option>`).join('');
+      if (indexs.includes(Number(anterior))) $('modal-correu-previ').value = anterior;
+      actualitzarPrevisualitzacio();
+      actualitzarAvisQuota();
+    }
+
+    function marcarDestinatari(i, marcat) {
+      if (marcat) destinatarisMarcats.add(i); else destinatarisMarcats.delete(i);
+      renderitzarDestinataris();
+    }
+
+    function marcarTotsDestinataris() {
+      destinatarisMarcats = new Set(destinatarisMarcats.size === resultatsSessio.length ? [] : resultatsSessio.map((_, i) => i));
+      renderitzarDestinataris();
+    }
+
+    function actualitzarAvisQuota() {
+      const el = $('modal-correu-quota');
+      if (el.dataset.quota === undefined) return;
+      const quota = Number(el.dataset.quota);
+      const falta = quota < destinatarisMarcats.size;
+      el.textContent = `Et queden ${quota} correus per avui (límit diari de Google).` + (falta ? ' ⚠ No n\'hi ha prou per a tots els seleccionats.' : '');
+      el.className = 'text-[13px] ' + (falta ? 't-ko font-semibold' : 't3');
+    }
+
+    function valorsPlantilla(r, s) {
+      return {
+        nom: r.nom, cognoms: r.cognoms, nota: r.notaFinal !== '' ? r.notaFinal : '-', grup: r.grup || '-',
+        observacions_grup: r.observacioGrup || '', observacions_individual: r.observacioIndividual || '',
+        sessio: s.sessioAvaluada, modul: s.modul, classe: s.classe, curs: s.curs
+      };
+    }
+
+    function substituir(text, valors) {
+      return String(text).replace(/\{\{(\w+)\}\}/g, (m, k) => Object.prototype.hasOwnProperty.call(valors, k) ? String(valors[k]) : m);
+    }
+
+    // Mateix format que l'HTML que envia enviarCorreus() a code.gs
+    function actualitzarPrevisualitzacio() {
+      const caixa = $('modal-correu-previsualitzacio');
+      const r = resultatsSessio[Number($('modal-correu-previ').value)];
+      const s = sessioOberta;
+      if (!r || !s || !destinatarisMarcats.size) { caixa.innerHTML = '<span class="t3">Cap destinatari seleccionat.</span>'; return; }
+      const valors = valorsPlantilla(r, s);
+      const valorsHtml = {};
+      Object.keys(valors).forEach(k => { valorsHtml[k] = esc(valors[k]); });
+      valorsHtml.desglossament = '<table class="text-[13px] border-collapse my-1">' + criterisSessio.map(c =>
+        `<tr><td>${esc(c.nom)}${c.pes !== '' ? ' (' + esc(c.pes) + '%)' : ''}</td><td class="text-center font-bold">${esc(esBuit(r.notes[c.nom]) ? '-' : r.notes[c.nom])}</td></tr>`
+      ).join('') + '</table>';
+
+      caixa.innerHTML =
+        `<div class="text-[13px] t3">Assumpte: <b style="color:var(--text)">${esc(substituir($('modal-correu-assumpte').value, valors))}</b></div>` +
+        `<div class="pt-1 border-t linia">${substituir(esc($('modal-correu-cos').value), valorsHtml).replace(/\n/g, '<br>')}</div>`;
+    }
+
+    function tancarModalCorreu() {
+      $('modal-correu').classList.add('hidden');
+    }
+
+    async function confirmarEnviarCorreu() {
+      const assumpte = $('modal-correu-assumpte').value.trim();
+      const cos = $('modal-correu-cos').value.trim();
+      const statusEl = $('modal-correu-status');
+      const destinataris = Array.from(destinatarisMarcats).map(i => alumneRef(resultatsSessio[i]));
+      if (!destinataris.length) { mostrarAvis('Selecciona almenys un destinatari.', 'error'); return; }
+      if (!assumpte || !cos) { mostrarAvis('Escriu l\'assumpte i el missatge.', 'error'); return; }
+      if (destinataris.length > 1 && !confirm(`S'enviaran ${destinataris.length} correus. Continuar?`)) return;
+
+      statusEl.textContent = 'Enviant...';
+      statusEl.className = 'text-[14px] text-center t-accent animate-pulse';
+      $('boto-enviar-correu').disabled = true;
+
+      try {
+        const r = await api('enviarCorreus', Object.assign(paramsSessio(sessioOberta), { assumpte, cos, destinataris }));
+        statusEl.textContent = `Enviats: ${r.enviats}.` +
+          (r.senseCorreu.length ? ` Sense correu a "👤 Llistat": ${r.senseCorreu.join(', ')}.` : '') +
+          (r.errors.length ? ` Errors: ${r.errors.join('; ')}.` : '') + ` Quota restant: ${r.quotaRestant}.`;
+        statusEl.className = 'text-[14px] text-center ' + (r.errors.length || r.senseCorreu.length ? 't-warn' : 't-ok');
+        // Refresca les marques "📧 enviat"
+        const s = await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
+        resultatsSessio = s.alumnes;
+        renderitzarDetallSessio();
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'text-[14px] text-center t-ko';
+      } finally {
+        $('boto-enviar-correu').disabled = false;
+      }
+    }
+
+    // =====================================================================
+    // CONFIGURAR: MÒDULS, SUPÒSITS I ÍTEMS
+    // =====================================================================
+    let configuracio = null; // [{ nom, criteris, suposits: [{ nom, data, descripcio, actiu, criterisPropis, criteris }] }]
+    const NOMS_TIPUS = { numeric: 'Numèric 0-10', sino: 'Sí / No', rubrica: 'Rúbrica (nivells)' };
+
+    async function carregarConfiguracio(modulSeleccionat) {
+      try {
+        configuracio = await api('obtenirConfiguracio');
+        const sel = $('cfg-modul');
+        const anterior = modulSeleccionat || sel.value;
+        sel.innerHTML = configuracio.length ? opcions(configuracio, m => m.nom, m => m.nom) : '<option value="">Cap mòdul. Crea\'n un amb "+ Nou"</option>';
+        if (anterior && configuracio.some(m => m.nom === anterior)) sel.value = anterior;
+        renderitzarConfiguracio();
+      } catch (err) {
+        mostrarAvis('No s\'ha pogut carregar la configuració: ' + err.message, 'error');
+      }
+    }
+
+    function modulConfigActual() {
+      return configuracio ? configuracio.find(m => m.nom === $('cfg-modul').value) : null;
+    }
+
+    function resumCriteris(llista) {
+      if (!llista.length) return '<p class="text-[14px] t3">Sense ítems: s\'avaluarà amb una sola "Nota" del 100%.</p>';
+      return `<ul class="divisor">${llista.map(c => `
+        <li class="flex justify-between gap-2 py-2 text-[15px]">
+          <span class="min-w-0">${esc(c.nom)}${c.imprescindible ? ' <span class="etiqueta t-ko" style="background:var(--ko-bg)">IMPRESCINDIBLE</span>' : ''}
+            <span class="block text-[13px] t3">${esc(NOMS_TIPUS[c.tipus] || c.tipus)}</span></span>
+          <span class="font-semibold t2 shrink-0">${esc(c.pes)}%</span>
+        </li>`).join('')}</ul>`;
+    }
+
+    function renderitzarConfiguracio() {
+      const m = modulConfigActual();
+      const contCriteris = $('cfg-criteris-modul');
+      const contSuposits = $('cfg-suposits');
+      if (!m) {
+        contCriteris.innerHTML = '<p class="text-center t3">Crea un mòdul per començar.</p>';
+        contSuposits.innerHTML = '';
+        return;
+      }
+
+      contCriteris.innerHTML = `
+        <div class="flex justify-between items-center">
+          <h2 class="titol-seccio">Ítems del mòdul</h2>
+          <button onclick="obrirEditorModul()" class="btn btn-accent !py-1.5 text-[14px]">Editar</button>
+        </div>
+        <p class="text-[13px] t3">S'apliquen a tots els supòsits del mòdul que no tinguin ítems propis.</p>
+        ${resumCriteris(m.criteris)}`;
+
+      contSuposits.innerHTML = `
+        <div class="flex justify-between items-center">
+          <h2 class="titol-seccio">Supòsits pràctics</h2>
+          <button onclick="obrirEditorSuposit()" class="btn btn-accent !py-1.5 text-[14px]">+ Nou supòsit</button>
+        </div>
+        ${m.suposits.length ? m.suposits.map((s, i) => `
+          <div class="rounded-xl p-3 space-y-2 ${s.actiu ? '' : 'opacity-60'}" style="background:var(--field)">
+            <div class="flex justify-between items-start gap-2">
+              <span class="font-semibold">${esc(s.nom)}</span>
+              <span class="text-[13px] t3 shrink-0">${esc(s.data)}</span>
+            </div>
+            <div class="flex flex-wrap gap-1">
+              ${s.criterisPropis ? `<span class="etiqueta t-accent" style="background:var(--accent-soft)">${s.criteris.length} ítems propis</span>` : '<span class="etiqueta t2" style="background:var(--soft)">Ítems del mòdul</span>'}
+              ${s.actiu ? '' : '<span class="etiqueta t2" style="background:var(--soft2)">Arxivat</span>'}
+            </div>
+            ${s.descripcio ? `<p class="text-[14px] t2 line-clamp-2">${esc(s.descripcio)}</p>` : ''}
+            <div class="grid grid-cols-4 gap-1.5 pt-1">
+              <button onclick="obrirEditorSuposit(${i})" class="btn btn-accent !px-1 !py-1.5 text-[13px]">Editar</button>
+              <button onclick="duplicarSupositConfig(${i})" class="btn btn-suau !px-1 !py-1.5 text-[13px]">Duplicar</button>
+              <button onclick="arxivarSupositConfig(${i})" class="btn btn-suau !px-1 !py-1.5 text-[13px]">${s.actiu ? 'Arxivar' : 'Reactivar'}</button>
+              <button onclick="eliminarSupositConfig(${i})" class="btn btn-perill !px-1 !py-1.5 text-[13px]" aria-label="Eliminar">Eliminar</button>
+            </div>
+          </div>`).join('') : '<p class="text-[14px] t3">Encara no hi ha supòsits. Crea\'n per poder-los triar a Avaluar sense haver d\'escriure el nom.</p>'}`;
+    }
+
+    async function despresDeCanviConfig(modul) {
+      await carregarConfiguracio(modul);
+      await carregarModuls();
+    }
+
+    async function nouModul() {
+      const nom = (prompt('Nom del nou mòdul:') || '').trim();
+      if (!nom) return;
+      if (configuracio && configuracio.some(m => m.nom === nom)) { mostrarAvis('Aquest mòdul ja existeix.', 'error'); return; }
+      obrirEditor({ tipus: 'modul', modul: nom, nou: true, criteris: [{ nom: 'Nota', pes: 100, tipus: 'numeric', nivells: [], imprescindible: false }] });
+    }
+
+    async function renomenarModulActual() {
+      const m = modulConfigActual();
+      if (!m) return;
+      const nou = (prompt('Nou nom del mòdul (els resultats ja exportats conserven el nom antic):', m.nom) || '').trim();
+      if (!nou || nou === m.nom) return;
+      try {
+        await api('renomenarModul', { antic: m.nom, nou });
+        mostrarAvis('Mòdul reanomenat.', 'ok');
+        despresDeCanviConfig(nou);
+      } catch (err) { mostrarAvis(err.message, 'error'); }
+    }
+
+    async function eliminarModulActual() {
+      const m = modulConfigActual();
+      if (!m) return;
+      if (!confirm(`Eliminar la configuració del mòdul "${m.nom}" (ítems i supòsits)? Els resultats ja exportats NO s'esborren.`)) return;
+      try {
+        await api('eliminarModul', { modul: m.nom });
+        mostrarAvis('Mòdul eliminat.', 'ok');
+        despresDeCanviConfig();
+      } catch (err) { mostrarAvis(err.message, 'error'); }
+    }
+
+    function exportarPlantilla() {
+      const m = modulConfigActual();
+      if (!m) return;
+      const neteja = c => ({ nom: c.nom, pes: c.pes, tipus: c.tipus, nivells: c.nivells, imprescindible: c.imprescindible });
+      const plantilla = {
+        format: 'avaluador-plantilla-v1', nom: m.nom, criteris: m.criteris.map(neteja),
+        suposits: m.suposits.map(s => ({ nom: s.nom, descripcio: s.descripcio, actiu: s.actiu, criterisPropis: s.criterisPropis, criteris: s.criteris.map(neteja) }))
+      };
+      descarregarFitxer(`Plantilla - ${m.nom}.json`.replace(/[\\/:*?"<>|]/g, '_'), JSON.stringify(plantilla, null, 2), 'application/json');
+    }
+
+    function importarPlantillaFitxer(input) {
+      const fitxer = input.files[0];
+      input.value = '';
+      if (!fitxer) return;
+      const lector = new FileReader();
+      lector.onload = async () => {
+        let plantilla;
+        try { plantilla = JSON.parse(lector.result); } catch (e) { mostrarAvis('El fitxer no és una plantilla vàlida.', 'error'); return; }
+        const nom = (prompt('Nom del mòdul on importar-la (si ja existeix, s\'hi afegiran/actualitzaran els supòsits):', plantilla.nom || '') || '').trim();
+        if (!nom) return;
+        try {
+          await api('importarPlantilla', { plantilla, nomModul: nom });
+          mostrarAvis('Plantilla importada.', 'ok');
+          despresDeCanviConfig(nom);
+        } catch (err) { mostrarAvis(err.message, 'error'); }
+      };
+      lector.readAsText(fitxer);
+    }
+
+    async function duplicarSupositConfig(i) {
+      const m = modulConfigActual();
+      const s = m.suposits[i];
+      const nouNom = (prompt('Nom del supòsit nou:', s.nom + ' (còpia)') || '').trim();
+      if (!nouNom) return;
+      try {
+        await api('duplicarSuposit', { modul: m.nom, nom: s.nom, nouNom });
+        mostrarAvis('Supòsit duplicat.', 'ok');
+        despresDeCanviConfig(m.nom);
+      } catch (err) { mostrarAvis(err.message, 'error'); }
+    }
+
+    async function arxivarSupositConfig(i) {
+      const m = modulConfigActual();
+      const s = m.suposits[i];
+      try {
+        await api('desarSuposit', { modul: m.nom, nomOriginal: s.nom, suposit: { nom: s.nom, data: s.data, descripcio: s.descripcio, actiu: !s.actiu } });
+        despresDeCanviConfig(m.nom);
+      } catch (err) { mostrarAvis(err.message, 'error'); }
+    }
+
+    async function eliminarSupositConfig(i) {
+      const m = modulConfigActual();
+      const s = m.suposits[i];
+      if (!confirm(`Eliminar el supòsit "${s.nom}" de la configuració? Els resultats ja exportats NO s'esborren. (Si només vols que no surti a Avaluar, arxiva'l.)`)) return;
+      try {
+        await api('eliminarSuposit', { modul: m.nom, nom: s.nom });
+        mostrarAvis('Supòsit eliminat.', 'ok');
+        despresDeCanviConfig(m.nom);
+      } catch (err) { mostrarAvis(err.message, 'error'); }
+    }
+
+    // ---- Editor d'ítems (modal) ----
+    let editor = null; // { tipus: 'modul'|'suposit', modul, nomOriginal, nou, propis, criteris }
+
+    function copiaCriteris(llista) {
+      return (llista || []).map(c => ({ nom: c.nom, pes: c.pes, tipus: c.tipus || 'numeric',
+        nivellsText: (c.nivells || []).map(n => n.nom + '=' + n.valor).join('; '), imprescindible: !!c.imprescindible }));
+    }
+
+    function obrirEditorModul() {
+      const m = modulConfigActual();
+      if (m) obrirEditor({ tipus: 'modul', modul: m.nom, criteris: m.criteris });
+    }
+
+    function obrirEditorSuposit(i) {
+      const m = modulConfigActual();
+      if (!m) return;
+      const s = i !== undefined ? m.suposits[i] : null;
+      obrirEditor({
+        tipus: 'suposit', modul: m.nom, nomOriginal: s ? s.nom : '', propis: s ? s.criterisPropis : false,
+        criteris: s && s.criterisPropis ? s.criteris : m.criteris,
+        nom: s ? s.nom : '', data: s ? s.data : '', descripcio: s ? s.descripcio : '', actiu: s ? s.actiu : true
       });
     }
 
-    // ---------------- IMPORTAR DES DE CLASSROOM ----------------
+    function obrirEditor(opcionsEditor) {
+      editor = Object.assign({}, opcionsEditor, { criteris: copiaCriteris(opcionsEditor.criteris) });
+      if (!editor.criteris.length) editor.criteris = copiaCriteris([{ nom: 'Nota', pes: 100, tipus: 'numeric' }]);
+      const esSuposit = editor.tipus === 'suposit';
+      $('editor-titol').textContent = esSuposit ? (editor.nomOriginal ? 'Editar supòsit' : 'Nou supòsit') + ' · ' + editor.modul
+        : 'Ítems del mòdul · ' + editor.modul;
+      $('editor-suposit').classList.toggle('hidden', !esSuposit);
+      if (esSuposit) {
+        $('editor-nom').value = editor.nom;
+        $('editor-data').value = editor.data;
+        $('editor-descripcio').value = editor.descripcio;
+        $('editor-actiu').checked = editor.actiu !== false;
+        $('editor-propis').checked = !!editor.propis;
+      }
+      $('editor-criteris-wrap').classList.toggle('hidden', esSuposit && !editor.propis);
+      $('editor-status').textContent = '';
+      renderitzarEditorCriteris();
+      $('modal-editor').classList.remove('hidden');
+    }
 
-    let cursosClassroom = [];
+    function tancarEditor() {
+      $('modal-editor').classList.add('hidden');
+      editor = null;
+    }
 
+    function canviarItemsPropis(propis) {
+      editor.propis = propis;
+      $('editor-criteris-wrap').classList.toggle('hidden', !propis);
+    }
+
+    function renderitzarEditorCriteris() {
+      $('editor-criteris').innerHTML = editor.criteris.map((c, j) => `
+        <div class="rounded-xl p-3 space-y-2" style="background:var(--field);border:1px solid var(--line)">
+          <div class="flex gap-2">
+            <input type="text" value="${esc(c.nom)}" oninput="editorCamp(${j}, 'nom', this.value)" placeholder="Nom de l'ítem" aria-label="Nom de l'ítem" class="camp flex-1 min-w-0 !py-2">
+            <input type="number" inputmode="decimal" value="${esc(c.pes)}" oninput="editorCamp(${j}, 'pes', this.value)" aria-label="Pes (%)" class="camp !w-16 !py-2 text-center">
+            <span class="t3 self-center">%</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select onchange="editorCamp(${j}, 'tipus', this.value); renderitzarEditorCriteris()" aria-label="Tipus" class="camp !w-auto !py-1.5 !text-[14px]">
+              ${Object.keys(NOMS_TIPUS).map(t => `<option value="${t}" ${c.tipus === t ? 'selected' : ''}>${NOMS_TIPUS[t]}</option>`).join('')}
+            </select>
+            <label class="flex items-center gap-1.5 text-[14px] t2">
+              <input type="checkbox" ${c.imprescindible ? 'checked' : ''} onchange="editorCamp(${j}, 'imprescindible', this.checked)"> Imprescindible
+            </label>
+            <span class="ml-auto flex gap-1">
+              <button onclick="editorMoure(${j}, -1)" class="btn btn-suau !px-2.5 !py-1" aria-label="Pujar">↑</button>
+              <button onclick="editorMoure(${j}, 1)" class="btn btn-suau !px-2.5 !py-1" aria-label="Baixar">↓</button>
+              <button onclick="editorTreure(${j})" class="btn btn-perill !px-2.5 !py-1" aria-label="Treure">✕</button>
+            </span>
+          </div>
+          ${c.tipus === 'rubrica' ? `
+            <input type="text" value="${esc(c.nivellsText)}" oninput="editorCamp(${j}, 'nivellsText', this.value)" placeholder="Insuficient=2; Suficient=5; Bé=7.5; Excel·lent=10" aria-label="Nivells de la rúbrica" class="camp !py-2 !text-[14px]">` : ''}
+        </div>`).join('');
+      actualitzarSumaEditor();
+    }
+
+    function editorCamp(j, camp, valor) {
+      editor.criteris[j][camp] = valor;
+      if (camp === 'tipus' && valor === 'rubrica' && !editor.criteris[j].nivellsText) {
+        editor.criteris[j].nivellsText = 'Insuficient=2; Suficient=5; Bé=7.5; Excel·lent=10';
+      }
+      actualitzarSumaEditor();
+    }
+
+    function actualitzarSumaEditor() {
+      const suma = Math.round(editor.criteris.reduce((a, c) => a + (Number(c.pes) || 0), 0) * 100) / 100;
+      const el = $('editor-suma');
+      el.textContent = suma === 100 ? 'Total 100% ✓' : (suma < 100 ? `Total ${suma}% · falten ${Math.round((100 - suma) * 100) / 100}%` : `Total ${suma}% · sobren ${Math.round((suma - 100) * 100) / 100}%`);
+      el.className = 'text-[14px] font-bold ' + (suma === 100 ? 't-ok' : 't-ko');
+    }
+
+    function editorAfegir() {
+      editor.criteris.push({ nom: '', pes: 0, tipus: 'numeric', nivellsText: '', imprescindible: false });
+      renderitzarEditorCriteris();
+    }
+
+    function editorTreure(j) {
+      editor.criteris.splice(j, 1);
+      renderitzarEditorCriteris();
+    }
+
+    function editorMoure(j, direccio) {
+      const k = j + direccio;
+      if (k < 0 || k >= editor.criteris.length) return;
+      [editor.criteris[j], editor.criteris[k]] = [editor.criteris[k], editor.criteris[j]];
+      renderitzarEditorCriteris();
+    }
+
+    function criterisEditorPerDesar() {
+      return editor.criteris.map(c => ({
+        nom: String(c.nom).trim(), pes: Number(String(c.pes).replace(',', '.')), tipus: c.tipus, imprescindible: !!c.imprescindible,
+        nivells: c.tipus === 'rubrica' ? String(c.nivellsText || '').split(/[;\n]/).map(t => {
+          const parts = t.split('=');
+          return parts.length < 2 ? null : { nom: parts[0].trim(), valor: Number(parts.slice(1).join('=').trim().replace(',', '.')) };
+        }).filter(n => n && n.nom && !isNaN(n.valor)) : []
+      }));
+    }
+
+    async function desarEditor() {
+      const statusEl = $('editor-status');
+      statusEl.textContent = 'Desant...';
+      statusEl.className = 'text-[14px] text-center t-accent animate-pulse';
+      try {
+        if (editor.tipus === 'modul') {
+          await api('desarCriteris', { modul: editor.modul, suposit: '', criteris: criterisEditorPerDesar() });
+        } else {
+          const nom = $('editor-nom').value.trim();
+          if (!nom) throw new Error('El supòsit necessita un nom.');
+          await api('desarSuposit', {
+            modul: editor.modul, nomOriginal: editor.nomOriginal,
+            suposit: {
+              nom, data: $('editor-data').value, descripcio: $('editor-descripcio').value.trim(), actiu: $('editor-actiu').checked,
+              criteris: $('editor-propis').checked ? criterisEditorPerDesar() : []
+            }
+          });
+        }
+        const modul = editor.modul;
+        tancarEditor();
+        mostrarAvis('Configuració desada.', 'ok');
+        despresDeCanviConfig(modul);
+      } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.className = 'text-[14px] text-center t-ko';
+      }
+    }
+
+    // =====================================================================
+    // CONFIGURAR: DESDOBLAMENTS DE CADA CLASSE
+    // =====================================================================
+    let subConfig = 'moduls';
+    let desdAlumnes = [];      // [{ nom, cognoms, id, desdoblament }]
+    let desdOpcions = [];      // noms dels desdoblaments de la classe (sense "General")
+    let desdCanvis = false;
+
+    function canviarSubConfig(sub) {
+      if (sub !== 'desd' && desdCanvis && !confirm('Tens canvis de desdoblaments sense desar. Sortir igualment?')) return;
+      subConfig = sub;
+      $('cfg-moduls').classList.toggle('hidden', sub !== 'moduls');
+      $('cfg-desdoblaments').classList.toggle('hidden', sub !== 'desd');
+      $('cfg-tab-moduls').className = sub === 'moduls' ? 'seg-tab' : '';
+      $('cfg-tab-desd').className = sub === 'desd' ? 'seg-tab' : '';
+      if (sub === 'desd' && !desdCanvis) carregarDesdoblamentsClasse();
+    }
+
+    async function carregarDesdoblamentsClasse() {
+      const classe = $('desd-classe').value;
+      const llista = $('desd-llista');
+      if (!classe) { llista.innerHTML = '<p class="text-center t3 py-6">Primer importa alumnes a la pestanya Alumnat.</p>'; return; }
+      if (desdCanvis && $('desd-llista').dataset.classe && $('desd-llista').dataset.classe !== classe &&
+          !confirm('Tens canvis de desdoblaments sense desar a l\'altra classe. Es perdran. Continuar?')) {
+        $('desd-classe').value = $('desd-llista').dataset.classe;
+        return;
+      }
+      llista.innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant alumnes...</p>';
+      try {
+        desdAlumnes = await api('obtenirAlumnes', { classe, desdoblament: 'General' });
+        llista.dataset.classe = classe;
+        const existents = [...new Set(desdAlumnes.map(a => a.desdoblament).filter(d => d && d !== 'General'))].sort((a, b) => a.localeCompare(b));
+        desdOpcions = existents.length ? existents : ['Desdoblament 1', 'Desdoblament 2'];
+        desdCanvis = false;
+        renderitzarDesdoblaments();
+      } catch (err) {
+        llista.innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
+      }
+    }
+
+    // Etiqueta curta per als botons: "Desdoblament 1" -> "D1"; altres noms, els primers caràcters
+    function etiquetaDesd(nom) {
+      const m = String(nom).match(/(\d+)\s*$/);
+      return m ? 'D' + m[1] : String(nom).slice(0, 8);
+    }
+
+    function renderitzarDesdoblaments() {
+      const llista = $('desd-llista');
+      $('boto-desar-desd').disabled = !desdCanvis;
+      $('boto-desar-desd').textContent = desdCanvis ? 'Desar desdoblaments' : 'Desdoblaments desats ✓';
+
+      const compte = nom => desdAlumnes.filter(a => (a.desdoblament || 'General') === nom).length;
+      $('desd-resum').innerHTML = [['General', 'Sense desdoblament']].concat(desdOpcions.map(d => [d, d])).map(([valor, text]) =>
+        `<span class="etiqueta !text-[13px] !py-1 !px-2.5" style="background:var(--soft)">${esc(text)}${valor !== 'General' ? ` <b class="t-accent">(${esc(etiquetaDesd(valor))})</b>` : ''} · <b>${compte(valor)}</b></span>`).join('');
+
+      if (!desdAlumnes.length) { llista.innerHTML = '<p class="text-center t3 py-6">Aquesta classe no té alumnes.</p>'; return; }
+
+      llista.innerHTML = desdAlumnes.map((a, i) => {
+        const actual = a.desdoblament || 'General';
+        const boto = (k, text, titol) => {
+          const valor = k < 0 ? 'General' : desdOpcions[k];
+          const actiu = actual === valor;
+          return `<button type="button" onclick="assignarDesd(${i}, ${k})" aria-pressed="${actiu}" title="${esc(titol)}"
+                    class="${actiu ? (k < 0 ? 'seg-neutre' : 'opcio-activa') : ''}">${esc(text)}</button>`;
+        };
+        return `
+          <div class="px-4 py-3 space-y-2">
+            <div class="flex items-center gap-2.5">
+              ${htmlAvatar(a, '', 34)}
+              <span class="font-semibold text-[15px] truncate">${esc(a.cognoms)}, ${esc(a.nom)}</span>
+            </div>
+            <div class="seg text-[14px]" role="group" aria-label="Desdoblament de ${esc(a.nom)}">
+              ${boto(-1, 'Cap', 'Sense desdoblament (només surt a General)')}
+              ${desdOpcions.map((d, k) => boto(k, etiquetaDesd(d), d)).join('')}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function assignarDesd(i, k) {
+      desdAlumnes[i].desdoblament = k < 0 ? 'General' : desdOpcions[k];
+      desdCanvis = true;
+      renderitzarDesdoblaments();
+    }
+
+    function afegirDesdoblament() {
+      const proposat = 'Desdoblament ' + (desdOpcions.length + 1);
+      const nom = (prompt('Nom del nou desdoblament:', proposat) || '').trim();
+      if (!nom) return;
+      if (nom === 'General' || desdOpcions.includes(nom)) { mostrarAvis('Aquest desdoblament ja existeix.', 'error'); return; }
+      desdOpcions.push(nom);
+      renderitzarDesdoblaments();
+    }
+
+    // Primera meitat (per ordre alfabètic) al primer desdoblament, la resta al segon
+    function repartirPerMeitats() {
+      if (desdOpcions.length < 2) { mostrarAvis('Calen almenys dos desdoblaments.', 'error'); return; }
+      if (desdAlumnes.some(a => a.desdoblament && a.desdoblament !== 'General') &&
+          !confirm(`Això reassignarà tots els alumnes: la primera meitat a "${desdOpcions[0]}" i la resta a "${desdOpcions[1]}". Continuar?`)) return;
+      const meitat = Math.ceil(desdAlumnes.length / 2);
+      desdAlumnes.forEach((a, i) => { a.desdoblament = i < meitat ? desdOpcions[0] : desdOpcions[1]; });
+      desdCanvis = true;
+      renderitzarDesdoblaments();
+    }
+
+    async function desarDesdoblamentsClasse() {
+      const classe = $('desd-llista').dataset.classe;
+      const boto = $('boto-desar-desd');
+      boto.disabled = true;
+      boto.textContent = 'Desant...';
+      try {
+        const r = await api('desarDesdoblaments', {
+          classe, assignacions: desdAlumnes.map(a => ({ alumne: { nom: a.nom, cognoms: a.cognoms, id: a.id }, desdoblament: a.desdoblament }))
+        });
+        desdCanvis = false;
+        renderitzarDesdoblaments();
+        mostrarAvis(`Desdoblaments desats (${r.actualitzats} canvis).` + (r.noTrobats.length ? ` No trobats: ${r.noTrobats.join(', ')}.` : ''), r.noTrobats.length ? 'error' : 'ok');
+        if ($('classe').value === classe) carregarDesdoblaments(classe, $('desdoblament').value);
+      } catch (err) {
+        boto.disabled = false;
+        boto.textContent = 'Desar desdoblaments';
+        mostrarAvis('Error en desar: ' + err.message, 'error');
+      }
+    }
+
+    // =====================================================================
+    // ALUMNAT: IMPORTAR DES DE CLASSROOM
+    // =====================================================================
     async function carregarCursosClassroom() {
-      const sel = document.getElementById('importar-curs-classroom');
-      const statusEl = document.getElementById('importar-status');
+      const sel = $('importar-curs-classroom');
+      const statusEl = $('importar-status');
       sel.innerHTML = '<option value="">Carregant...</option>';
       statusEl.textContent = '';
-
       try {
-        cursosClassroom = await cridarGet('listarCursosClassroom');
-        if (cursosClassroom.length === 0) {
-          sel.innerHTML = '<option value="">No s\'ha trobat cap curs actiu</option>';
-          return;
-        }
-        sel.innerHTML = cursosClassroom.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
+        const cursos = await api('listarCursosClassroom');
+        sel.innerHTML = cursos.length ? opcions(cursos, c => c.id, c => c.nom) : '<option value="">No s\'ha trobat cap curs actiu</option>';
       } catch (err) {
         sel.innerHTML = '<option value="">Error</option>';
         statusEl.textContent = 'Error en carregar cursos: ' + err.message;
-        statusEl.className = 'text-xs text-center font-medium text-red-600';
+        statusEl.className = 'text-[14px] text-center t-ko';
       }
     }
 
     async function importarDeClassroom() {
-      const courseId = document.getElementById('importar-curs-classroom').value;
-      const curs = document.getElementById('importar-curs').value.trim();
-      const classe = document.getElementById('importar-classe').value.trim();
-      const desdoblament = document.getElementById('importar-desdoblament').value.trim() || 'General';
-      const statusEl = document.getElementById('importar-status');
+      const courseId = $('importar-curs-classroom').value;
+      const curs = $('importar-curs').value.trim();
+      const classe = $('importar-classe').value.trim();
+      const desdoblament = $('importar-desdoblament').value.trim() || 'General';
+      const statusEl = $('importar-status');
 
-      if (!courseId) {
-        alert('Selecciona primer un curs de Classroom.');
-        return;
-      }
-      if (!classe) {
-        alert('Escriu el nom de la classe (tal com vols que aparegui a l\'app).');
-        return;
-      }
+      if (!courseId) { mostrarAvis('Selecciona primer un curs de Classroom.', 'error'); return; }
+      if (!classe) { mostrarAvis('Escriu el nom de la classe (tal com vols que aparegui a l\'app).', 'error'); return; }
 
       statusEl.textContent = 'Important...';
-      statusEl.className = 'text-xs text-center font-medium text-indigo-600 animate-pulse';
-
+      statusEl.className = 'text-[14px] text-center t-accent animate-pulse';
       try {
-        const resultat = await cridarPost('importarAlumnesClassroom', { courseId, curs, classe, desdoblament });
-        statusEl.textContent = `Fet: ${resultat.importats} alumnes nous, ${resultat.actualitzats} actualitzats (de ${resultat.total} al curs de Classroom).`;
-        statusEl.className = 'text-xs text-center font-medium text-green-600';
+        const r = await api('importarAlumnesClassroom', { courseId, curs, classe, desdoblament });
+        statusEl.textContent = `Fet: ${r.importats} alumnes nous, ${r.actualitzats} actualitzats (de ${r.total} al curs de Classroom).`;
+        statusEl.className = 'text-[14px] text-center t-ok';
+        carregarClasses();
       } catch (err) {
         statusEl.textContent = 'Error en importar: ' + err.message;
-        statusEl.className = 'text-xs text-center font-medium text-red-600';
+        statusEl.className = 'text-[14px] text-center t-ko';
       }
     }
 
+    // =====================================================================
+    // INICI
+    // =====================================================================
+    $('curs').value = cursPerDefecte();
+    $('importar-curs').value = cursPerDefecte();
+    canviarVista('avaluar');
     carregarModuls();
     carregarClasses();
   </script>
