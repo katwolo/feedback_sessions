@@ -7,7 +7,7 @@ function colToIdx(letters) { let n = 0; for (const ch of letters) n = n * 26 + (
 function crearEntorn(opts = {}) {
   const enviats = [];
   const fitxers = [];
-  let usuari = opts.usuari || 'owner@x.cat';
+  let usuari = opts.usuari !== undefined ? opts.usuari : 'owner@x.cat';
 
   class Range {
     constructor(sheet, r, c, nr, nc) { Object.assign(this, { sheet, r, c, nr, nc }); }

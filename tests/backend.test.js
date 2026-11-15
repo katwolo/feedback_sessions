@@ -10,14 +10,22 @@ function prova(nom, fn) {
 // ---------- Seguretat ----------
 prova('usuari no autoritzat rebutjat', () => {
   const e = crearEntorn({ usuari: 'intrus@gmail.com' });
+  e.ctx.ACCES_OBERT = false;
   const r = e.raw('listarModuls');
   assert.strictEqual(r.error, true);
   assert.match(r.message, /No tens permís/);
 });
 prova('usuari autoritzat via PROFESSORS_AUTORITZATS', () => {
   const e = crearEntorn({ usuari: 'prof@x.cat' });
+  e.ctx.ACCES_OBERT = false;
   e.ctx.PROFESSORS_AUTORITZATS.push('Prof@x.cat');
   assert.strictEqual(e.raw('listarModuls').error, false);
+});
+prova('accés obert: qualsevol amb l\'enllaç, fins i tot sense compte', () => {
+  const e = crearEntorn({ usuari: '' });
+  assert.strictEqual(e.raw('listarModuls').error, false);
+  e.ctx.ACCES_OBERT = false;
+  assert.match(e.raw('listarModuls').message, /No s'ha pogut identificar/);
 });
 prova('acció desconeguda', () => {
   const e = crearEntorn();

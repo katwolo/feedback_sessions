@@ -22,8 +22,8 @@ proyecto de Apps Script y Google identifica a quien la abre.
 
 ### Quién puede entrar
 
-- Por defecto (`"access": "MYSELF"` en `appsscript.json`) solo entras tú.
-- Para que entren más profesores de tu dominio de Google Workspace: cambia a `"access": "DOMAIN"` y
+- Por defecto (`ACCES_OBERT = true` en `code.gs` y `"access": "ANYONE_ANONYMOUS"`) entra cualquiera que tenga el enlace. Quien lo tenga ve los datos del alumnado y puede enviar correos desde tu cuenta: no lo publiques.
+- Para restringirlo: pon `ACCES_OBERT = false` (solo tú) o cambia a `"access": "DOMAIN"` y
   añade sus correos a `PROFESSORS_AUTORITZATS` al principio de `code.gs`.
 
 ## Pestañas del Sheet

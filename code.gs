@@ -12,6 +12,12 @@ var PROFESSORS_AUTORITZATS = [
   // 'professor1@elteucentre.cat',
 ];
 
+// true = pot fer servir l'app qualsevol persona que tingui l'enllaç (cal que la implementació tingui
+// "Qui hi té accés: Qualsevol usuari"). ATENCIÓ: qui tingui l'enllaç podrà veure noms, notes i correus
+// de l'alumnat, esborrar resultats i enviar correus des del teu compte. No comparteixis l'enllaç en llocs públics.
+// false = només el propietari i PROFESSORS_AUTORITZATS.
+var ACCES_OBERT = true;
+
 var NOM_LLISTAT = "👤 Llistat";
 var NOM_CONFIGURACIO = "🔧 Configuració";
 var NOM_SUPOSITS = "📋 Supòsits";
@@ -64,6 +70,8 @@ function doGet() {
 // Comprova que qui fa servir l'app és el propietari o un professor autoritzat
 function comprovarAcces() {
   var correu = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  if (ACCES_OBERT) return correu || 'anònim';
+
   var propietari = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
   var autoritzats = PROFESSORS_AUTORITZATS.map(function(c) { return String(c).toLowerCase().trim(); });
   if (propietari) autoritzats.push(propietari);
