@@ -68,9 +68,14 @@ function comprovarAcces() {
   var autoritzats = PROFESSORS_AUTORITZATS.map(function(c) { return String(c).toLowerCase().trim(); });
   if (propietari) autoritzats.push(propietari);
 
-  if (!correu || autoritzats.indexOf(correu) === -1) {
-    throw new Error('No tens permís per fer servir aquesta aplicació' + (correu ? ' (' + correu + ')' : '') +
-        '. Demana al propietari que t\'afegeixi a PROFESSORS_AUTORITZATS.');
+  if (!correu) {
+    throw new Error('No s\'ha pogut identificar el teu compte de Google. Revisa que la implementació tingui ' +
+        '"Qui hi té accés: Només jo" (o el teu domini) i, si tens diversos comptes oberts al navegador, ' +
+        'obre l\'app en una finestra on només hi hagi el compte propietari (' + propietari + ').');
+  }
+  if (autoritzats.indexOf(correu) === -1) {
+    throw new Error('No tens permís per fer servir aquesta aplicació (' + correu + '). ' +
+        'Demana al propietari (' + propietari + ') que t\'afegeixi a PROFESSORS_AUTORITZATS.');
   }
   return correu;
 }
