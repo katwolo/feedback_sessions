@@ -229,12 +229,22 @@
         </div>
       </section>
 
-      <div id="eines-panell" class="hidden flex gap-2">
+      <div id="eines-panell" class="hidden space-y-2">
+        <div class="flex gap-2">
         <label class="card flex-1 min-w-0 flex items-center gap-2 px-3">
           <svg class="ico ico-s t3" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input type="search" id="cerca-alumne" oninput="aplicarVisibilitat()" placeholder="Cerca alumne" aria-label="Cerca alumne" class="flex-1 min-w-0 bg-transparent py-2.5 outline-none text-[16px]">
         </label>
         <button id="boto-pendents" onclick="filtrePendents = !filtrePendents; aplicarVisibilitat()" class="card shrink-0 px-4 font-semibold text-[15px]" aria-pressed="false">Pendents</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[13px] t3 shrink-0">Ordenar per</span>
+          <div class="seg flex-1 text-[14px]" role="group" aria-label="Ordre de la llista">
+            <button id="ordre-cognoms" onclick="canviarOrdre('cognoms')">Cognoms</button>
+            <button id="ordre-grups" onclick="canviarOrdre('grups')">Grups</button>
+          </div>
+        </div>
+        <p id="avis-sense-grups" class="hidden text-[13px] t3 px-1">Encara no hi ha grups: crea'ls a «Grups temporals» i la llista s'ordenarà per grup.</p>
       </div>
 
       <div id="llista-alumnes" class="space-y-2.5">
@@ -969,6 +979,55 @@
         </div>`;
     }
 
+    // ---- Ordre de la llista: per cognoms (com arriba del full) o agrupada per grups ----
+    const CLAU_ORDRE = 'avaluador_ordre_llista';
+    let ordreLlista = 'cognoms';
+
+    function grupDe(i) { return grups[clauAlumne(estudiants[i])] || ''; }
+
+    // Índexs d'estudiants en l'ordre en què es mostren. Per grups: grup 1, 2... i "Sense grup" al final;
+    // dins de cada grup, primer el/la coordinador/a i després per cognoms.
+    function ordreVisual() {
+      const idx = estudiants.map((_, i) => i);
+      if (ordreLlista !== 'grups') return idx;
+      const esCoord = i => { const g = grupDe(i); return g && coordinadors[g] === clauAlumne(estudiants[i]) ? 0 : 1; };
+      return idx.sort((a, b) => {
+        const ga = grupDe(a), gb = grupDe(b);
+        if (ga !== gb) {
+          if (!ga) return 1;
+          if (!gb) return -1;
+          return (Number(ga) - Number(gb)) || String(ga).localeCompare(String(gb));
+        }
+        return (esCoord(a) - esCoord(b)) || (a - b);
+      });
+    }
+
+    function canviarOrdre(ordre) {
+      ordreLlista = ordre;
+      escriureLocal(CLAU_ORDRE, ordre);
+      renderitzarLlista();
+      if (alumneObert >= 0 && $('tarjeta-' + alumneObert) && $('tarjeta-' + alumneObert).scrollIntoView) {
+        $('tarjeta-' + alumneObert).scrollIntoView({ block: 'start' });
+      }
+    }
+
+    function htmlCapGrup(g) {
+      return `<div class="cap-grup flex items-center gap-2 px-1 pt-2" data-grup="${esc(g)}">
+          <span class="av ${classeGrup(g)}" style="width:26px;height:26px;font-size:12px" aria-hidden="true">${g ? esc(g) : '–'}</span>
+          <span class="font-bold">${g ? 'Grup ' + esc(g) : 'Sense grup'}</span>
+          <span class="compte-grup text-[13px] t3 ml-auto"></span>
+        </div>`;
+    }
+
+    function actualitzarCapsGrup() {
+      document.querySelectorAll('#llista-alumnes .cap-grup').forEach(cap => {
+        const g = cap.dataset.grup;
+        const membres = estudiants.map((_, i) => i).filter(i => String(grupDe(i)) === g);
+        const fets = membres.filter(esComplet).length;
+        cap.querySelector('.compte-grup').textContent = `${fets}/${membres.length} avaluats`;
+      });
+    }
+
     function renderitzarLlista() {
       const contenidor = $('llista-alumnes');
       $('eines-panell').classList.toggle('hidden', estudiants.length === 0);
@@ -982,9 +1041,21 @@
         return;
       }
 
-      contenidor.innerHTML = estudiants.map((a, i) =>
-        `<article id="tarjeta-${i}" data-cerca="${esc(normalitzar(a.nom + ' ' + a.cognoms))}" class="card ${i === alumneObert ? 'card-activa' : ''}">${htmlTarjeta(i)}</article>`
-      ).join('');
+      const perGrups = ordreLlista === 'grups';
+      const hiHaGrups = Object.keys(grups).length > 0;
+      $('ordre-cognoms').className = perGrups ? '' : 'seg-tab';
+      $('ordre-grups').className = perGrups ? 'seg-tab' : '';
+      $('avis-sense-grups').classList.toggle('hidden', !perGrups || hiHaGrups);
+
+      let html = '';
+      let grupAnterior = null;
+      ordreVisual().forEach(i => {
+        const a = estudiants[i];
+        const g = String(grupDe(i));
+        if (perGrups && hiHaGrups && g !== grupAnterior) { html += htmlCapGrup(g); grupAnterior = g; }
+        html += `<article id="tarjeta-${i}" data-grup="${esc(g)}" data-cerca="${esc(normalitzar(a.nom + ' ' + a.cognoms))}" class="card ${i === alumneObert ? 'card-activa' : ''}">${htmlTarjeta(i)}</article>`;
+      });
+      contenidor.innerHTML = html;
       aplicarVisibilitat();
       actualitzarProgres();
     }
@@ -1014,9 +1085,12 @@
       }
     }
 
+    // Següent alumne pendent seguint l'ordre en què es mostra la llista
     function seguentPendent(desDe) {
-      for (let k = 1; k <= estudiants.length; k++) {
-        const i = (desDe + k + estudiants.length) % estudiants.length;
+      const ordre = ordreVisual();
+      const pos = ordre.indexOf(desDe);
+      for (let k = 1; k <= ordre.length; k++) {
+        const i = ordre[(pos + k + ordre.length) % ordre.length];
         if (!esComplet(i) && visible(i)) return i;
       }
       return -1;
@@ -1038,6 +1112,7 @@
       estudiants.forEach((_, i) => { if (esComplet(i)) complets++; });
       $('progres').textContent = total ? `${complets} de ${total} avaluats` : '';
       $('progres-barra').style.width = (total ? Math.round(complets / total * 100) : 0) + '%';
+      actualitzarCapsGrup();
     }
 
     function mostrarStatus(html, color) {
@@ -1058,6 +1133,12 @@
       estudiants.forEach((_, i) => {
         const el = $('tarjeta-' + i);
         if (el) el.classList.toggle('hidden', !visible(i));
+      });
+      // Capçaleres de grup: s'amaguen si cap dels seus alumnes es veu
+      document.querySelectorAll('#llista-alumnes .cap-grup').forEach(cap => {
+        const hiHaVisible = [...document.querySelectorAll('#llista-alumnes article')]
+          .some(el => el.dataset.grup === cap.dataset.grup && !el.classList.contains('hidden'));
+        cap.classList.toggle('hidden', !hiHaVisible);
       });
       const boto = $('boto-pendents');
       boto.setAttribute('aria-pressed', filtrePendents);
@@ -2516,6 +2597,7 @@ Salutacions.`;
     $('curs').value = cursPerDefecte();
     $('importar-curs').value = cursPerDefecte();
     modeDiscret = llegirLocal(CLAU_DISCRET) === true;
+    ordreLlista = llegirLocal(CLAU_ORDRE) === 'grups' ? 'grups' : 'cognoms';
     aplicarDiscret();
     canviarVista('avaluar');
     (async () => {
