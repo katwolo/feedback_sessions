@@ -105,6 +105,15 @@
     .ico { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
     .ico-s { width: 17px; height: 17px; }
 
+    /* ---------- Mode ocult: les notes no es veuen si hi ha alumnes a prop ---------- */
+    .xip-actiu { background: #fff !important; color: var(--accent) !important; }
+    body.discret .nota { background: var(--soft) !important; color: var(--text3) !important; }
+    body.discret .nota > * { display: none; }
+    body.discret .nota::after { content: '•••'; letter-spacing: 1px; }
+    body.discret .sensible { filter: blur(7px) grayscale(1); pointer-events: none; user-select: none; -webkit-user-select: none; }
+    body.discret .seg .seg-si, body.discret .seg .seg-no { color: var(--text) !important; }
+    body.discret [data-nota-titol] { pointer-events: none; }
+
     .full-inferior { background: var(--card); border-radius: 1.25rem 1.25rem 0 0; }
     @media (min-width: 640px) { .full-inferior { border-radius: 1.25rem; } }
     .previ { background: var(--field); border: 1px solid var(--line); }
@@ -125,9 +134,12 @@
             <div class="text-[11px] uppercase tracking-wider opacity-75" id="cap-avaluar-etiqueta">Nova sessió</div>
             <div class="text-lg font-bold leading-tight truncate" id="cap-avaluar-titol">Configura la sessió</div>
           </div>
-          <button id="boto-canviar-sessio" onclick="obrirConfigSessio()" class="hidden shrink-0 xip !py-1.5 !px-3 flex items-center gap-1.5 font-semibold">
-            <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Canviar
-          </button>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="canviarDiscret()" class="boto-discret shrink-0 xip !py-1.5 !px-2.5 flex items-center gap-1 font-semibold" aria-pressed="false" title="Mode ocult: amaga les notes per si hi ha alumnes a prop"></button>
+            <button id="boto-canviar-sessio" onclick="obrirConfigSessio()" class="hidden shrink-0 xip !py-1.5 !px-3 flex items-center gap-1.5 font-semibold">
+              <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Canviar
+            </button>
+          </div>
         </div>
         <div id="cap-avaluar-xips" class="hidden flex flex-wrap gap-1.5 mt-2"></div>
       </div>
@@ -136,7 +148,10 @@
       <div id="cap-resultats" class="hidden">
         <div class="flex items-center justify-between gap-2">
           <div class="text-lg font-bold">Resultats</div>
-          <button id="boto-mode-resultats" onclick="canviarModeResultats(modeResultats === 'sessio' ? 'alumne' : 'sessio')" class="xip !py-1 font-semibold">Per alumne</button>
+          <div class="flex items-center gap-1.5">
+            <button onclick="canviarDiscret()" class="boto-discret shrink-0 xip !py-1.5 !px-2.5 flex items-center gap-1 font-semibold" aria-pressed="false" title="Mode ocult: amaga les notes per si hi ha alumnes a prop"></button>
+            <button id="boto-mode-resultats" onclick="canviarModeResultats(modeResultats === 'sessio' ? 'alumne' : 'sessio')" class="xip !py-1.5 font-semibold">Per alumne</button>
+          </div>
         </div>
         <div class="flex flex-wrap gap-1.5 mt-2">
           <select id="resultats-classe" aria-label="Classe" onchange="carregarAlumnesFitxa(); cercarResultats()" class="xip-select xip-select-actiu"><option value="">Carregant...</option></select>
@@ -376,7 +391,7 @@
           <span class="lbl !mb-0">Previsualització</span>
           <select id="modal-correu-previ" onchange="actualitzarPrevisualitzacio()" class="camp !w-auto !py-1 !text-[14px] max-w-[60%]"></select>
         </div>
-        <div id="modal-correu-previsualitzacio" class="previ rounded-xl p-3 text-[14px] space-y-1"></div>
+        <div id="modal-correu-previsualitzacio" class="sensible previ rounded-xl p-3 text-[14px] space-y-1"></div>
       </div>
       <div class="grid grid-cols-2 gap-2">
         <button onclick="tancarModalCorreu()" class="btn btn-suau">Cancel·lar</button>
@@ -509,7 +524,7 @@
       const text = mida === 'gran' ? 'text-xl' : 'text-[15px]';
       if (esBuit(nota)) return `<span class="pill pill-buit ${text}"${t}>–</span>`;
       const ok = Number(nota) >= NOTA_APROVAT;
-      return `<span class="pill ${ok ? 'pill-ok' : 'pill-ko'} ${text}"${t}><span aria-hidden="true">${ok ? '✓' : '✕'}</span>${fmt(nota)}<span class="sr-only">${ok ? ' aprovat' : ' suspès'}</span></span>`;
+      return `<span class="pill nota ${ok ? 'pill-ok' : 'pill-ko'} ${text}"${t ? ' data-nota-titol' + t : ''}><span><span aria-hidden="true">${ok ? '✓' : '✕'}</span>${fmt(nota)}<span class="sr-only">${ok ? ' aprovat' : ' suspès'}</span></span></span>`;
     }
 
     function cursPerDefecte() {
@@ -568,6 +583,31 @@
       const nota = Math.round(suma * 100) / 100;
       const limitada = suspenImprescindible && nota > NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE;
       return { nota: limitada ? NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE : nota, limitada };
+    }
+
+    // =====================================================================
+    // MODE OCULT (es recorda en aquest dispositiu)
+    // =====================================================================
+    const CLAU_DISCRET = 'avaluador_mode_ocult';
+    let modeDiscret = false;
+    const ICO_ULL = '<svg class="ico ico-s" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const ICO_ULL_TANCAT = '<svg class="ico ico-s" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+
+    function aplicarDiscret() {
+      document.body.classList.toggle('discret', modeDiscret);
+      document.querySelectorAll('.boto-discret').forEach(b => {
+        b.setAttribute('aria-pressed', modeDiscret);
+        b.classList.toggle('xip-actiu', modeDiscret);
+        b.innerHTML = modeDiscret ? ICO_ULL_TANCAT + 'Ocult' : ICO_ULL + 'Ocultar';
+        b.title = modeDiscret ? 'Mode ocult activat: toca per tornar a veure les notes' : 'Mode ocult: amaga les notes per si hi ha alumnes a prop';
+      });
+    }
+
+    function canviarDiscret() {
+      modeDiscret = !modeDiscret;
+      escriureLocal(CLAU_DISCRET, modeDiscret);
+      aplicarDiscret();
+      mostrarAvis(modeDiscret ? 'Mode ocult activat: les notes finals i les mitjanes no es veuen.' : 'Mode ocult desactivat.');
     }
 
     // =====================================================================
@@ -1484,7 +1524,7 @@
             <span class="block font-bold text-[16px] truncate">${esc(s.sessioAvaluada)}</span>
             <span class="block text-[13px] t3">${esc(s.modul)}${s.desdoblament !== 'General' ? ' · ' + esc(s.desdoblament) : ''} · ${esc(String(s.data).split(' ')[0])} · ${s.nAlumnes} alumne${s.nAlumnes === 1 ? '' : 's'}</span>
           </span>
-          ${s.mitjana !== '' ? `<span class="text-right shrink-0"><span class="block text-2xl font-extrabold tabular-nums leading-none">${fmt(s.mitjana)}</span><span class="block text-[11px] uppercase tracking-wider t3 mt-0.5">mitjana</span></span>` : ''}
+          ${s.mitjana !== '' ? `<span class="sensible text-right shrink-0"><span class="block text-2xl font-extrabold tabular-nums leading-none">${fmt(s.mitjana)}</span><span class="block text-[11px] uppercase tracking-wider t3 mt-0.5">mitjana</span></span>` : ''}
           <span class="t3 text-xl">›</span>
         </button>`).join('');
     }
@@ -1533,16 +1573,16 @@
               <h2 class="text-[18px] font-bold">${esc(s.sessioAvaluada)}</h2>
               <div class="text-[13px] t3">${esc(s.modul)} · ${esc(s.classe)}${s.desdoblament !== 'General' ? ' (' + esc(s.desdoblament) + ')' : ''} · ${esc(String(s.data).split(' ')[0])} · ${resultatsSessio.length} alumnes</div>
             </div>
-            ${mitjana !== null ? `<div class="text-right shrink-0"><div class="text-[32px] font-extrabold tabular-nums leading-none">${fmt(mitjana)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
+            ${mitjana !== null ? `<div class="sensible text-right shrink-0"><div class="text-[32px] font-extrabold tabular-nums leading-none">${fmt(mitjana)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
           </div>
           ${notesFinals.length ? `
-          <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="sensible grid grid-cols-3 gap-2 text-center">
             <div class="rounded-xl py-2 pill-ok"><div class="text-lg font-bold">${aprovats}</div><div class="text-[12px]">✓ aprovats</div></div>
             <div class="rounded-xl py-2 pill-ko"><div class="text-lg font-bold">${notesFinals.length - aprovats}</div><div class="text-[12px]">✕ suspesos</div></div>
             <div class="rounded-xl py-2" style="background:var(--soft)"><div class="text-lg font-bold tabular-nums">${fmt(Math.min(...notesFinals), 1)}–${fmt(Math.max(...notesFinals), 1)}</div><div class="text-[12px] t3">rang</div></div>
           </div>` : ''}
           ${perItem.length ? `
-          <div class="space-y-2.5">
+          <div class="sensible space-y-2.5">
             <div class="text-[13px] font-semibold t2">Ítems (del més fluix al més fort)</div>
             ${perItem.map((x, k) => `
               <div title="${esc(x.nom)}: ${fmt(x.mitjana)}">
@@ -1594,8 +1634,8 @@
 
         return `<div style="background:var(--field)">${fila}
           <div class="px-4 pb-4 space-y-3">
-            ${desglossament ? `<div class="flex flex-wrap gap-1.5">${desglossament}</div>` : ''}
-            <div class="flex items-center gap-2">
+            ${desglossament ? `<div class="sensible flex flex-wrap gap-1.5">${desglossament}</div>` : ''}
+            <div class="sensible flex items-center gap-2">
               <label for="resnota-${idx}" class="lbl !mb-0">Nota final</label>
               <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" id="resnota-${idx}" value="${esc(r.notaFinal)}" placeholder="–"
                      class="camp !w-20 !py-1.5 text-center font-bold">
@@ -1808,7 +1848,7 @@
                 <h2 class="text-[18px] font-bold truncate">${esc(alumne.cognoms)}, ${esc(alumne.nom)}</h2>
                 <div class="text-[13px] t3">${sessions.length} sessió${sessions.length === 1 ? '' : 'ns'} avaluada${sessions.length === 1 ? '' : 'es'}</div>
               </div>
-              ${mitjanaGlobal !== null ? `<div class="text-right"><div class="text-[28px] font-extrabold tabular-nums leading-none">${fmt(mitjanaGlobal)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
+              ${mitjanaGlobal !== null ? `<div class="sensible text-right"><div class="text-[28px] font-extrabold tabular-nums leading-none">${fmt(mitjanaGlobal)}</div><div class="text-[11px] uppercase tracking-wider t3 mt-1">mitjana</div></div>` : ''}
             </div>
             <div class="grid grid-cols-2 gap-2">
               ${Object.keys(perModul).map(m => {
@@ -1818,7 +1858,7 @@
               }).join('')}
             </div>
             ${ambNota.length > 1 ? `
-              <div>
+              <div class="sensible">
                 <div class="text-[13px] font-semibold t2 mb-1">Evolució (ordre cronològic)</div>
                 <div class="flex items-end gap-1 h-20 border-b linia">${evolucio}</div>
               </div>` : ''}
@@ -2475,6 +2515,8 @@ Salutacions.`;
     // =====================================================================
     $('curs').value = cursPerDefecte();
     $('importar-curs').value = cursPerDefecte();
+    modeDiscret = llegirLocal(CLAU_DISCRET) === true;
+    aplicarDiscret();
     canviarVista('avaluar');
     (async () => {
       // Si la pàgina s'havia tancat o recarregat a mitja sessió, la tornem a mostrar a l'instant
