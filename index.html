@@ -158,6 +158,7 @@
     <div id="vista-avaluar" class="space-y-3">
 
       <section id="panell-config" class="card p-4 space-y-3">
+        <div id="llista-esborranys" class="hidden space-y-2 pb-3 border-b linia"></div>
         <h2 class="titol-seccio">Configuració de la sessió</h2>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -186,7 +187,7 @@
           <p id="sessio-descripcio" class="hidden mt-2 text-[14px] t2 rounded-xl p-3 whitespace-pre-line" style="background:var(--soft)"></p>
         </div>
         <button onclick="carregarAlumnes()" class="btn btn-prim w-full">Carregar alumnes</button>
-        <p id="avis-config" class="hidden text-[14px] t-warn rounded-xl p-3" style="background:var(--warn-bg)">Has canviat la configuració de la sessió. Prem "Carregar alumnes" perquè s'apliquin els ítems correctes.</p>
+        <p id="avis-config" class="hidden text-[14px] t-warn rounded-xl p-3" style="background:var(--warn-bg)">Has canviat la configuració. Si prems "Carregar alumnes" s'obrirà aquesta altra sessió; la que tens oberta queda desada al mòbil i la podràs reprendre.</p>
       </section>
 
       <section id="panell-grups" class="card hidden">
@@ -322,6 +323,7 @@
         <div class="flex-1 min-w-0">
           <div id="progres" class="text-[14px] font-semibold"></div>
           <div class="barra barra-ok mt-1"><div id="progres-barra" style="width:0%"></div></div>
+          <div id="desat-local" class="text-[12px] t3 mt-1"></div>
         </div>
         <button onclick="exportarDades()" class="btn btn-ok">
           <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Exportar
@@ -531,7 +533,7 @@
     function mostrarAvis(text, tipus) {
       const el = $('avis');
       const colors = { error: 'background:#b91c1c;color:#fff', ok: 'background:#047857;color:#fff', info: 'background:#1e293b;color:#fff' };
-      el.style.cssText = (colors[tipus] || colors.info) + ';bottom:' + (vistaActual === 'avaluar' && estudiants.length ? 150 : 76) + 'px';
+      el.style.cssText = (colors[tipus] || colors.info) + ';bottom:' + (vistaActual === 'avaluar' && estudiants.length ? 172 : 76) + 'px';
       el.textContent = text;
       el.classList.remove('hidden');
       clearTimeout(avisTimeout);
@@ -630,7 +632,7 @@
         const anteriorDesd = $('desd-classe').value;
         sel.innerHTML = selResultats.innerHTML = $('desd-classe').innerHTML = opcions(classes, c => c, c => c);
         if (anteriorDesd && classes.includes(anteriorDesd)) $('desd-classe').value = anteriorDesd;
-        carregarDesdoblaments(classes[0]);
+        await carregarDesdoblaments(classes[0]);
         carregarAlumnesFitxa();
       } catch (err) {
         sel.innerHTML = '<option value="">Error</option>';
@@ -704,44 +706,54 @@
     let observacionsGrup = {};         // { grupId: text }
     let grups = {};                    // { clauAlumne: grupId }
     let coordinadors = {};             // { grupId: clauAlumne }
-    let sessioCarregada = null;        // configuració amb què s'han carregat els alumnes
-    let canvisPendents = false;
+    let configCarregada = null;        // { curs, modul, classe, desdoblament, sessio } amb què s'han carregat els alumnes
+    let clauEdicio = '';               // si s'està corregint un sol alumne des de Resultats, la seva clau
+    let canvisPendents = false;        // hi ha notes que encara no s'han exportat al full
     let alumneObert = -1;              // índex de la targeta oberta
     let filtrePendents = false;
     let grupsOberts = false;
     let observacioOberta = {};         // { índex: true } quan s'ha premut "Afegir observació"
     let guardarEsborranyTimeout = null;
 
-    function configSessioActual() {
-      return [$('curs').value, $('modul').value, $('classe').value, $('desdoblament').value, obtenirSessio()].join('|');
+    function configDelsCamps() {
+      return { curs: $('curs').value.trim(), modul: $('modul').value, classe: $('classe').value,
+               desdoblament: $('desdoblament').value, sessio: obtenirSessio() };
     }
+    function textConfig(c) { return [c.curs, c.modul, c.classe, c.desdoblament, c.sessio].join('|'); }
 
     function configSessioCanviada() {
-      $('avis-config').classList.toggle('hidden', !sessioCarregada || sessioCarregada === configSessioActual());
+      $('avis-config').classList.toggle('hidden', !configCarregada || textConfig(configCarregada) === textConfig(configDelsCamps()));
     }
 
     function marcarCanvis() { canvisPendents = true; }
 
+    // Les notes es desen soles al mòbil: només cal avisar si hi ha canvis de desdoblaments sense desar
     window.addEventListener('beforeunload', e => {
-      if (canvisPendents || desdCanvis) { e.preventDefault(); e.returnValue = ''; }
+      escriureEsborranyAra();
+      if (desdCanvis) { e.preventDefault(); e.returnValue = ''; }
     });
+    // Al mòbil, quan l'app passa a segon pla és quan el navegador la pot tancar: desem a l'instant
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') escriureEsborranyAra(); });
+    window.addEventListener('pagehide', () => escriureEsborranyAra());
 
     // Capçalera de la vista Avaluar: resum de la sessió carregada
     function actualitzarCapcaleraAvaluar() {
       const carregada = estudiants.length > 0;
       $('cap-avaluar-etiqueta').textContent = carregada ? 'Avaluant' : 'Nova sessió';
-      $('cap-avaluar-titol').textContent = carregada ? (obtenirSessio() || 'Sessió sense nom') : 'Configura la sessió';
+      $('cap-avaluar-titol').textContent = carregada ? (configCarregada && configCarregada.sessio || 'Sessió sense nom') : 'Configura la sessió';
       $('boto-canviar-sessio').classList.toggle('hidden', !carregada);
       const xips = $('cap-avaluar-xips');
       xips.classList.toggle('hidden', !carregada);
-      if (carregada) {
-        const desd = $('desdoblament').value;
-        xips.innerHTML = [$('modul').value, $('classe').value + (desd && desd !== 'General' ? ' · ' + desd : ''), $('curs').value]
+      if (carregada && configCarregada) {
+        const c = configCarregada;
+        xips.innerHTML = [c.modul, c.classe + (c.desdoblament && c.desdoblament !== 'General' ? ' · ' + c.desdoblament : ''), c.curs]
           .filter(Boolean).map(t => `<span class="xip">${esc(t)}</span>`).join('');
       }
     }
 
     function obrirConfigSessio() {
+      escriureEsborranyAra();
+      renderitzarEsborranys();
       $('panell-config').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -756,7 +768,10 @@
       const sessio = obtenirSessio();
 
       if (!classe) { mostrarAvis('Selecciona una classe primer.', 'error'); return; }
-      if (canvisPendents && !confirm('Tens notes sense exportar (estan guardades com a esborrany en aquest dispositiu). Vols carregar igualment?')) return;
+      if (!sessio) { mostrarAvis('Tria o escriu el supòsit / sessió avaluada abans de carregar.', 'error'); return; }
+      // La sessió que hi havia oberta queda desada al mòbil i es pot reprendre des de la llista
+      escriureEsborranyAra();
+      const novaConfig = configDelsCamps();
 
       $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant alumnes...</p>';
       mostrarStatus('');
@@ -771,11 +786,14 @@
         grups = {}; coordinadors = {}; notes = {}; observacionsIndividuals = {}; observacionsGrup = {};
         observacioOberta = {};
         canvisPendents = false;
-        restaurarEsborrany();
-        sessioCarregada = configSessioActual();
+        configCarregada = novaConfig;
+        clauEdicio = '';
+        alumneObert = -1;
+        const recuperat = fusionarEsborrany(llegirLocal(clauEsborrany(novaConfig, '')));
         configSessioCanviada();
         avisarNomsDuplicats();
-        alumneObert = seguentPendent(-1);
+        if (!recuperat || alumneObert < 0 || alumneObert >= estudiants.length) alumneObert = seguentPendent(-1);
+        actualitzarIndicadorDesat();
         if (estudiants.length) $('panell-config').classList.add('hidden');
         renderitzarAssignacioGrups();
         renderitzarLlista();
@@ -1161,62 +1179,222 @@
     }
 
     // =====================================================================
-    // ESBORRANY LOCAL (només en aquest dispositiu)
+    // SESSIONS DESADES AL MÒBIL (localStorage)
+    // Cada canvi es desa a l'instant al mòbil. Si la pàgina es recarrega o el navegador la tanca,
+    // en tornar-la a obrir es recupera la sessió on era. Quan s'exporta al full, l'esborrany s'esborra.
     // =====================================================================
-    function clauEsborrany() {
-      return 'avaluador_esborrany_v2_' + configSessioActual();
+    const PREFIX_ESBORRANY = 'avaluador_v3_sessio_';
+    const CLAU_SESSIO_ACTUAL = 'avaluador_v3_actual';
+    let darrerDesat = null;       // Date de l'últim desat al mòbil
+    let errorDesat = false;
+
+    function llegirLocal(clau) {
+      try { const t = localStorage.getItem(clau); return t ? JSON.parse(t) : null; } catch (e) { return null; }
+    }
+    function escriureLocal(clau, valor) {
+      try { localStorage.setItem(clau, JSON.stringify(valor)); return true; } catch (e) { return false; }
+    }
+    function esborrarLocal(clau) {
+      try { localStorage.removeItem(clau); } catch (e) { /* res */ }
+    }
+
+    function clauEsborrany(config, edicio) {
+      return PREFIX_ESBORRANY + textConfig(config) + (edicio ? '|edicio|' + edicio : '');
+    }
+    function clauEsborranyActual() {
+      return configCarregada ? clauEsborrany(configCarregada, clauEdicio) : null;
     }
 
     function guardarEsborrany() {
       clearTimeout(guardarEsborranyTimeout);
-      guardarEsborranyTimeout = setTimeout(() => {
-        if (estudiants.length === 0) return;
-        const esborrany = { estudiants, notes, grups, coordinadors, observacionsIndividuals, observacionsGrup, guardatEn: new Date().toISOString() };
-        try { localStorage.setItem(clauEsborrany(), JSON.stringify(esborrany)); } catch (e) { /* sense emmagatzematge */ }
-      }, 400);
+      guardarEsborranyTimeout = setTimeout(escriureEsborranyAra, 250);
     }
 
-    function restaurarEsborrany() {
-      let guardat = null;
-      try { guardat = localStorage.getItem(clauEsborrany()); } catch (e) { return; }
-      if (!guardat) return;
+    function escriureEsborranyAra() {
+      clearTimeout(guardarEsborranyTimeout);
+      if (!configCarregada || estudiants.length === 0 || !canvisPendents) return;
+      const clau = clauEsborranyActual();
+      const ara = new Date();
+      const dades = {
+        versio: 3, config: configCarregada, edicio: clauEdicio, estudiants, criteris, notes, grups, coordinadors,
+        observacionsIndividuals, observacionsGrup, alumneObert, nombreGrups: $('nombre-grups').value, guardatEn: ara.toISOString()
+      };
+      errorDesat = !(escriureLocal(clau, dades) && escriureLocal(CLAU_SESSIO_ACTUAL, clau));
+      if (!errorDesat) darrerDesat = ara;
+      actualitzarIndicadorDesat();
+    }
+
+    function horaCurta(data) {
+      return String(data.getHours()).padStart(2, '0') + ':' + String(data.getMinutes()).padStart(2, '0');
+    }
+    function dataCurta(data) {
+      const avui = new Date();
+      const mateixDia = data.toDateString() === avui.toDateString();
+      return (mateixDia ? 'avui' : String(data.getDate()).padStart(2, '0') + '/' + String(data.getMonth() + 1).padStart(2, '0')) + ' a les ' + horaCurta(data);
+    }
+
+    function actualitzarIndicadorDesat() {
+      const el = $('desat-local');
+      if (!el) return;
+      if (errorDesat) {
+        el.textContent = '⚠ No es pot desar al mòbil (mode privat o sense espai). Exporta sovint.';
+        el.className = 'text-[12px] t-ko font-semibold';
+      } else if (!canvisPendents) {
+        el.textContent = 'Sense canvis pendents d\'exportar';
+        el.className = 'text-[12px] t3';
+      } else if (darrerDesat) {
+        el.textContent = '💾 Desat al mòbil ' + horaCurta(darrerDesat) + ' · falta exportar';
+        el.className = 'text-[12px] t3';
+      } else {
+        el.textContent = '';
+      }
+    }
+
+    // Sessions desades al mòbil, de la més recent a la més antiga
+    function llistarEsborranys() {
+      const llista = [];
       try {
-        const esborrany = JSON.parse(guardat);
-        (esborrany.estudiants || []).forEach(a => {
-          if (!estudiants.some(e => clauAlumne(e) === clauAlumne(a))) estudiants.push(a);
-        });
-        notes = esborrany.notes || {};
-        grups = esborrany.grups || {};
-        coordinadors = esborrany.coordinadors || {};
-        observacionsIndividuals = esborrany.observacionsIndividuals || {};
-        observacionsGrup = esborrany.observacionsGrup || {};
-        canvisPendents = true;
-        const data = new Date(esborrany.guardatEn);
-        mostrarStatus(`Esborrany restaurat (${String(data.getHours()).padStart(2, '0')}:${String(data.getMinutes()).padStart(2, '0')}). Recorda exportar.`, 't-accent');
-      } catch (e) { /* esborrany corrupte: s'ignora */ }
+        for (let k = 0; k < localStorage.length; k++) {
+          const clau = localStorage.key(k);
+          if (!clau || clau.indexOf(PREFIX_ESBORRANY) !== 0) continue;
+          const d = llegirLocal(clau);
+          if (d && d.config && Array.isArray(d.estudiants)) llista.push(Object.assign({ clau }, d));
+        }
+      } catch (e) { /* sense emmagatzematge */ }
+      return llista.sort((a, b) => String(b.guardatEn).localeCompare(String(a.guardatEn)));
     }
 
-    function esborrarEsborrany() {
-      try { localStorage.removeItem(clauEsborrany()); } catch (e) { /* res */ }
+    function esborranyDeLaSessioActual() {
+      const clau = llegirLocal(CLAU_SESSIO_ACTUAL);
+      return clau ? llegirLocal(clau) : null;
+    }
+
+    // Afegeix a la sessió acabada de carregar les notes d'un esborrany de la mateixa sessió
+    function fusionarEsborrany(d) {
+      if (!d) return false;
+      (d.estudiants || []).forEach(a => {
+        if (!estudiants.some(e => clauAlumne(e) === clauAlumne(a))) estudiants.push(a);
+      });
+      notes = d.notes || {};
+      grups = d.grups || {};
+      coordinadors = d.coordinadors || {};
+      observacionsIndividuals = d.observacionsIndividuals || {};
+      observacionsGrup = d.observacionsGrup || {};
+      if (d.nombreGrups) $('nombre-grups').value = d.nombreGrups;
+      if (typeof d.alumneObert === 'number') alumneObert = d.alumneObert;
+      canvisPendents = true;
+      darrerDesat = new Date(d.guardatEn);
+      mostrarStatus(`Notes recuperades del mòbil (desades ${esc(dataCurta(darrerDesat))}). Quan acabis, exporta.`, 't-accent');
+      return true;
+    }
+
+    // Recupera una sessió desada tal com estava (sense connexió: fa servir els ítems desats)
+    function aplicarEsborrany(d) {
+      configCarregada = d.config;
+      clauEdicio = d.edicio || '';
+      estudiants = d.estudiants || [];
+      criteris = d.criteris || [];
+      notes = {}; grups = {}; coordinadors = {}; observacionsIndividuals = {}; observacionsGrup = {};
+      observacioOberta = {};
+      alumneObert = -1;
+      fusionarEsborrany(d);
+      if (alumneObert < 0 || alumneObert >= estudiants.length) alumneObert = seguentPendent(-1);
+      $('panell-config').classList.add('hidden');
+      renderitzarAssignacioGrups();
+      renderitzarLlista();
+      actualitzarIndicadorDesat();
+    }
+
+    // Posa els desplegables de configuració com estaven a la sessió recuperada
+    async function posarCampsConfig(c) {
+      $('curs').value = c.curs;
+      if ([...$('modul').options].some(o => o.value === c.modul)) $('modul').value = c.modul;
+      await carregarSupositsAvaluar(c.sessio);
+      if ([...$('classe').options].some(o => o.value === c.classe)) $('classe').value = c.classe;
+      await carregarDesdoblaments(c.classe, c.desdoblament);
+      configSessioCanviada();
+      actualitzarCapcaleraAvaluar();
+    }
+
+    async function reprendreEsborrany(clau) {
+      escriureEsborranyAra();
+      const d = llegirLocal(clau);
+      if (!d) { renderitzarEsborranys(); return; }
+      aplicarEsborrany(d);
+      escriureLocal(CLAU_SESSIO_ACTUAL, clau);
+      window.scrollTo(0, 0);
+      await posarCampsConfig(d.config);
+      renderitzarEsborranys();
+    }
+
+    function descartarEsborrany(clau) {
+      const d = llegirLocal(clau);
+      if (!d) { renderitzarEsborranys(); return; }
+      if (!confirm(`Descartar les notes desades al mòbil de "${d.config.sessio}" (${d.config.classe})? Les que ja hagis exportat al full no es toquen.`)) return;
+      esborrarLocal(clau);
+      if (llegirLocal(CLAU_SESSIO_ACTUAL) === clau) esborrarLocal(CLAU_SESSIO_ACTUAL);
+      if (clau === clauEsborranyActual()) {
+        estudiants = []; criteris = []; notes = {}; grups = {}; coordinadors = {};
+        observacionsIndividuals = {}; observacionsGrup = {}; configCarregada = null; clauEdicio = ''; canvisPendents = false;
+        renderitzarAssignacioGrups();
+        renderitzarLlista();
+        $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6">Tria la sessió i prem "Carregar alumnes" per començar.</p>';
+        $('panell-config').classList.remove('hidden');
+      }
+      renderitzarEsborranys();
+    }
+
+    function renderitzarEsborranys() {
+      const cont = $('llista-esborranys');
+      const llista = llistarEsborranys();
+      cont.classList.toggle('hidden', llista.length === 0);
+      if (!llista.length) { cont.innerHTML = ''; return; }
+      const actual = clauEsborranyActual();
+      cont.innerHTML = `
+        <h2 class="titol-seccio">Desades al mòbil · falta exportar</h2>
+        ${llista.map(d => {
+          const c = d.config;
+          const total = d.estudiants.length;
+          const fets = d.estudiants.filter(a => {
+            const n = (d.notes || {})[clauAlumne(a)] || {};
+            return (d.criteris || []).length > 0 && d.criteris.every(cr => !esBuit(n[cr.nom]));
+          }).length;
+          const oberta = d.clau === actual && estudiants.length > 0;
+          return `
+            <div class="rounded-xl p-3 space-y-2" style="background:var(--field);border:1px solid var(--line)">
+              <div class="flex justify-between items-start gap-2">
+                <span class="font-semibold min-w-0">${esc(c.sessio)}${d.edicio ? ' <span class="etiqueta t-accent" style="background:var(--accent-soft)">correcció</span>' : ''}</span>
+                ${oberta ? '<span class="etiqueta t-ok shrink-0" style="background:var(--ok-bg)">OBERTA</span>' : ''}
+              </div>
+              <div class="text-[13px] t3">${esc(c.modul)} · ${esc(c.classe)}${c.desdoblament && c.desdoblament !== 'General' ? ' · ' + esc(c.desdoblament) : ''} · ${esc(c.curs)}</div>
+              <div class="text-[13px] t2">${d.edicio ? '1 alumne' : `${fets} de ${total} avaluats`} · desat ${esc(dataCurta(new Date(d.guardatEn)))}</div>
+              <div class="grid grid-cols-3 gap-2">
+                ${oberta
+                  ? `<button onclick="$('panell-config').classList.add('hidden')" class="btn btn-accent col-span-2 !py-1.5 text-[14px]">Continuar</button>`
+                  : `<button onclick="reprendreEsborrany(${esc(JSON.stringify(d.clau))})" class="btn btn-prim col-span-2 !py-1.5 text-[14px]">Reprendre</button>`}
+                <button onclick="descartarEsborrany(${esc(JSON.stringify(d.clau))})" class="btn btn-perill !py-1.5 text-[14px]">Descartar</button>
+              </div>
+            </div>`;
+        }).join('')}`;
     }
 
     // =====================================================================
     // EXPORTACIÓ
     // =====================================================================
     async function exportarDades(confirmat) {
-      if (estudiants.length === 0) { mostrarAvis('Carrega primer els alumnes d\'aquesta sessió.', 'error'); return; }
-      const sessioAvaluada = obtenirSessio();
-      if (!sessioAvaluada) { mostrarAvis('Tria o escriu el supòsit / sessió avaluada.', 'error'); obrirConfigSessio(); return; }
-      if (sessioCarregada && sessioCarregada !== configSessioActual() &&
-          !confirm('Has canviat la configuració de la sessió després de carregar els alumnes. Exportar igualment amb la configuració actual?')) return;
+      if (estudiants.length === 0 || !configCarregada) { mostrarAvis('Carrega primer els alumnes d\'aquesta sessió.', 'error'); return; }
+      escriureEsborranyAra();
+      const c = configCarregada;
+      const sessioAvaluada = c.sessio;
+      if (!sessioAvaluada) { mostrarAvis('Aquesta sessió no té nom.', 'error'); return; }
 
       mostrarStatus('Exportant, espera si us plau...', 't-accent animate-pulse');
 
       const dades = {
-        curs: $('curs').value.trim(),
-        modul: $('modul').value,
-        classe: $('classe').value,
-        desdoblament: $('desdoblament').value,
+        curs: c.curs,
+        modul: c.modul,
+        classe: c.classe,
+        desdoblament: c.desdoblament,
         sessioAvaluada,
         evaluacions: estudiants.map(a => {
           const clau = clauAlumne(a);
@@ -1241,11 +1419,15 @@
         }
         mostrarStatus(`✓ Guardat (${r.exportats} alumnes). <a href="${esc(r.url)}" target="_blank" rel="noopener" class="underline font-bold">Obrir el full</a>` +
           (r.limitades.length ? `<br><span class="t-warn">Nota limitada per ítem imprescindible: ${esc(r.limitades.join(', '))}</span>` : ''), 't-ok');
+        const clau = clauEsborranyActual();
+        esborrarLocal(clau);
+        if (llegirLocal(CLAU_SESSIO_ACTUAL) === clau) esborrarLocal(CLAU_SESSIO_ACTUAL);
         canvisPendents = false;
         resultatsCercats = false;
-        esborrarEsborrany();
+        actualitzarIndicadorDesat();
+        renderitzarEsborranys();
       } catch (err) {
-        mostrarStatus('Error en exportar: ' + esc(err.message), 't-ko');
+        mostrarStatus('Error en exportar: ' + esc(err.message) + '<br>Les notes continuen desades al mòbil: torna-ho a provar quan tinguis connexió.', 't-ko');
       }
     }
 
@@ -1504,7 +1686,7 @@
     async function editarResultat(idx) {
       const r = resultatsSessio[idx];
       const s = sessioOberta;
-      if (canvisPendents && !confirm('Tens notes sense exportar a Avaluar (estan com a esborrany en aquest dispositiu). Continuar?')) return;
+      escriureEsborranyAra(); // la sessió que hi havia oberta queda desada al mòbil
 
       $('curs').value = s.curs;
       $('modul').value = s.modul;
@@ -1522,6 +1704,8 @@
         observacionsGrup[grups[clau]] = r.observacioGrup || '';
       }
       canvisPendents = false;
+      configCarregada = { curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessio: s.sessioAvaluada };
+      clauEdicio = clau;
       alumneObert = 0;
       canviarVista('avaluar');
       $('panell-config').classList.add('hidden');
@@ -1534,8 +1718,8 @@
         ]);
         criteris = criterisData;
         notes[clau] = Object.assign({}, detallNotes);
-        sessioCarregada = configSessioActual();
         configSessioCanviada();
+        actualitzarIndicadorDesat();
         renderitzarAssignacioGrups();
         renderitzarLlista();
         mostrarStatus(`Editant ${esc(r.cognoms)}, ${esc(r.nom)}. Exporta per desar els canvis.`, 't-accent');
@@ -2292,8 +2476,14 @@ Salutacions.`;
     $('curs').value = cursPerDefecte();
     $('importar-curs').value = cursPerDefecte();
     canviarVista('avaluar');
-    carregarModuls();
-    carregarClasses();
+    (async () => {
+      // Si la pàgina s'havia tancat o recarregat a mitja sessió, la tornem a mostrar a l'instant
+      const recuperat = esborranyDeLaSessioActual();
+      if (recuperat) aplicarEsborrany(recuperat);
+      await Promise.all([carregarModuls(), carregarClasses()]);
+      if (recuperat) await posarCampsConfig(recuperat.config);
+      renderitzarEsborranys();
+    })();
   </script>
 </body>
 </html>
