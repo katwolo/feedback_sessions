@@ -1561,6 +1561,8 @@
     let resultatsSessio = [];      // [{ nom, cognoms, id, notaFinal, grup, origen, correuEnviat, notes, ... }]
     let criterisSessio = [];       // [{ nom, pes }]
     let resultatObert = -1;
+    let criterisConfigSessio = [];  // ítems configurats ara per a la sessió oberta (per poder-los editar)
+    let edicioItems = null;         // { idx, notes, canviat, notaTocada } de l'alumne obert a Resultats
     let alumnesFitxa = [];
 
     function canviarModeResultats(mode) {
@@ -1621,9 +1623,14 @@
       $('detall-sessio-alumnes').innerHTML = '';
       window.scrollTo(0, 0);
       try {
-        const r = await api('obtenirResultatsSessio', paramsSessio(s));
+        const [r, crit] = await Promise.all([
+          api('obtenirResultatsSessio', paramsSessio(s)),
+          api('obtenirCriteris', { modul: s.modul, suposit: s.sessioAvaluada }).catch(() => [])
+        ]);
         resultatsSessio = r.alumnes;
         criterisSessio = r.criteris;
+        criterisConfigSessio = crit;
+        edicioItems = null;
         renderitzarResumSessio();
         renderitzarDetallSessio();
       } catch (err) {
@@ -1710,23 +1717,20 @@
           </button>`;
         if (!obert) return `<div>${fila}</div>`;
 
-        const desglossament = criterisSessio.map(c =>
-          `<span class="rounded-lg px-2 py-1 text-[13px]" style="background:var(--soft)">${esc(c.nom)}: <b>${fmtValor(r.notes[c.nom])}</b></span>`).join('');
-
         return `<div style="background:var(--field)">${fila}
           <div class="px-4 pb-4 space-y-3">
-            ${desglossament ? `<div class="sensible flex flex-wrap gap-1.5">${desglossament}</div>` : ''}
+            ${htmlItemsResultat(idx)}
             <div class="sensible flex items-center gap-2">
               <label for="resnota-${idx}" class="lbl !mb-0">Nota final</label>
               <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" id="resnota-${idx}" value="${esc(r.notaFinal)}" placeholder="–"
+                     oninput="if (edicioItems) edicioItems.notaTocada = true"
                      class="camp !w-20 !py-1.5 text-center font-bold">
               <span id="resstatus-${idx}" class="text-[13px] t-ok font-semibold"></span>
             </div>
             <textarea id="resobsgrup-${idx}" placeholder="Observacions de grup..." rows="2" aria-label="Observacions de grup" class="camp">${esc(r.observacioGrup)}</textarea>
             <textarea id="resobsindiv-${idx}" placeholder="Observacions individuals..." rows="2" aria-label="Observacions individuals" class="camp">${esc(r.observacioIndividual)}</textarea>
             <div class="grid grid-cols-4 gap-2">
-              <button onclick="desarResultat(${idx})" class="btn btn-prim col-span-2">Desar</button>
-              <button onclick="editarResultat(${idx})" class="btn btn-accent" title="Obrir a Avaluar amb tots els ítems">Ítems</button>
+              <button onclick="desarResultat(${idx})" class="btn btn-prim col-span-3">Desar</button>
               <button onclick="obrirModalCorreu(${idx})" class="btn btn-accent" title="Enviar correu" aria-label="Enviar correu">📧</button>
             </div>
             <button onclick="confirmarEsborrarResultat(${idx})" class="btn btn-perill w-full !py-2 text-[14px]">Esborrar el resultat d'aquest alumne</button>
@@ -1736,7 +1740,94 @@
 
     function obrirResultat(idx) {
       resultatObert = resultatObert === idx ? -1 : idx;
+      edicioItems = null;
+      if (resultatObert >= 0) {
+        const r = resultatsSessio[idx];
+        const notesEdicio = {};
+        criterisConfigSessio.forEach(c => {
+          const v = r.notes[c.nom];
+          if (!esBuit(v) && !isNaN(Number(v))) notesEdicio[c.nom] = Number(v);
+        });
+        edicioItems = { idx, notes: notesEdicio, canviat: false, notaTocada: false };
+      }
       renderitzarDetallSessio();
+    }
+
+    // ---- Edició dels ítems d'un resultat ja desat ----
+    function htmlItemsResultat(idx) {
+      const r = resultatsSessio[idx];
+      if (!criterisConfigSessio.length || !edicioItems || edicioItems.idx !== idx) {
+        const desglossament = criterisSessio.map(c =>
+          `<span class="rounded-lg px-2 py-1 text-[13px]" style="background:var(--soft)">${esc(c.nom)}: <b>${fmtValor(r.notes[c.nom])}</b></span>`).join('');
+        return desglossament ? `<div class="sensible flex flex-wrap gap-1.5">${desglossament}</div>` : '';
+      }
+      const nomsActuals = criterisConfigSessio.map(c => c.nom).join('|');
+      const nomsDesats = criterisSessio.map(c => c.nom).join('|');
+      const calc = calcularNotaFinal(criterisConfigSessio, edicioItems.notes);
+      return `
+        <div class="sensible rounded-xl p-3 space-y-2.5" style="background:var(--card);border:1px solid var(--line)">
+          <div class="flex justify-between items-baseline gap-2">
+            <span class="lbl !mb-0">Ítems</span>
+            <span class="text-[13px] t2">Nota calculada: <b id="rescalc-${idx}">${calc.nota === '' ? '–' : fmt(calc.nota)}${calc.limitada ? ' ⚠' : ''}</b></span>
+          </div>
+          ${nomsDesats && nomsActuals !== nomsDesats ? `<p class="text-[12px] t-warn">Els ítems del supòsit han canviat des que es va avaluar. En desar es faran servir els actuals.</p>` : ''}
+          ${criterisConfigSessio.map((c, j) => htmlItemResultat(idx, j, c, edicioItems.notes[c.nom])).join('')}
+        </div>`;
+    }
+
+    function htmlItemResultat(idx, j, c, valor) {
+      const buit = esBuit(valor);
+      const etiqueta = `<span class="flex-1 min-w-0 text-[14px]">${esc(c.nom)} <span class="t3">(${esc(c.pes)}%)</span>${c.imprescindible ? ' <span class="t-ko font-bold">★</span>' : ''}</span>`;
+      if (c.tipus === 'sino') {
+        const esSi = !buit && Number(valor) === NOTA_MAXIMA, esNo = !buit && Number(valor) === 0;
+        return `<div id="resitem-${idx}-${j}" class="flex items-center gap-2">${etiqueta}
+          <div class="seg !w-36 text-[14px]">
+            <button type="button" data-v="${NOTA_MAXIMA}" onclick="clicItemResultat(${idx}, ${j}, ${NOTA_MAXIMA})" aria-pressed="${esSi}" class="${esSi ? 'seg-si' : ''}">✓ Sí</button>
+            <button type="button" data-v="0" onclick="clicItemResultat(${idx}, ${j}, 0)" aria-pressed="${esNo}" class="${esNo ? 'seg-no' : ''}">✕ No</button>
+          </div></div>`;
+      }
+      if (c.tipus === 'rubrica') {
+        return `<div id="resitem-${idx}-${j}" class="flex items-center gap-2">${etiqueta}
+          <select onchange="canviarItemResultat(${idx}, ${j}, this.value)" aria-label="${esc(c.nom)}" class="camp !w-40 !py-1.5 !text-[14px]">
+            <option value="">–</option>
+            ${c.nivells.map(n => `<option value="${esc(n.valor)}" ${!buit && Number(valor) === Number(n.valor) ? 'selected' : ''}>${esc(n.nom)} (${fmtValor(n.valor)})</option>`).join('')}
+          </select></div>`;
+      }
+      return `<div id="resitem-${idx}-${j}" class="flex items-center gap-2">${etiqueta}
+        <input type="number" inputmode="decimal" step="0.1" min="0" max="${NOTA_MAXIMA}" value="${buit ? '' : esc(valor)}" placeholder="–" aria-label="${esc(c.nom)}"
+               oninput="canviarItemResultat(${idx}, ${j}, this.value, this)" class="camp !w-20 !py-1.5 text-center font-bold"></div>`;
+    }
+
+    // Sí/No: tornar a tocar l'opció activa la treu
+    function clicItemResultat(idx, j, valor) {
+      const actual = edicioItems.notes[criterisConfigSessio[j].nom];
+      const nou = !esBuit(actual) && Number(actual) === valor ? '' : valor;
+      canviarItemResultat(idx, j, nou);
+      document.querySelectorAll(`#resitem-${idx}-${j} button`).forEach(b => {
+        const v = Number(b.dataset.v);
+        const actiu = nou !== '' && v === nou;
+        b.className = actiu ? (v === 0 ? 'seg-no' : 'seg-si') : '';
+        b.setAttribute('aria-pressed', actiu);
+      });
+    }
+
+    function canviarItemResultat(idx, j, valor, input) {
+      const c = criterisConfigSessio[j];
+      if (valor !== '' && valor !== null && valor !== undefined) {
+        let n = Number(valor);
+        if (isNaN(n)) return;
+        if (n > NOTA_MAXIMA) n = NOTA_MAXIMA;
+        if (n < 0) n = 0;
+        if (input && Number(input.value) !== n) input.value = n;
+        edicioItems.notes[c.nom] = n;
+      } else {
+        delete edicioItems.notes[c.nom];
+      }
+      edicioItems.canviat = true;
+      const calc = calcularNotaFinal(criterisConfigSessio, edicioItems.notes);
+      $(`rescalc-${idx}`).textContent = (calc.nota === '' ? '–' : fmt(calc.nota)) + (calc.limitada ? ' ⚠' : '');
+      // La nota final segueix la calculada mentre no l'hagis escrit tu a mà
+      if (!edicioItems.notaTocada) $(`resnota-${idx}`).value = calc.nota === '' ? '' : calc.nota;
     }
 
     function alumneRef(r) { return { nom: r.nom, cognoms: r.cognoms, id: r.id }; }
@@ -1747,26 +1838,54 @@
     async function desarResultat(idx) {
       const r = resultatsSessio[idx];
       const notaVal = $(`resnota-${idx}`).value;
+      const obsGrup = $(`resobsgrup-${idx}`).value;
+      const obsIndiv = $(`resobsindiv-${idx}`).value;
       if (notaVal !== '' && (Number(notaVal) < 0 || Number(notaVal) > NOTA_MAXIMA)) {
         mostrarAvis(`La nota ha d'estar entre 0 i ${NOTA_MAXIMA}.`, 'error');
         return;
       }
-      if (notaVal !== '' && r.notaFinal !== '' && Number(notaVal) !== r.notaFinal && criterisSessio.length > 1 &&
-          !confirm('Si canvies la nota final a mà, deixarà de coincidir amb els ítems (quedarà marcada com a "nota manual"). Per corregir un ítem, fes servir "Ítems". Continuar?')) return;
+      const itemsCanviats = edicioItems && edicioItems.idx === idx && edicioItems.canviat;
 
       try {
-        const resposta = await api('actualitzarResultat', Object.assign(paramsSessio(sessioOberta), {
-          alumne: alumneRef(r), notaFinal: notaVal,
-          observacioGrup: $(`resobsgrup-${idx}`).value, observacioIndividual: $(`resobsindiv-${idx}`).value
-        }));
-        r.notaFinal = notaVal === '' ? '' : parseFloat(notaVal);
-        r.observacioGrup = $(`resobsgrup-${idx}`).value;
-        r.observacioIndividual = $(`resobsindiv-${idx}`).value;
-        r.origen = resposta.origen;
+        if (itemsCanviats) {
+          if (!Object.keys(edicioItems.notes).length) { mostrarAvis('Posa almenys un ítem (o esborra el resultat de l\'alumne).', 'error'); return; }
+          const calc = calcularNotaFinal(criterisConfigSessio, edicioItems.notes).nota;
+          const manual = notaVal !== '' && calc !== '' && Number(notaVal) !== calc;
+          if (manual && !confirm(`La nota final que has escrit (${fmtValor(notaVal)}) no coincideix amb la calculada pels ítems (${fmt(calc)}). Es desarà com a "nota manual". Continuar?`)) return;
+          // Es tornen a desar els ítems d'aquest alumne (només el seu resultat; els altres no es toquen)
+          await api('exportarAGoogleSheets', {
+            confirmat: true,
+            dades: Object.assign(paramsSessio(sessioOberta), {
+              evaluacions: [{ nom: r.nom, cognoms: r.cognoms, id: r.id || '', grup: r.grup || '',
+                              notes: edicioItems.notes, observacioGrup: obsGrup, observacioIndividual: obsIndiv }]
+            })
+          });
+          if (manual) {
+            await api('actualitzarResultat', Object.assign(paramsSessio(sessioOberta), {
+              alumne: alumneRef(r), notaFinal: notaVal, observacioGrup: obsGrup, observacioIndividual: obsIndiv
+            }));
+          }
+        } else {
+          if (notaVal !== '' && r.notaFinal !== '' && Number(notaVal) !== r.notaFinal && criterisSessio.length > 1 &&
+              !confirm('Si canvies la nota final a mà, deixarà de coincidir amb els ítems (quedarà marcada com a "nota manual"). Per corregir-la bé, canvia els ítems aquí mateix. Continuar?')) return;
+          await api('actualitzarResultat', Object.assign(paramsSessio(sessioOberta), {
+            alumne: alumneRef(r), notaFinal: notaVal, observacioGrup: obsGrup, observacioIndividual: obsIndiv
+          }));
+        }
+
+        // Tornem a llegir la sessió per veure-ho tal com ha quedat al full
+        const clau = clauAlumne(r);
+        const dades = await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
+        resultatsSessio = dades.alumnes;
+        criterisSessio = dades.criteris;
+        resultatsCercats = false;
+        const nouIdx = resultatsSessio.findIndex(x => clauAlumne(x) === clau);
+        resultatObert = -1;
         renderitzarResumSessio();
-        renderitzarDetallSessio();
-        const statusEl = $(`resstatus-${idx}`);
-        if (statusEl) { statusEl.textContent = 'Desat ✓'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
+        if (nouIdx >= 0) obrirResultat(nouIdx); else renderitzarDetallSessio();
+        const statusEl = $(`resstatus-${nouIdx}`);
+        if (statusEl) { statusEl.textContent = 'Desat ✓'; setTimeout(() => { statusEl.textContent = ''; }, 2500); }
+        mostrarAvis(itemsCanviats ? 'Ítems i nota desats al full.' : 'Desat al full.', 'ok');
       } catch (err) {
         mostrarAvis('Error en desar: ' + err.message, 'error');
       }
@@ -1800,52 +1919,6 @@
         cercarSessions();
       } catch (err) {
         mostrarAvis('Error en esborrar: ' + err.message, 'error');
-      }
-    }
-
-    // Obre el resultat d'un alumne a Avaluar amb tots els seus ítems, per corregir-lo i reexportar
-    async function editarResultat(idx) {
-      const r = resultatsSessio[idx];
-      const s = sessioOberta;
-      escriureEsborranyAra(); // la sessió que hi havia oberta queda desada al mòbil
-
-      $('curs').value = s.curs;
-      $('modul').value = s.modul;
-      $('classe').value = s.classe;
-      await Promise.all([carregarDesdoblaments(s.classe, s.desdoblament), carregarSupositsAvaluar(s.sessioAvaluada)]);
-
-      const alumne = alumneRef(r);
-      const clau = clauAlumne(alumne);
-      estudiants = [alumne];
-      grups = {}; coordinadors = {}; notes = {}; observacionsGrup = {}; observacionsIndividuals = {}; observacioOberta = {};
-      observacionsIndividuals[clau] = r.observacioIndividual || '';
-      if (r.grup) {
-        grups[clau] = Number(r.grup) || r.grup;
-        coordinadors[grups[clau]] = clau;
-        observacionsGrup[grups[clau]] = r.observacioGrup || '';
-      }
-      canvisPendents = false;
-      configCarregada = { curs: s.curs, modul: s.modul, classe: s.classe, desdoblament: s.desdoblament, sessio: s.sessioAvaluada };
-      clauEdicio = clau;
-      alumneObert = 0;
-      canviarVista('avaluar');
-      $('panell-config').classList.add('hidden');
-      $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant detall...</p>';
-
-      try {
-        const [criterisData, detallNotes] = await Promise.all([
-          api('obtenirCriteris', { modul: s.modul, suposit: s.sessioAvaluada }),
-          api('obtenirDetallAlumne', Object.assign(paramsSessio(s), { alumne }))
-        ]);
-        criteris = criterisData;
-        notes[clau] = Object.assign({}, detallNotes);
-        configSessioCanviada();
-        actualitzarIndicadorDesat();
-        renderitzarAssignacioGrups();
-        renderitzarLlista();
-        mostrarStatus(`Editant ${esc(r.cognoms)}, ${esc(r.nom)}. Exporta per desar els canvis.`, 't-accent');
-      } catch (err) {
-        $('llista-alumnes').innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
     }
 
