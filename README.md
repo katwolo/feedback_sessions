@@ -28,6 +28,13 @@ al principio del script de `index.html`.
 Cualquiera que tenga el enlace de la página (o la URL `/exec`) puede ver los datos del alumnado,
 borrar resultados y enviar correos desde tu cuenta. Comparte el enlace solo con quien lo necesite.
 
+## Notas guardadas en el móvil
+
+Mientras evalúas, cada cambio se guarda al instante en el móvil (también cuando la app pasa a segundo plano).
+Si la página se recarga o el navegador la cierra, al volver a abrirla la sesión aparece tal como estaba,
+incluso sin conexión. Las sesiones pendientes de exportar salen en "Canviar" → "Desades al mòbil" para
+reprenderlas o descartarlas. Al exportar al Sheet, la copia del móvil se borra.
+
 ## Pestañas del Sheet
 
 | Pestaña | Contenido |
