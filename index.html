@@ -234,6 +234,9 @@
 
   <main class="contenidor p-3 md:p-5 space-y-3 pb-48 lg:pb-36">
 
+    <!-- Exportacions pendents d'enviar (fetes sense connexió) -->
+    <section id="cua-exportacions" class="hidden card p-4 space-y-3" role="status" style="box-shadow:0 0 0 2px var(--warn)"></section>
+
     <!-- ============================ AVALUAR ============================ -->
     <div id="vista-avaluar" class="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[22rem_1fr] lg:gap-5 lg:items-start">
 
@@ -583,7 +586,9 @@
           body: JSON.stringify({ action, params: params || {} })
         });
       } catch (err) {
-        throw new Error('No s\'ha pogut connectar amb el servidor. Comprova la connexió i que la implementació de Apps Script tingui accés "Qualsevol usuari".');
+        const errXarxa = new Error('No s\'ha pogut connectar amb el servidor. Comprova la connexió i que la implementació de Apps Script tingui accés "Qualsevol usuari".');
+        errXarxa.xarxa = true;
+        throw errXarxa;
       }
       let dades;
       try {
@@ -836,10 +841,14 @@
 
     // Torna a demanar el catàleg i omple tots els desplegables (després de canviar la configuració, etc.)
     async function refrescarCataleg() {
-      try { await carregarCataleg(); } catch (err) { mostrarAvis('No s\'ha pogut carregar la configuració: ' + err.message, 'error'); return; }
+      try { await carregarCataleg(); } catch (err) {
+        mostrarAvis(err.xarxa ? 'Sense connexió: es carregarà quan tornis a tenir connexió.' : 'No s\'ha pogut carregar la configuració: ' + err.message, 'error');
+        return false;
+      }
       await Promise.all([omplirModuls(), omplirClasses()]);
       carregarComentaris();
       renderitzarGuia();
+      return true;
     }
 
     async function carregarModuls(seleccionat) {
@@ -1621,6 +1630,9 @@
       if (errorDesat) {
         el.innerHTML = ICONES.avis + ' No es pot desar al mòbil (mode privat o sense espai). Exporta sovint.';
         el.className = 'text-[12px] t-ko font-semibold';
+      } else if (!canvisPendents && configCarregada && sessioACua(configCarregada)) {
+        el.textContent = 'A la cua: s\'enviarà al full quan hi hagi connexió';
+        el.className = 'text-[12px] t-warn font-semibold';
       } else if (!canvisPendents) {
         el.textContent = 'Sense canvis pendents d\'exportar';
         el.className = 'text-[12px] t3';
@@ -1789,6 +1801,9 @@
         })
       };
 
+      // Sense connexió: l'exportació es desa a la cua i s'enviarà sola
+      if (navigator.onLine === false) { posarACua(dades, confirmat === true); return; }
+
       try {
         const r = await api('exportarAGoogleSheets', { dades, confirmat: confirmat === true });
         if (r.necessitaConfirmacio) {
@@ -1809,9 +1824,128 @@
         actualitzarIndicadorDesat();
         renderitzarEsborranys();
       } catch (err) {
-        mostrarStatus('Error en exportar: ' + esc(err.message) + '<br>Les notes continuen desades al mòbil: torna-ho a provar quan tinguis connexió.', 't-ko');
+        if (err.xarxa) { posarACua(dades, confirmat === true); return; }
+        mostrarStatus('Error en exportar: ' + esc(err.message) + '<br>Les notes continuen desades al mòbil.', 't-ko');
       }
     }
+
+    // =====================================================================
+    // CUA D'EXPORTACIONS SENSE CONNEXIÓ
+    // Si no hi ha connexió en exportar, la sessió es desa a la cua (al mòbil) i s'envia sola
+    // quan torna la connexió, en tornar a obrir l'app o en prémer "Enviar ara".
+    // =====================================================================
+    const CLAU_CUA = 'avaluador_cua_exportacions';
+    let enviantCua = false;
+
+    function llegirCua() { return llegirLocal(CLAU_CUA) || []; }
+    function sessioACua(config) {
+      return llegirCua().some(x => textConfig({ curs: x.dades.curs, modul: x.dades.modul, classe: x.dades.classe,
+        desdoblament: x.dades.desdoblament, sessio: x.dades.sessioAvaluada }) === textConfig(config));
+    }
+    function desarCua(cua) {
+      if (cua.length) escriureLocal(CLAU_CUA, cua); else esborrarLocal(CLAU_CUA);
+      renderitzarCua();
+    }
+
+    function posarACua(dades, confirmat) {
+      const cua = llegirCua();
+      cua.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), dades, confirmat: !!confirmat,
+                 creatEn: new Date().toISOString(), error: '' });
+      desarCua(cua);
+      // Les notes ja són a la cua: l'esborrany de la sessió ja no cal
+      const clau = clauEsborranyActual();
+      esborrarLocal(clau);
+      if (llegirLocal(CLAU_SESSIO_ACTUAL) === clau) esborrarLocal(CLAU_SESSIO_ACTUAL);
+      canvisPendents = false;
+      actualitzarIndicadorDesat();
+      renderitzarEsborranys();
+      mostrarStatus('Sense connexió: l\'exportació s\'ha desat al mòbil i <b>s\'enviarà sola</b> quan tornis a tenir connexió.', 't-warn');
+    }
+
+    async function enviarCua(manual) {
+      if (enviantCua) return;
+      let cua = llegirCua();
+      if (!cua.length) return;
+      enviantCua = true;
+      renderitzarCua();
+      let enviats = 0, senseXarxa = false;
+      try {
+        for (const item of cua.slice()) {
+          try {
+            let r = await api('exportarAGoogleSheets', { dades: item.dades, confirmat: item.confirmat });
+            if (r.necessitaConfirmacio) {
+              if (!confirm(`L'exportació pendent de "${item.dades.sessioAvaluada}" (${item.dades.classe}) sobreescriuria dades que ja hi ha al full (última actualització: ${r.ultimaActualitzacio}). Vols sobreescriure-les?`)) {
+                cua = cua.filter(x => x.id !== item.id);
+                desarCua(cua);
+                continue;
+              }
+              r = await api('exportarAGoogleSheets', { dades: item.dades, confirmat: true });
+            }
+            cua = cua.filter(x => x.id !== item.id);
+            desarCua(cua);
+            enviats++;
+          } catch (err) {
+            if (err.xarxa) { senseXarxa = true; break; }
+            cua = cua.map(x => x.id === item.id ? Object.assign({}, x, { error: err.message }) : x);
+            desarCua(cua);
+          }
+        }
+      } finally {
+        enviantCua = false;
+        renderitzarCua();
+      }
+      if (enviats) {
+        resultatsCercats = false;
+        mostrarAvis(`${enviats === 1 ? 'S\'ha enviat 1 exportació pendent' : `S'han enviat ${enviats} exportacions pendents`} al full.`, 'ok');
+      } else if (manual && senseXarxa) {
+        mostrarAvis('Encara no hi ha connexió. Ho tornarem a provar sols.', 'error');
+      }
+    }
+
+    function descartarDeLaCua(id) {
+      const item = llegirCua().find(x => x.id === id);
+      if (!item || !confirm(`Descartar l'exportació pendent de "${item.dades.sessioAvaluada}" (${item.dades.classe})? Aquestes notes no arribaran al full.`)) return;
+      desarCua(llegirCua().filter(x => x.id !== id));
+    }
+
+    function renderitzarCua() {
+      const cont = $('cua-exportacions');
+      const cua = llegirCua();
+      actualitzarIndicadorDesat();
+      cont.classList.toggle('hidden', cua.length === 0);
+      if (!cua.length) { cont.innerHTML = ''; return; }
+      cont.innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 w-9 h-9 rounded-full grid place-items-center t-warn" style="background:var(--warn-bg)">
+            <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.3 12.6 3.5 3.5 0 0 0 6.5 19z"/><path d="M12 12v4M12 18h.01"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold">${cua.length === 1 ? '1 exportació pendent d\'enviar' : cua.length + ' exportacions pendents d\'enviar'}</div>
+            <p class="text-[13px] t2">Es van fer sense connexió. S'enviaran soles al full quan hi hagi connexió.</p>
+          </div>
+        </div>
+        <div class="space-y-1.5">${cua.map(x => `
+          <div class="flex items-center gap-2 rounded-xl px-3 py-2" style="background:var(--field)">
+            <div class="flex-1 min-w-0">
+              <div class="text-[14px] font-semibold truncate">${esc(x.dades.sessioAvaluada)}</div>
+              <div class="text-[12px] t3">${esc(x.dades.modul)} · ${esc(x.dades.classe)}${x.dades.desdoblament !== 'General' ? ' · ' + esc(x.dades.desdoblament) : ''} · ${(x.dades.evaluacions || []).length} alumnes · ${esc(dataCurta(new Date(x.creatEn)))}</div>
+              ${x.error ? `<div class="text-[12px] t-ko">No s'ha pogut enviar: ${esc(x.error)}</div>` : ''}
+            </div>
+            <button onclick="descartarDeLaCua('${esc(x.id)}')" class="btn btn-perill !px-2.5 !py-1 text-[13px]">Descartar</button>
+          </div>`).join('')}</div>
+        <button onclick="enviarCua(true)" class="btn btn-prim w-full" ${enviantCua ? 'disabled' : ''}>${enviantCua ? 'Enviant...' : 'Enviar ara'}</button>`;
+    }
+
+    // Quan torna la connexió: si l'app s'havia obert sense connexió, es carrega el que faltava; després s'envia la cua
+    let configPerPosar = null; // configuració d'una sessió recuperada que encara no s'ha pogut posar als desplegables
+    window.addEventListener('online', async () => {
+      if (!cataleg && await refrescarCataleg() && configPerPosar) {
+        await posarCampsConfig(configPerPosar);
+        configPerPosar = null;
+      }
+      enviarCua();
+    });
+    setInterval(() => { if (navigator.onLine !== false && llegirCua().length) enviarCua(); }, 60000);
 
     // =====================================================================
     // RESULTATS
@@ -3051,9 +3185,11 @@ Salutacions.`;
       // Si la pàgina s'havia tancat o recarregat a mitja sessió, la tornem a mostrar a l'instant
       const recuperat = esborranyDeLaSessioActual();
       if (recuperat) aplicarEsborrany(recuperat);
-      await refrescarCataleg();
-      if (recuperat) await posarCampsConfig(recuperat.config);
+      renderitzarCua();
+      const carregat = await refrescarCataleg();
+      if (recuperat) { if (carregat) await posarCampsConfig(recuperat.config); else configPerPosar = recuperat.config; }
       renderitzarEsborranys();
+      enviarCua();
     })();
   </script>
 </body>
