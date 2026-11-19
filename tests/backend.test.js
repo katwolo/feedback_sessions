@@ -275,6 +275,7 @@ prova('inicialitzar: tot en una sola petició', () => {
 
 prova('memòria cau: la segona lectura no toca el full i una edició a mà es veu al moment', () => {
   const e = entornAmbConfig();
+  e.call('inicialitzar'); // la primera vegada pot crear pestanyes que falten
   e.call('inicialitzar');
   const abans = e.estat.lecturesFull;
   e.call('inicialitzar');
@@ -346,6 +347,15 @@ prova('enviarCorreus retorna la sessió actualitzada amb la marca d\'enviat', ()
   assert.strictEqual(r.enviats, 1);
   assert.ok(r.resultats.alumnes.find(a => a.nom === 'Anna').correuEnviat);
   assert.ok(!r.resultats.alumnes.find(a => a.nom === 'Pau').correuEnviat);
+});
+
+// ---------- Lot 2: comentaris ràpids ----------
+prova('comentaris ràpids: per defecte, desar, sense duplicats, per mòdul', () => {
+  const e = entornAmbConfig();
+  const r = e.call('inicialitzar');
+  assert.ok(r.comentaris.length >= 3 && r.comentaris.every(c => c.text && c.modul === ''));
+  e.call('desarComentaris', { comentaris: [{ text: 'Molt bé', modul: '' }, { text: 'molt bé', modul: '' }, { text: 'Bon salt', modul: 'Aigua' }, { text: '  ', modul: '' }] });
+  assert.deepStrictEqual(e.call('inicialitzar').comentaris, [{ text: 'Molt bé', modul: '' }, { text: 'Bon salt', modul: 'Aigua' }]);
 });
 
 console.log(`\n${passats} proves superades`);

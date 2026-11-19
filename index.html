@@ -6,10 +6,14 @@
   <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1e1b4b" media="(prefers-color-scheme: dark)">
   <title>Sessions/Supòsits</title>
+  <script>
+    // Tema triat a Configurar → Aparença: "clar", "fosc" o automàtic (segons el dispositiu)
+    try { var t = JSON.parse(localStorage.getItem('avaluador_tema')); if (t === 'clar' || t === 'fosc') document.documentElement.dataset.tema = t; } catch (e) {}
+  </script>
   <!-- Estils de Tailwind ja generats (npm run css). Abans es generaven al navegador amb el CDN. -->
   <link rel="stylesheet" href="estils.css">
   <style>
-    /* ---------- Colors (clar / fosc automàtic segons el mòbil) ---------- */
+    /* ---------- Colors: clar / fosc (automàtic segons el dispositiu, o el que triïs a Configurar) ---------- */
     :root {
       color-scheme: light dark;
       --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --text2: #475569; --text3: #64748b;
@@ -19,8 +23,18 @@
       --ko-bg: #fef2f2; --ko: #b91c1c;
       --warn-bg: #fffbeb; --warn: #b45309; --manual: #7e22ce;
     }
+    :root[data-tema="clar"] { color-scheme: light; }
+    :root[data-tema="fosc"] {
+        color-scheme: dark;
+        --bg: #020617; --card: #0f172a; --text: #f1f5f9; --text2: #cbd5e1; --text3: #94a3b8;
+        --line: #1e293b; --field: #1e293b; --soft: #1e293b; --soft2: #334155;
+        --accent: #6366f1; --accent-soft: #1e1b4b; --accent-text: #a5b4fc; --hdr: #1e1b4b;
+        --ok-bg: #022c22; --ok: #6ee7b7; --ok-fort: #059669;
+        --ko-bg: #450a0a; --ko: #fca5a5;
+        --warn-bg: #451a03; --warn: #fcd34d; --manual: #d8b4fe;
+    }
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-tema="clar"]) {
         --bg: #020617; --card: #0f172a; --text: #f1f5f9; --text2: #cbd5e1; --text3: #94a3b8;
         --line: #1e293b; --field: #1e293b; --soft: #1e293b; --soft2: #334155;
         --accent: #6366f1; --accent-soft: #1e1b4b; --accent-text: #a5b4fc; --hdr: #1e1b4b;
@@ -82,10 +96,34 @@
     .g0 { background: var(--soft); color: var(--text2); }
     .g1 { background: #fef3c7; color: #92400e; } .g2 { background: #e0f2fe; color: #075985; } .g3 { background: #fce7f3; color: #9d174d; }
     .g4 { background: #dcfce7; color: #166534; } .g5 { background: #ede9fe; color: #5b21b6; } .g6 { background: #ffedd5; color: #9a3412; }
+    :root[data-tema="fosc"] .g1 { background: #78350f; color: #fde68a; }
+    :root[data-tema="fosc"] .g2 { background: #0c4a6e; color: #bae6fd; }
+    :root[data-tema="fosc"] .g3 { background: #831843; color: #fbcfe8; }
+    :root[data-tema="fosc"] .g4 { background: #14532d; color: #bbf7d0; }
+    :root[data-tema="fosc"] .g5 { background: #4c1d95; color: #ddd6fe; }
+    :root[data-tema="fosc"] .g6 { background: #7c2d12; color: #fed7aa; }
     @media (prefers-color-scheme: dark) {
-      .g1 { background: #78350f; color: #fde68a; } .g2 { background: #0c4a6e; color: #bae6fd; } .g3 { background: #831843; color: #fbcfe8; }
-      .g4 { background: #14532d; color: #bbf7d0; } .g5 { background: #4c1d95; color: #ddd6fe; } .g6 { background: #7c2d12; color: #fed7aa; }
+      :root:not([data-tema="clar"]) .g1 { background: #78350f; color: #fde68a; }
+      :root:not([data-tema="clar"]) .g2 { background: #0c4a6e; color: #bae6fd; }
+      :root:not([data-tema="clar"]) .g3 { background: #831843; color: #fbcfe8; }
+      :root:not([data-tema="clar"]) .g4 { background: #14532d; color: #bbf7d0; }
+      :root:not([data-tema="clar"]) .g5 { background: #4c1d95; color: #ddd6fe; }
+      :root:not([data-tema="clar"]) .g6 { background: #7c2d12; color: #fed7aa; }
     }
+
+    /* Esquelets de càrrega (blocs grisos animats mentre arriben les dades) */
+    .esquelet { background: linear-gradient(90deg, var(--soft) 25%, var(--soft2) 50%, var(--soft) 75%); background-size: 200% 100%;
+                animation: esquelet 1.2s ease-in-out infinite; border-radius: .5rem; }
+    @keyframes esquelet { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+    @media (prefers-reduced-motion: reduce) { .esquelet { animation: none; } }
+
+    /* Pestanyes de Configurar: 2x2 al mòbil, en una fila a partir de tauleta */
+    .seg.seg-2x2 { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
+    @media (min-width: 768px) { .seg.seg-2x2 { grid-auto-flow: column; grid-template-columns: none; } }
+
+    /* Comentaris ràpids */
+    .xip-comentari { background: var(--soft); color: var(--text2); border-radius: 9999px; padding: .3rem .7rem; font-size: 13px; font-weight: 600; }
+    .xip-comentari[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 1.5px var(--accent); }
 
     .barra { height: 6px; border-radius: 9999px; background: var(--soft); overflow: hidden; }
     .barra > div { height: 100%; border-radius: 9999px; background: var(--accent); transition: width .2s; }
@@ -277,6 +315,7 @@
         <p id="avis-sense-grups" class="hidden text-[13px] t3 px-1">Encara no hi ha grups: crea'ls a «Grups temporals» i la llista s'ordenarà per grup.</p>
       </div>
 
+      <section id="guia-inici" class="hidden card p-5 space-y-4"></section>
       <div id="llista-alumnes" class="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 md:items-start">
         <p class="text-center t3 py-6 md:col-span-2">Tria la sessió i prem "Carregar alumnes" per començar.</p>
       </div>
@@ -307,9 +346,33 @@
 
     <!-- ============================ CONFIGURAR ============================ -->
     <div id="vista-configurar" class="hidden space-y-3">
-      <div class="seg text-[14px] md:max-w-md" role="tablist">
+      <div class="seg seg-2x2 text-[14px] md:max-w-2xl" role="tablist">
         <button id="cfg-tab-moduls" role="tab" onclick="canviarSubConfig('moduls')">Mòduls i supòsits</button>
         <button id="cfg-tab-desd" role="tab" onclick="canviarSubConfig('desd')">Desdoblaments</button>
+        <button id="cfg-tab-comentaris" role="tab" onclick="canviarSubConfig('comentaris')">Comentaris</button>
+        <button id="cfg-tab-aparenca" role="tab" onclick="canviarSubConfig('aparenca')">Aparença</button>
+      </div>
+
+      <div id="cfg-comentaris" class="hidden space-y-3 md:max-w-2xl">
+        <section class="card p-4 space-y-3">
+          <h2 class="titol-seccio">Comentaris ràpids</h2>
+          <p class="text-[14px] t2">Surten com a botons sota les observacions quan avalues: un toc afegeix el comentari i un altre toc el treu. Si tries un mòdul, el comentari només surt en aquell mòdul.</p>
+          <div id="comentaris-llista" class="space-y-2"></div>
+          <button onclick="afegirComentari()" class="btn btn-vora w-full">+ Afegir comentari</button>
+          <button id="boto-desar-comentaris" onclick="desarComentarisConfig()" class="btn btn-ok w-full" disabled>Desar comentaris</button>
+        </section>
+      </div>
+
+      <div id="cfg-aparenca" class="hidden space-y-3 md:max-w-md">
+        <section class="card p-4 space-y-3">
+          <h2 class="titol-seccio">Tema</h2>
+          <div class="seg text-[14px]" role="group" aria-label="Tema">
+            <button id="tema-auto" onclick="canviarTema('auto')">Automàtic</button>
+            <button id="tema-clar" onclick="canviarTema('clar')">☀ Clar</button>
+            <button id="tema-fosc" onclick="canviarTema('fosc')">☾ Fosc</button>
+          </div>
+          <p class="text-[13px] t3">«Automàtic» segueix el mode clar o fosc del dispositiu. L'elecció es recorda en aquest dispositiu.</p>
+        </section>
       </div>
 
       <div id="cfg-desdoblaments" class="hidden flex flex-col gap-3 lg:grid lg:grid-cols-[24rem_1fr] lg:gap-5 lg:items-start">
@@ -337,8 +400,8 @@
           <button onclick="nouModul()" class="btn btn-accent">+ Nou</button>
           <button onclick="renomenarModulActual()" class="btn btn-suau">Reanomenar</button>
           <button onclick="eliminarModulActual()" class="btn btn-perill">Eliminar</button>
-          <button onclick="exportarPlantilla()" class="btn btn-suau">⬇ Plantilla</button>
-          <label class="btn btn-suau col-span-2 lg:col-span-1 cursor-pointer">⬆ Importar plantilla
+          <button onclick="exportarPlantilla()" class="btn btn-suau"><svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Plantilla</button>
+          <label class="btn btn-suau col-span-2 lg:col-span-1 cursor-pointer"><svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 3h14"/></svg> Importar plantilla
             <input type="file" accept=".json,application/json" class="hidden" onchange="importarPlantillaFitxer(this)">
           </label>
         </div>
@@ -532,6 +595,19 @@
       return dades.resultat;
     }
 
+    // Icones (mateix estil a tota l'app)
+    const ICONES = {
+      correu: '<svg class="ico ico-s" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+      correuPetit: '<svg class="ico" style="width:13px;height:13px;display:inline;vertical-align:-2px" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+      desat: '<svg class="ico" style="width:13px;height:13px;display:inline;vertical-align:-2px" viewBox="0 0 24 24"><path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v6h8"/><rect x="7" y="13" width="10" height="8"/></svg>',
+      avis: '<svg class="ico" style="width:13px;height:13px;display:inline;vertical-align:-2px" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+      alumnes: '<svg class="ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>',
+      configurar: '<svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="16" r="3"/></svg>',
+      avaluar: '<svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+      resultats: '<svg class="ico" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg>',
+      fet: '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>'
+    };
+
     // Si Apps Script encara té un code.gs antic, les accions noves no hi són: l'app fa servir el camí antic
     let servidorAntic = false;
     function esAccioDesconeguda(err) { return /Acció desconeguda/.test(err && err.message || ''); }
@@ -608,6 +684,26 @@
       el.classList.remove('hidden');
       clearTimeout(avisTimeout);
       avisTimeout = setTimeout(() => el.classList.add('hidden'), tipus === 'error' ? 7000 : 4500);
+    }
+
+    // Blocs grisos animats amb la forma del que s'està carregant
+    function esquelet(tipus, n) {
+      const linia = (amplada, alt) => `<div class="esquelet" style="width:${amplada};height:${alt || 12}px"></div>`;
+      const fila = `<div class="flex items-center gap-3 px-4 py-3"><div class="esquelet rounded-full" style="width:40px;height:40px"></div>
+          <div class="flex-1 space-y-2">${linia('55%', 14)}${linia('30%', 10)}</div><div class="esquelet" style="width:56px;height:26px"></div></div>`;
+      if (tipus === 'targetes') {
+        return Array.from({ length: n || 4 }, () => `<div class="card" aria-hidden="true">${fila}</div>`).join('');
+      }
+      if (tipus === 'sessions') {
+        return Array.from({ length: n || 3 }, () => `<div class="card p-4 flex items-center gap-3" aria-hidden="true">
+            <div class="flex-1 space-y-2">${linia('60%', 15)}${linia('40%', 10)}</div><div class="esquelet" style="width:48px;height:28px"></div></div>`).join('');
+      }
+      if (tipus === 'resum') {
+        return `<div class="card p-4 space-y-4" aria-hidden="true">${linia('50%', 18)}${linia('35%', 10)}
+            <div class="grid grid-cols-3 gap-2">${'<div class="esquelet" style="height:52px"></div>'.repeat(3)}</div>
+            ${linia('100%', 8)}${linia('80%', 8)}${linia('90%', 8)}</div>`;
+      }
+      return Array.from({ length: n || 5 }, () => `<div aria-hidden="true">${fila}</div>`).join('');
     }
 
     function opcions(llista, valorFn, textFn) {
@@ -692,6 +788,35 @@
     // =====================================================================
     let modulsDisponibles = [];
 
+    // Guia de primer ús: es mostra mentre falti importar alumnes o configurar supòsits
+    function renderitzarGuia() {
+      const guia = $('guia-inici');
+      if (!cataleg || estudiants.length > 0) { guia.classList.add('hidden'); return; }
+      const teAlumnes = cataleg.classes.length > 0;
+      const teSuposits = servidorAntic ? cataleg.moduls.length > 0
+        : Object.keys(cataleg.suposits || {}).some(m => (cataleg.suposits[m] || []).length > 0);
+      if (teAlumnes && teSuposits) { guia.classList.add('hidden'); return; }
+      const pas = (num, fet, titol, text, boto) => `
+        <div class="flex gap-3">
+          <div class="shrink-0 w-8 h-8 rounded-full grid place-items-center font-bold ${fet ? 'pill-ok' : ''}" style="${fet ? '' : 'background:var(--accent-soft);color:var(--accent-text)'}">${fet ? '✓' : num}</div>
+          <div class="flex-1 min-w-0 space-y-1.5">
+            <div class="font-semibold ${fet ? 't3 line-through' : ''}">${titol}</div>
+            ${fet ? '' : `<p class="text-[14px] t2">${text}</p>${boto || ''}`}
+          </div>
+        </div>`;
+      guia.innerHTML = `
+        <div>
+          <h2 class="text-[18px] font-bold">Benvingut/da! Comencem en 3 passos</h2>
+          <p class="text-[14px] t2 mt-1">Quan els tinguis fets, aquesta guia desapareix.</p>
+        </div>
+        ${pas(1, teAlumnes, 'Importa l\'alumnat', 'Porta els alumnes d\'un curs de Google Classroom (amb el seu correu).',
+          `<button onclick="canviarVista('importar')" class="btn btn-prim !py-2 text-[14px]">${ICONES.alumnes} Anar a Alumnat</button>`)}
+        ${pas(2, teSuposits, 'Configura els ítems i els supòsits', 'Crea un mòdul, els ítems que vols avaluar (amb el seu pes) i els supòsits pràctics.',
+          `<button onclick="canviarVista('configurar')" class="btn btn-prim !py-2 text-[14px]">${ICONES.configurar} Anar a Configurar</button>`)}
+        ${pas(3, false, 'Avalua', 'Tria la classe i el supòsit a «Configuració de la sessió» i prem «Carregar alumnes».')}`;
+      guia.classList.remove('hidden');
+    }
+
     // Catàleg per arrencar l'app: mòduls, classes, desdoblaments i supòsits, en una sola petició
     let cataleg = null; // { moduls, classes, desdoblaments: { classe: [...] }, suposits: { modul: [...] } }
 
@@ -713,6 +838,8 @@
     async function refrescarCataleg() {
       try { await carregarCataleg(); } catch (err) { mostrarAvis('No s\'ha pogut carregar la configuració: ' + err.message, 'error'); return; }
       await Promise.all([omplirModuls(), omplirClasses()]);
+      carregarComentaris();
+      renderitzarGuia();
     }
 
     async function carregarModuls(seleccionat) {
@@ -860,7 +987,7 @@
     // Les notes es desen soles al mòbil: només cal avisar si hi ha canvis de desdoblaments sense desar
     window.addEventListener('beforeunload', e => {
       escriureEsborranyAra();
-      if (desdCanvis) { e.preventDefault(); e.returnValue = ''; }
+      if (desdCanvis || comentarisCanvis) { e.preventDefault(); e.returnValue = ''; }
     });
     // Al mòbil, quan l'app passa a segon pla és quan el navegador la pot tancar: desem a l'instant
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') escriureEsborranyAra(); });
@@ -903,7 +1030,7 @@
       escriureEsborranyAra();
       const novaConfig = configDelsCamps();
 
-      $('llista-alumnes').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant alumnes...</p>';
+      $('llista-alumnes').innerHTML = esquelet('targetes', 6);
       mostrarStatus('');
 
       try {
@@ -1038,6 +1165,7 @@
       if (!obert) return cap;
 
       const obs = observacionsIndividuals[clau] || '';
+      const xipsIndiv = htmlXipsComentaris(i, 'indiv', obs);
       const obsHtml = obs || observacioOberta[i]
         ? `<textarea placeholder="Observacions de ${esc(alumne.nom)}..." rows="2" aria-label="Observacions individuals"
                      oninput="canviarObservacioIndividual(${i}, this.value)" class="camp">${esc(obs)}</textarea>`
@@ -1048,15 +1176,66 @@
         <div class="px-4 pb-4 space-y-4">
           <div class="barra"><div id="barra-${i}" style="width:${percent}%"></div></div>
           <div class="grid gap-4 lg:grid-cols-2 lg:gap-x-6">${criteris.map((c, j) => htmlCriteri(i, j, c, clau)).join('')}</div>
-          ${obsHtml}
+          <div class="space-y-2">${obsHtml}${xipsIndiv}</div>
           ${esCoordinador ? `
-            <div>
+            <div class="space-y-2">
               <span class="lbl t-warn">★ Observacions del grup ${grupId} (s'apliquen a tot el grup)</span>
               <textarea placeholder="Observacions del grup..." rows="2" aria-label="Observacions del grup"
                         oninput="canviarObservacioGrup(${grupId}, this.value)" class="camp">${esc(observacionsGrup[grupId] || '')}</textarea>
+              ${htmlXipsComentaris(i, 'grup', observacionsGrup[grupId] || '')}
             </div>` : ''}
           <button type="button" onclick="anarSeguentPendent(${i})" class="btn btn-accent w-full">Següent pendent ›</button>
         </div>`;
+    }
+
+    // ---- Comentaris ràpids ----
+    const CLAU_COMENTARIS_LOCAL = 'avaluador_comentaris';
+    const COMENTARIS_PER_DEFECTE = ['Bona actitud', 'Molt bona participació', 'Bona comunicació amb el grup',
+      'Ha de millorar la puntualitat', 'Cal revisar les normes de seguretat'];
+    let comentaris = []; // [{ text, modul }] (modul buit = tots)
+
+    function carregarComentaris() {
+      comentaris = (cataleg && cataleg.comentaris) || llegirLocal(CLAU_COMENTARIS_LOCAL) ||
+        COMENTARIS_PER_DEFECTE.map(text => ({ text, modul: '' }));
+    }
+
+    function comentarisDelModul() {
+      const modul = configCarregada ? configCarregada.modul : '';
+      return comentaris.filter(c => !c.modul || c.modul === modul).map(c => c.text);
+    }
+
+    function escRegex(t) { return String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function conteComentari(text, c) { return new RegExp('(^|[.!?\\n]\\s*)' + escRegex(c) + '(?=[.!?\\n]|$)', 'i').test(text || ''); }
+
+    // Afegeix el comentari al final del text, o el treu si ja hi era
+    function alternarComentari(text, c) {
+      text = text || '';
+      if (conteComentari(text, c)) {
+        return text.replace(new RegExp('(^|[.!?\\n]\\s*)' + escRegex(c) + '[.!?]?', 'i'), '$1')
+          .replace(/\.\s*\./g, '.').replace(/^[\s.]+/, '').replace(/\s+$/, '');
+      }
+      const net = text.replace(/\s+$/, '');
+      return net ? net.replace(/[.!?]?$/, m => m || '.') + ' ' + c + '.' : c + '.';
+    }
+
+    function htmlXipsComentaris(i, tipus, text) {
+      const llista = comentarisDelModul();
+      if (!llista.length) return '';
+      return `<div class="flex flex-wrap gap-1.5" role="group" aria-label="Comentaris ràpids">${llista.map((c, k) =>
+        `<button type="button" class="xip-comentari" aria-pressed="${conteComentari(text, c)}" onclick="clicComentari(${i}, '${tipus}', ${k})">${esc(c)}</button>`).join('')}</div>`;
+    }
+
+    function clicComentari(i, tipus, k) {
+      const c = comentarisDelModul()[k];
+      const clau = clauAlumne(estudiants[i]);
+      if (tipus === 'grup') {
+        const g = grups[clau];
+        canviarObservacioGrup(g, alternarComentari(observacionsGrup[g], c));
+      } else {
+        observacioOberta[i] = true;
+        canviarObservacioIndividual(i, alternarComentari(observacionsIndividuals[clau], c));
+      }
+      renderitzarTarjeta(i);
     }
 
     // ---- Ordre de la llista: per cognoms (com arriba del full) o agrupada per grups ----
@@ -1114,6 +1293,7 @@
       $('panell-grups').classList.toggle('hidden', estudiants.length === 0);
       $('barra-exportar').classList.toggle('hidden', vistaActual !== 'avaluar' || estudiants.length === 0);
       actualitzarCapcaleraAvaluar();
+      renderitzarGuia();
 
       if (estudiants.length === 0) {
         contenidor.innerHTML = '<p class="text-center t3 py-6 md:col-span-2">No hi ha alumnes en aquesta classe / desdoblament.</p>';
@@ -1439,13 +1619,13 @@
       const el = $('desat-local');
       if (!el) return;
       if (errorDesat) {
-        el.textContent = '⚠ No es pot desar al mòbil (mode privat o sense espai). Exporta sovint.';
+        el.innerHTML = ICONES.avis + ' No es pot desar al mòbil (mode privat o sense espai). Exporta sovint.';
         el.className = 'text-[12px] t-ko font-semibold';
       } else if (!canvisPendents) {
         el.textContent = 'Sense canvis pendents d\'exportar';
         el.className = 'text-[12px] t3';
       } else if (darrerDesat) {
-        el.textContent = '💾 Desat al mòbil ' + horaCurta(darrerDesat) + ' · falta exportar';
+        el.innerHTML = ICONES.desat + ' Desat al mòbil ' + horaCurta(darrerDesat) + ' · falta exportar';
         el.className = 'text-[12px] t3';
       } else {
         el.textContent = '';
@@ -1667,7 +1847,7 @@
       const modul = $('resultats-modul').value;
       if (!classe) return;
       tancarDetallSessio();
-      $('llista-sessions-wrap').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Cercant...</p>';
+      $('llista-sessions-wrap').innerHTML = esquelet('sessions', 3);
       try {
         sessionsListades = await api('llistarSessions', { classe, modul });
         renderitzarSessions();
@@ -1679,7 +1859,12 @@
     function renderitzarSessions() {
       const cont = $('llista-sessions-wrap');
       if (sessionsListades.length === 0) {
-        cont.innerHTML = '<p class="text-center t3 py-6">Encara no hi ha sessions avaluades amb aquests filtres.</p>';
+        cont.innerHTML = `<div class="card p-6 text-center space-y-3 md:col-span-2 lg:col-span-3">
+            <div class="mx-auto w-12 h-12 rounded-full grid place-items-center" style="background:var(--accent-soft);color:var(--accent-text)">${ICONES.resultats}</div>
+            <div class="font-semibold">Encara no hi ha sessions avaluades${$('resultats-modul').value ? ' en aquest mòdul' : ' en aquesta classe'}</div>
+            <p class="text-[14px] t2">Quan exportis una sessió des d'Avaluar, apareixerà aquí amb les seves notes i estadístiques.</p>
+            <button onclick="canviarVista('avaluar')" class="btn btn-prim !py-2 text-[14px]">${ICONES.avaluar} Anar a Avaluar</button>
+          </div>`;
         return;
       }
       cont.innerHTML = sessionsListades.map((s, idx) => `
@@ -1700,8 +1885,8 @@
       $('pdf-status').textContent = '';
       $('llista-sessions-wrap').classList.add('hidden');
       $('detall-sessio-wrap').classList.remove('hidden');
-      $('detall-sessio-resum').innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant...</p>';
-      $('detall-sessio-alumnes').innerHTML = '';
+      $('detall-sessio-resum').innerHTML = esquelet('resum');
+      $('detall-sessio-alumnes').innerHTML = esquelet('files', 5);
       window.scrollTo(0, 0);
       try {
         const r = await api('obtenirResultatsSessio', Object.assign({ ambCriteris: true }, paramsSessio(s)));
@@ -1772,7 +1957,7 @@
       if (r.grup) parts.push(`<span>Grup ${esc(r.grup)}</span>`);
       if (r.origen === 'Manual') parts.push('<span class="t-manual font-semibold" title="Nota final ajustada a mà; ja no coincideix amb els ítems">nota manual</span>');
       if (r.origen.indexOf('limitada') !== -1) parts.push('<span class="t-ko font-semibold">★ imprescindible suspès</span>');
-      if (r.correuEnviat) parts.push(`<span>📧 enviat ${esc(String(r.correuEnviat).split(' ')[0])}</span>`);
+      if (r.correuEnviat) parts.push(`<span>${ICONES.correuPetit} enviat ${esc(String(r.correuEnviat).split(' ')[0])}</span>`);
       return parts.join(' · ');
     }
 
@@ -1811,7 +1996,7 @@
             <textarea id="resobsindiv-${idx}" placeholder="Observacions individuals..." rows="2" aria-label="Observacions individuals" class="camp">${esc(r.observacioIndividual)}</textarea>
             <div class="grid grid-cols-4 gap-2">
               <button onclick="desarResultat(${idx})" class="btn btn-prim col-span-3">Desar</button>
-              <button onclick="obrirModalCorreu(${idx})" class="btn btn-accent" title="Enviar correu" aria-label="Enviar correu">📧</button>
+              <button onclick="obrirModalCorreu(${idx})" class="btn btn-accent" title="Enviar correu" aria-label="Enviar correu">${ICONES.correu}</button>
             </div>
             <button onclick="confirmarEsborrarResultat(${idx})" class="btn btn-perill w-full !py-2 text-[14px]">Esborrar el resultat d'aquest alumne</button>
           </div></div>`;
@@ -2071,7 +2256,7 @@
       const cont = $('fitxa-wrap');
       if (!classe || !alumne) { cont.innerHTML = '<p class="text-center t3 py-6">Tria un alumne a dalt.</p>'; return; }
 
-      cont.innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant fitxa...</p>';
+      cont.innerHTML = esquelet('resum') + '<div class="mt-3 space-y-2.5">' + esquelet('sessions', 2) + '</div>';
       try {
         const sessions = await api('obtenirFitxaAlumne', { classe, alumne });
         if (sessions.length === 0) {
@@ -2260,7 +2445,7 @@ Salutacions.`;
           (r.senseCorreu.length ? ` Sense correu a "👤 Llistat": ${r.senseCorreu.join(', ')}.` : '') +
           (r.errors.length ? ` Errors: ${r.errors.join('; ')}.` : '') + ` Quota restant: ${r.quotaRestant}.`;
         statusEl.className = 'text-[14px] text-center ' + (r.errors.length || r.senseCorreu.length ? 't-warn' : 't-ok');
-        // Refresca les marques "📧 enviat" (un code.gs antic no les retorna: es demanen a part)
+        // Refresca les marques "enviat" (un code.gs antic no les retorna: es demanen a part)
         const s = r.resultats || await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
         resultatsSessio = s.alumnes;
         renderitzarDetallSessio();
@@ -2606,12 +2791,102 @@ Salutacions.`;
 
     function canviarSubConfig(sub) {
       if (sub !== 'desd' && desdCanvis && !confirm('Tens canvis de desdoblaments sense desar. Sortir igualment?')) return;
+      if (sub !== 'comentaris' && comentarisCanvis && !confirm('Tens canvis als comentaris sense desar. Sortir igualment?')) return;
+      if (sub !== 'comentaris') comentarisCanvis = false;
       subConfig = sub;
-      $('cfg-moduls').classList.toggle('hidden', sub !== 'moduls');
-      $('cfg-desdoblaments').classList.toggle('hidden', sub !== 'desd');
-      $('cfg-tab-moduls').className = sub === 'moduls' ? 'seg-tab' : '';
-      $('cfg-tab-desd').className = sub === 'desd' ? 'seg-tab' : '';
+      const parts = { moduls: 'cfg-moduls', desd: 'cfg-desdoblaments', comentaris: 'cfg-comentaris', aparenca: 'cfg-aparenca' };
+      const pestanyes = { moduls: 'cfg-tab-moduls', desd: 'cfg-tab-desd', comentaris: 'cfg-tab-comentaris', aparenca: 'cfg-tab-aparenca' };
+      Object.keys(parts).forEach(k => {
+        $(parts[k]).classList.toggle('hidden', k !== sub);
+        $(pestanyes[k]).className = k === sub ? 'seg-tab' : '';
+      });
       if (sub === 'desd' && !desdCanvis) carregarDesdoblamentsClasse();
+      if (sub === 'comentaris' && !comentarisCanvis) renderitzarComentarisConfig(true);
+      if (sub === 'aparenca') aplicarTema();
+    }
+
+    // ---- Comentaris ràpids (edició) ----
+    let comentarisEdicio = [];
+    let comentarisCanvis = false;
+
+    function renderitzarComentarisConfig(desDeZero) {
+      if (desDeZero) comentarisEdicio = comentaris.map(c => Object.assign({}, c));
+      const moduls = cataleg ? cataleg.moduls : [];
+      $('comentaris-llista').innerHTML = comentarisEdicio.length ? comentarisEdicio.map((c, k) => `
+        <div class="flex flex-wrap md:flex-nowrap items-center gap-2 rounded-xl p-2" style="background:var(--field);border:1px solid var(--line)">
+          <input type="text" value="${esc(c.text)}" oninput="editarComentari(${k}, 'text', this.value)" placeholder="Text del comentari" aria-label="Text del comentari" class="camp flex-1 min-w-[12rem] !py-2">
+          <select onchange="editarComentari(${k}, 'modul', this.value)" aria-label="Mòdul" class="camp !w-auto !py-2 !text-[14px] flex-1 md:flex-none">
+            <option value="">Tots els mòduls</option>
+            ${moduls.map(m => `<option value="${esc(m)}" ${c.modul === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+          </select>
+          <button onclick="treureComentari(${k})" class="btn btn-perill !px-3 !py-2" aria-label="Treure">✕</button>
+        </div>`).join('') : '<p class="text-[14px] t3">No hi ha cap comentari. Afegeix-ne amb el botó de sota.</p>';
+      const boto = $('boto-desar-comentaris');
+      boto.disabled = !comentarisCanvis;
+      boto.textContent = comentarisCanvis ? 'Desar comentaris' : 'Comentaris desats ✓';
+    }
+
+    function editarComentari(k, camp, valor) {
+      comentarisEdicio[k][camp] = valor;
+      comentarisCanvis = true;
+      $('boto-desar-comentaris').disabled = false;
+      $('boto-desar-comentaris').textContent = 'Desar comentaris';
+    }
+    function afegirComentari() {
+      comentarisEdicio.push({ text: '', modul: '' });
+      comentarisCanvis = true;
+      renderitzarComentarisConfig();
+      const camps = document.querySelectorAll('#comentaris-llista input');
+      if (camps.length) camps[camps.length - 1].focus();
+    }
+    function treureComentari(k) {
+      comentarisEdicio.splice(k, 1);
+      comentarisCanvis = true;
+      renderitzarComentarisConfig();
+    }
+
+    async function desarComentarisConfig() {
+      const nets = comentarisEdicio.map(c => ({ text: String(c.text).trim(), modul: c.modul || '' })).filter(c => c.text);
+      const boto = $('boto-desar-comentaris');
+      boto.disabled = true;
+      boto.textContent = 'Desant...';
+      try {
+        let localment = servidorAntic;
+        if (!servidorAntic) {
+          try { await api('desarComentaris', { comentaris: nets }); }
+          catch (err) { if (!esAccioDesconeguda(err)) throw err; servidorAntic = true; localment = true; }
+        }
+        if (localment) escriureLocal(CLAU_COMENTARIS_LOCAL, nets);
+        comentaris = nets;
+        if (cataleg) cataleg.comentaris = nets;
+        comentarisCanvis = false;
+        renderitzarComentarisConfig(true);
+        mostrarAvis(localment ? 'Comentaris desats en aquest dispositiu (actualitza code.gs per tenir-los a tots).' : 'Comentaris desats.', 'ok');
+        if (alumneObert >= 0) renderitzarTarjeta(alumneObert);
+      } catch (err) {
+        boto.disabled = false;
+        boto.textContent = 'Desar comentaris';
+        mostrarAvis('Error en desar: ' + err.message, 'error');
+      }
+    }
+
+    // ---- Tema clar / fosc ----
+    function temaActual() {
+      const t = llegirLocal('avaluador_tema');
+      return t === 'clar' || t === 'fosc' ? t : 'auto';
+    }
+    function aplicarTema() {
+      const t = temaActual();
+      if (t === 'auto') delete document.documentElement.dataset.tema; else document.documentElement.dataset.tema = t;
+      document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+        const original = m.media.indexOf('dark') !== -1 ? '#1e1b4b' : '#4f46e5';
+        m.content = t === 'auto' ? original : (t === 'fosc' ? '#1e1b4b' : '#4f46e5');
+      });
+      ['auto', 'clar', 'fosc'].forEach(x => { if ($('tema-' + x)) $('tema-' + x).className = x === t ? 'seg-tab' : ''; });
+    }
+    function canviarTema(t) {
+      if (t === 'auto') esborrarLocal('avaluador_tema'); else escriureLocal('avaluador_tema', t);
+      aplicarTema();
     }
 
     async function carregarDesdoblamentsClasse() {
@@ -2623,7 +2898,7 @@ Salutacions.`;
         $('desd-classe').value = $('desd-llista').dataset.classe;
         return;
       }
-      llista.innerHTML = '<p class="text-center t3 py-6 animate-pulse">Carregant alumnes...</p>';
+      llista.innerHTML = esquelet('files', 6);
       try {
         desdAlumnes = await api('obtenirAlumnes', { classe, desdoblament: 'General' });
         llista.dataset.classe = classe;
@@ -2767,6 +3042,7 @@ Salutacions.`;
     // =====================================================================
     $('curs').value = cursPerDefecte();
     $('importar-curs').value = cursPerDefecte();
+    aplicarTema();
     modeDiscret = llegirLocal(CLAU_DISCRET) === true;
     ordreLlista = llegirLocal(CLAU_ORDRE) === 'grups' ? 'grups' : 'cognoms';
     aplicarDiscret();

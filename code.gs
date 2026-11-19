@@ -16,6 +16,7 @@ var NOM_CONFIGURACIO = "🔧 Configuració";
 var NOM_SUPOSITS = "📋 Supòsits";
 var NOM_ALUMNAT = "👥 Alumnat";
 var NOM_HISTORIAL = "🗄 Historial";
+var NOM_COMENTARIS = "💬 Comentaris";
 
 var COLOR_CAPCALERA = "#4f46e5";
 var DESDOBLAMENT_GENERAL = "General";
@@ -36,6 +37,9 @@ var CAPCALERA_SUPOSITS = ["Mòdul", "Supòsit", "Data", "Descripció", "Actiu"];
 var CAPCALERA_ALUMNAT = ["Data", "Curs", "Mòdul", "Classe", "Desdobl.", "Nom", "Cognoms",
     "Sessió avaluada", "Observacions grup", "Observacions individual", "Nota final",
     "Grup", "Origen nota", "ID alumne", "Correu enviat", "Detall ítems"];
+var CAPCALERA_COMENTARIS = ["Comentari", "Mòdul"];
+var COMENTARIS_PER_DEFECTE = ["Bona actitud", "Molt bona participació", "Bona comunicació amb el grup",
+    "Ha de millorar la puntualitat", "Cal revisar les normes de seguretat"];
 var CAPCALERA_HISTORIAL = ["Data", "Curs", "Mòdul", "Classe", "Desd.", "Nom", "Cognoms", "Sessió avaluada",
     "Criteri", "Nota", "Pes (%)", "Tipus", "ID alumne"];
 
@@ -121,6 +125,7 @@ var ACCIONS = {
   enviarCorreus: function(p) { return ambBloqueig(function() { return enviarCorreus(p); }); },
   crearInformePdf: function(p) { return crearInformePdf(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada); },
   desarDesdoblaments: function(p) { return ambBloqueig(function() { return desarDesdoblaments(p.classe, p.assignacions); }); },
+  desarComentaris: function(p) { return ambBloqueig(function() { return desarComentaris(p.comentaris); }); },
   importarAlumnesClassroom: function(p) { return ambBloqueig(function() { return importarAlumnesClassroom(p.courseId, p.curs, p.classe, p.desdoblament); }); }
 };
 
@@ -391,7 +396,32 @@ function inicialitzar() {
   var moduls = listarModuls();
   var suposits = {};
   moduls.forEach(function(m) { suposits[m] = listarSuposits(m, true); });
-  return { moduls: moduls, classes: classes, desdoblaments: desdoblaments, suposits: suposits };
+  return { moduls: moduls, classes: classes, desdoblaments: desdoblaments, suposits: suposits, comentaris: llegirComentaris() };
+}
+
+// ---- Comentaris ràpids (observacions freqüents que s'afegeixen amb un toc) ----
+// Mòdul buit = el comentari surt a tots els mòduls
+function llegirComentaris() {
+  return llegirAmbCache('comentaris', function() {
+    return llegirFiles(asegurarComentaris(obrirFull()), CAPCALERA_COMENTARIS.length)
+        .map(function(f) { return { text: txt(f[0]), modul: txt(f[1]) }; })
+        .filter(function(c) { return c.text; });
+  });
+}
+
+function desarComentaris(comentaris) {
+  var vistos = {};
+  var files = (comentaris || []).map(function(c) { return [txt(c.text), txt(c.modul)]; })
+      .filter(function(f) {
+        var clau = f[0].toLowerCase() + '|' + f[1];
+        if (!f[0] || vistos[clau]) return false;
+        vistos[clau] = true;
+        return true;
+      });
+  var hoja = asegurarComentaris(obrirFull());
+  reescriureFiles(hoja, files, CAPCALERA_COMENTARIS.length);
+  invalidarCache(['comentaris']);
+  return { desats: files.length };
 }
 
 // Llista els mòduls configurats (a "🔧 Configuració" o a "📋 Supòsits")
@@ -697,6 +727,7 @@ function configurarRegistre() {
   asegurarSuposits(ss);
   asegurarAlumnat(ss);
   asegurarHistorial(ss);
+  asegurarComentaris(ss);
   netejarFullDefecte(ss);
 }
 
@@ -1377,6 +1408,22 @@ function asegurarHistorial(ss) {
   aplicarFiltre(hoja, CAPCALERA_HISTORIAL.length);
   aplicarEscalaColor(hoja, H.NOTA + 1);
   aplicarFormatData(hoja, H.DATA + 1);
+  return hoja;
+}
+
+// Comentaris ràpids: es crea amb uns quants d'exemple
+function asegurarComentaris(ss) {
+  var hoja = ss.getSheetByName(NOM_COMENTARIS);
+  if (hoja) {
+    assegurarCapcaleres(hoja, CAPCALERA_COMENTARIS);
+    return hoja;
+  }
+  hoja = ss.insertSheet(NOM_COMENTARIS);
+  aplicarEstilCapcalera(hoja, CAPCALERA_COMENTARIS);
+  hoja.getRange(2, 1, COMENTARIS_PER_DEFECTE.length, 2).setValues(COMENTARIS_PER_DEFECTE.map(function(c) { return [c, '']; }));
+  hoja.setColumnWidth(1, 360);
+  hoja.setColumnWidth(2, 200);
+  hoja.setFrozenRows(1);
   return hoja;
 }
 
