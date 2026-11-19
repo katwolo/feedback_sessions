@@ -1,0 +1,12 @@
+{
+  "name": "feedback-sessions",
+  "private": true,
+  "description": "Sessions/Supòsits: eines de desenvolupament (CSS i proves)",
+  "scripts": {
+    "css": "tailwindcss -c tailwind.config.js -i estils/tailwind.css -o estils.css --minify",
+    "test": "node tests/backend.test.js"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

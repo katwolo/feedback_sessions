@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1e1b4b" media="(prefers-color-scheme: dark)">
   <title>Sessions/Supòsits</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Estils de Tailwind ja generats (npm run css). Abans es generaven al navegador amb el CDN. -->
+  <link rel="stylesheet" href="estils.css">
   <style>
     /* ---------- Colors (clar / fosc automàtic segons el mòbil) ---------- */
     :root {
@@ -180,7 +181,7 @@
           </div>
         </div>
         <div class="flex flex-wrap gap-1.5 mt-2">
-          <select id="resultats-classe" aria-label="Classe" onchange="carregarAlumnesFitxa(); cercarResultats()" class="xip-select xip-select-actiu"><option value="">Carregant...</option></select>
+          <select id="resultats-classe" aria-label="Classe" onchange="alumnesFitxaClasse = null; cercarResultats()" class="xip-select xip-select-actiu"><option value="">Carregant...</option></select>
           <select id="resultats-modul" aria-label="Mòdul" onchange="cercarResultats()" class="xip-select"><option value="">Tots els mòduls</option></select>
           <select id="fitxa-alumne" aria-label="Alumne" onchange="cercarResultats()" class="xip-select hidden"><option value="">-</option></select>
         </div>
@@ -531,6 +532,10 @@
       return dades.resultat;
     }
 
+    // Si Apps Script encara té un code.gs antic, les accions noves no hi són: l'app fa servir el camí antic
+    let servidorAntic = false;
+    function esAccioDesconeguda(err) { return /Acció desconeguda/.test(err && err.message || ''); }
+
     // =====================================================================
     // UTILITATS
     // =====================================================================
@@ -687,11 +692,45 @@
     // =====================================================================
     let modulsDisponibles = [];
 
+    // Catàleg per arrencar l'app: mòduls, classes, desdoblaments i supòsits, en una sola petició
+    let cataleg = null; // { moduls, classes, desdoblaments: { classe: [...] }, suposits: { modul: [...] } }
+
+    async function carregarCataleg() {
+      if (!servidorAntic) {
+        try {
+          cataleg = await api('inicialitzar');
+          return;
+        } catch (err) {
+          if (!esAccioDesconeguda(err)) throw err;
+          servidorAntic = true;
+        }
+      }
+      const [moduls, classes] = await Promise.all([api('listarModuls'), api('listarClasses')]);
+      cataleg = { moduls, classes, desdoblaments: {}, suposits: {} };
+    }
+
+    // Torna a demanar el catàleg i omple tots els desplegables (després de canviar la configuració, etc.)
+    async function refrescarCataleg() {
+      try { await carregarCataleg(); } catch (err) { mostrarAvis('No s\'ha pogut carregar la configuració: ' + err.message, 'error'); return; }
+      await Promise.all([omplirModuls(), omplirClasses()]);
+    }
+
     async function carregarModuls(seleccionat) {
+      await refrescarCataleg();
+      if (seleccionat && cataleg && cataleg.moduls.includes(seleccionat)) { $('modul').value = seleccionat; await carregarSupositsAvaluar(); }
+    }
+
+    async function carregarClasses() {
+      await refrescarCataleg();
+    }
+
+    async function omplirModuls(seleccionat) {
       const sel = $('modul');
       const selResultats = $('resultats-modul');
+      const modulAnterior = sel.value;
+      const sessioAnterior = obtenirSessio();
       try {
-        modulsDisponibles = await api('listarModuls');
+        modulsDisponibles = cataleg ? cataleg.moduls : [];
         if (modulsDisponibles.length === 0) {
           sel.innerHTML = '<option value="">Cap mòdul configurat</option>';
           selResultats.innerHTML = '<option value="">Tots els mòduls</option>';
@@ -703,27 +742,27 @@
           selResultats.innerHTML = '<option value="">Tots els mòduls</option>' + opcions(modulsDisponibles, m => m, m => m);
           if (anteriorRes && modulsDisponibles.includes(anteriorRes)) selResultats.value = anteriorRes;
         }
-        await carregarSupositsAvaluar();
+        // Si el mòdul no ha canviat, es manté el supòsit que hi havia triat
+        await carregarSupositsAvaluar(sel.value === modulAnterior && sessioAnterior ? sessioAnterior : undefined);
       } catch (err) {
         sel.innerHTML = '<option value="">Error</option>';
         mostrarAvis('No s\'han pogut carregar els mòduls: ' + err.message, 'error');
       }
     }
 
-    async function carregarClasses() {
+    async function omplirClasses() {
       const sel = $('classe');
       const selResultats = $('resultats-classe');
       try {
-        const classes = await api('listarClasses');
+        const classes = cataleg ? cataleg.classes : [];
         if (classes.length === 0) {
           sel.innerHTML = selResultats.innerHTML = $('desd-classe').innerHTML = '<option value="">Cap classe al Llistat</option>';
           return;
         }
-        const anteriorDesd = $('desd-classe').value;
+        const anteriors = [sel.value, selResultats.value, $('desd-classe').value];
         sel.innerHTML = selResultats.innerHTML = $('desd-classe').innerHTML = opcions(classes, c => c, c => c);
-        if (anteriorDesd && classes.includes(anteriorDesd)) $('desd-classe').value = anteriorDesd;
-        await carregarDesdoblaments(classes[0]);
-        carregarAlumnesFitxa();
+        [sel, selResultats, $('desd-classe')].forEach((s, k) => { if (anteriors[k] && classes.includes(anteriors[k])) s.value = anteriors[k]; });
+        await carregarDesdoblaments(sel.value, $('desdoblament').value);
       } catch (err) {
         sel.innerHTML = '<option value="">Error</option>';
         mostrarAvis('No s\'han pogut carregar les classes: ' + err.message, 'error');
@@ -737,7 +776,7 @@
         return;
       }
       try {
-        const desdoblaments = await api('listarDesdoblaments', { classe });
+        const desdoblaments = cataleg && cataleg.desdoblaments[classe] ? cataleg.desdoblaments[classe] : await api('listarDesdoblaments', { classe });
         sel.innerHTML = opcions(desdoblaments, d => d, d => d === 'General' ? 'General (tota la classe)' : d);
         if (valorSeleccionat) sel.value = valorSeleccionat;
       } catch (err) {
@@ -753,7 +792,8 @@
       const sel = $('sessio-select');
       supositsAvaluar = [];
       if (modul) {
-        try { supositsAvaluar = await api('listarSuposits', { modul }); } catch (err) { /* sense supòsits */ }
+        if (cataleg && cataleg.suposits[modul]) supositsAvaluar = cataleg.suposits[modul];
+        else { try { supositsAvaluar = await api('listarSuposits', { modul }); } catch (err) { /* sense supòsits */ } }
       }
       sel.innerHTML = opcions(supositsAvaluar, s => s.nom, s => s.nom + (s.data ? ' · ' + s.data : '')) +
         '<option value="__altre__">✎ Altre (text lliure)</option>';
@@ -1664,13 +1704,12 @@
       $('detall-sessio-alumnes').innerHTML = '';
       window.scrollTo(0, 0);
       try {
-        const [r, crit] = await Promise.all([
-          api('obtenirResultatsSessio', paramsSessio(s)),
-          api('obtenirCriteris', { modul: s.modul, suposit: s.sessioAvaluada }).catch(() => [])
-        ]);
+        const r = await api('obtenirResultatsSessio', Object.assign({ ambCriteris: true }, paramsSessio(s)));
         resultatsSessio = r.alumnes;
         criterisSessio = r.criteris;
-        criterisConfigSessio = crit;
+        // Un code.gs antic no retorna els ítems actuals: es demanen a part
+        criterisConfigSessio = r.criterisActuals ||
+          await api('obtenirCriteris', { modul: s.modul, suposit: s.sessioAvaluada }).catch(() => []);
         edicioItems = null;
         renderitzarResumSessio();
         renderitzarDetallSessio();
@@ -1888,12 +1927,25 @@
       const itemsCanviats = edicioItems && edicioItems.idx === idx && edicioItems.canviat;
 
       try {
+        let dades = null; // la sessió tal com ha quedat al full
         if (itemsCanviats) {
           if (!Object.keys(edicioItems.notes).length) { mostrarAvis('Posa almenys un ítem (o esborra el resultat de l\'alumne).', 'error'); return; }
           const calc = calcularNotaFinal(criterisConfigSessio, edicioItems.notes).nota;
           const manual = notaVal !== '' && calc !== '' && Number(notaVal) !== calc;
           if (manual && !confirm(`La nota final que has escrit (${fmtValor(notaVal)}) no coincideix amb la calculada pels ítems (${fmt(calc)}). Es desarà com a "nota manual". Continuar?`)) return;
           // Es tornen a desar els ítems d'aquest alumne (només el seu resultat; els altres no es toquen)
+          if (!servidorAntic) {
+            try {
+              dades = await api('desarItemsResultat', Object.assign(paramsSessio(sessioOberta), {
+                alumne: alumneRef(r), grup: r.grup || '', notes: edicioItems.notes,
+                observacioGrup: obsGrup, observacioIndividual: obsIndiv, notaManual: manual ? notaVal : ''
+              }));
+            } catch (err) {
+              if (!esAccioDesconeguda(err)) throw err;
+              servidorAntic = true;
+            }
+          }
+          if (!dades) {
           await api('exportarAGoogleSheets', {
             confirmat: true,
             dades: Object.assign(paramsSessio(sessioOberta), {
@@ -1906,6 +1958,7 @@
               alumne: alumneRef(r), notaFinal: notaVal, observacioGrup: obsGrup, observacioIndividual: obsIndiv
             }));
           }
+          }
         } else {
           if (notaVal !== '' && r.notaFinal !== '' && Number(notaVal) !== r.notaFinal && criterisSessio.length > 1 &&
               !confirm('Si canvies la nota final a mà, deixarà de coincidir amb els ítems (quedarà marcada com a "nota manual"). Per corregir-la bé, canvia els ítems aquí mateix. Continuar?')) return;
@@ -1916,7 +1969,7 @@
 
         // Tornem a llegir la sessió per veure-ho tal com ha quedat al full
         const clau = clauAlumne(r);
-        const dades = await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
+        if (!dades) dades = await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
         resultatsSessio = dades.alumnes;
         criterisSessio = dades.criteris;
         resultatsCercats = false;
@@ -1995,12 +2048,15 @@
     }
 
     // ---- Fitxa de l'alumne ----
+    let alumnesFitxaClasse = null; // classe de la qual s'ha carregat la llista d'alumnes de la fitxa
+
     async function carregarAlumnesFitxa() {
       const classe = $('resultats-classe').value;
       const sel = $('fitxa-alumne');
       if (!classe) { sel.innerHTML = '<option value="">-</option>'; return; }
       try {
         alumnesFitxa = await api('obtenirAlumnes', { classe, desdoblament: 'General' });
+        alumnesFitxaClasse = classe;
         sel.innerHTML = alumnesFitxa.length ? alumnesFitxa.map((a, i) => `<option value="${i}">${esc(a.cognoms)}, ${esc(a.nom)}</option>`).join('')
           : '<option value="">Sense alumnes</option>';
       } catch (err) {
@@ -2009,6 +2065,7 @@
     }
 
     async function veureFitxaAlumne() {
+      if (alumnesFitxaClasse !== $('resultats-classe').value) await carregarAlumnesFitxa();
       const classe = $('resultats-classe').value;
       const alumne = alumnesFitxa[Number($('fitxa-alumne').value)];
       const cont = $('fitxa-wrap');
@@ -2203,8 +2260,8 @@ Salutacions.`;
           (r.senseCorreu.length ? ` Sense correu a "👤 Llistat": ${r.senseCorreu.join(', ')}.` : '') +
           (r.errors.length ? ` Errors: ${r.errors.join('; ')}.` : '') + ` Quota restant: ${r.quotaRestant}.`;
         statusEl.className = 'text-[14px] text-center ' + (r.errors.length || r.senseCorreu.length ? 't-warn' : 't-ok');
-        // Refresca les marques "📧 enviat"
-        const s = await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
+        // Refresca les marques "📧 enviat" (un code.gs antic no les retorna: es demanen a part)
+        const s = r.resultats || await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
         resultatsSessio = s.alumnes;
         renderitzarDetallSessio();
       } catch (err) {
@@ -2656,7 +2713,7 @@ Salutacions.`;
         desdCanvis = false;
         renderitzarDesdoblaments();
         mostrarAvis(`Desdoblaments desats (${r.actualitzats} canvis).` + (r.noTrobats.length ? ` No trobats: ${r.noTrobats.join(', ')}.` : ''), r.noTrobats.length ? 'error' : 'ok');
-        if ($('classe').value === classe) carregarDesdoblaments(classe, $('desdoblament').value);
+        await refrescarCataleg();
       } catch (err) {
         boto.disabled = false;
         boto.textContent = 'Desar desdoblaments';
@@ -2718,7 +2775,7 @@ Salutacions.`;
       // Si la pàgina s'havia tancat o recarregat a mitja sessió, la tornem a mostrar a l'instant
       const recuperat = esborranyDeLaSessioActual();
       if (recuperat) aplicarEsborrany(recuperat);
-      await Promise.all([carregarModuls(), carregarClasses()]);
+      await refrescarCataleg();
       if (recuperat) await posarCampsConfig(recuperat.config);
       renderitzarEsborranys();
     })();

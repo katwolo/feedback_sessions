@@ -6,12 +6,16 @@ function colToIdx(letters) { let n = 0; for (const ch of letters) n = n * 26 + (
 
 function crearEntorn(opts = {}) {
   const enviats = [];
+  // Marca de modificació del full (simula DriveApp.getLastUpdated): puja amb qualsevol escriptura
+  const estat = { versio: 1, lecturesFull: 0 };
+  const cacheMap = new Map();
   const fitxers = [];
   let usuari = opts.usuari !== undefined ? opts.usuari : 'owner@x.cat';
 
   class Range {
     constructor(sheet, r, c, nr, nc) { Object.assign(this, { sheet, r, c, nr, nc }); }
     getValues() {
+      estat.lecturesFull++;
       const out = [];
       for (let i = 0; i < this.nr; i++) {
         const fila = [];
@@ -26,6 +30,7 @@ function crearEntorn(opts = {}) {
     }
     getValue() { return this.getValues()[0][0]; }
     setValues(vals) {
+      estat.versio++;
       if (vals.length !== this.nr || vals[0].length !== this.nc) throw new Error(`setValues mida incorrecta ${vals.length}x${vals[0].length} vs ${this.nr}x${this.nc}`);
       vals.forEach((fila, i) => fila.forEach((v, j) => {
         const ri = this.r - 1 + i;
@@ -36,6 +41,7 @@ function crearEntorn(opts = {}) {
     }
     setValue(v) { return this.setValues([[v]]); }
     clearContent() {
+      estat.versio++;
       for (let i = 0; i < this.nr; i++) for (let j = 0; j < this.nc; j++) {
         const row = this.sheet.data[this.r - 1 + i];
         if (row) row[this.c - 1 + j] = '';
@@ -48,7 +54,9 @@ function crearEntorn(opts = {}) {
   ['setFontWeight', 'setBackground', 'setFontColor', 'setFontStyle', 'setNumberFormat'].forEach(m => { Range.prototype[m] = function() { return this; }; });
 
   class Sheet {
-    constructor(name) { this.name = name; this.data = []; this.filter = null; this.rules = []; }
+    constructor(name) { this.name = name; this._data = []; this.filter = null; this.rules = []; }
+    get data() { return this._data; }
+    set data(v) { estat.versio++; this._data = v; }
     getName() { return this.name; }
     getRange(a, b, c, d) {
       if (typeof a === 'string') {
@@ -96,7 +104,12 @@ function crearEntorn(opts = {}) {
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
     MailApp: { getRemainingDailyQuota: () => opts.quota === undefined ? 100 : opts.quota, sendEmail: m => enviats.push(m) },
-    DriveApp: { createFile: b => { fitxers.push(b); return { getUrl: () => 'https://drive/' + b.name }; }, getRootFolder: () => ({ getName: () => 'root' }) },
+    CacheService: { getScriptCache: () => ({
+      get: k => cacheMap.has(k) ? cacheMap.get(k) : null,
+      put: (k, v) => { cacheMap.set(k, v); },
+      removeAll: ks => ks.forEach(k => cacheMap.delete(k))
+    }) },
+    DriveApp: { getFileById: () => ({ getLastUpdated: () => new Date(estat.versio) }), createFile: b => { fitxers.push(b); return { getUrl: () => 'https://drive/' + b.name }; }, getRootFolder: () => ({ getName: () => 'root' }) },
     ContentService: { createTextOutput: t => ({ text: t, setMimeType() { return this; } }), MimeType: { JSON: 'json' } },
     HtmlService: { createHtmlOutput: h => ({ setTitle: () => ({ html: h }) }), createHtmlOutputFromFile: () => ({ setTitle() { return this; }, addMetaTag() { return this; } }) },
     Classroom: {
@@ -112,14 +125,17 @@ function crearEntorn(opts = {}) {
   vm.runInContext(fs.readFileSync(require('path').join(__dirname, '..', 'code.gs'), 'utf8'), context);
 
   return {
-    ctx: context, ss, sheets, enviats, fitxers,
+    ctx: context, ss, sheets, enviats, fitxers, estat, cacheMap,
+    // Cada crida HTTP real comença amb la memòria per petició buida
+    novaPeticio: () => { vm.runInContext('_full = null; _memo = {}; _marcaFull = undefined;', context); },
     setUsuari: u => { usuari = u; },
     call: (action, params) => {
+      vm.runInContext('_full = null; _memo = {}; _marcaFull = undefined;', context);
       const r = JSON.parse(context.api(action, JSON.parse(JSON.stringify(params || {}))));
       if (r.error) throw new Error(r.message);
       return r.resultat;
     },
-    raw: (action, params) => JSON.parse(context.api(action, JSON.parse(JSON.stringify(params || {}))))
+    raw: (action, params) => (vm.runInContext('_full = null; _memo = {}; _marcaFull = undefined;', context), JSON.parse(context.api(action, JSON.parse(JSON.stringify(params || {})))))
   };
 }
 

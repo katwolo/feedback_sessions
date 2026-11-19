@@ -1,0 +1,4 @@
+/* Font dels estils de Tailwind. Es genera estils.css amb: npm run css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
