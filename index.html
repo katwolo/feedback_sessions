@@ -342,6 +342,7 @@
             <div class="space-y-3 columna-fixa">
               <div id="detall-sessio-resum"></div>
               <p id="pdf-status" class="text-[14px] text-center"></p>
+              <section id="aval-alumnes" class="card p-4 space-y-3"></section>
             </div>
             <div id="detall-sessio-alumnes" class="card divisor overflow-hidden min-w-0"></div>
           </div>
@@ -2036,6 +2037,9 @@
       try {
         const r = await api('obtenirResultatsSessio', Object.assign({ ambCriteris: true }, paramsSessio(s)));
         resultatsSessio = r.alumnes;
+        avalAlumnes = r.avaluacioAlumnes === undefined ? 'desconegut' : r.avaluacioAlumnes;
+        estatAvalAlumnes = null;
+        avisAval = null;
         criterisSessio = r.criteris;
         // Un code.gs antic no retorna els ítems actuals: es demanen a part
         criterisConfigSessio = r.criterisActuals ||
@@ -2050,6 +2054,7 @@
 
     // ---- Resum de la sessió: mitjana, aprovats/suspesos i ítems del més fluix al més fort ----
     function renderitzarResumSessio() {
+      setTimeout(renderitzarAvalAlumnes, 0);
       const s = sessioOberta;
       const notesFinals = resultatsSessio.map(r => r.notaFinal).filter(n => n !== '');
       const mitjana = notesFinals.length ? notesFinals.reduce((a, b) => a + b, 0) / notesFinals.length : null;
@@ -2103,7 +2108,146 @@
       if (r.origen === 'Manual') parts.push('<span class="t-manual font-semibold" title="Nota final ajustada a mà; ja no coincideix amb els ítems">nota manual</span>');
       if (r.origen.indexOf('limitada') !== -1) parts.push('<span class="t-ko font-semibold">★ imprescindible suspès</span>');
       if (r.correuEnviat) parts.push(`<span>${ICONES.correuPetit} enviat ${esc(String(r.correuEnviat).split(' ')[0])}</span>`);
+      if (!esBuit(r.notaAuto) || !esBuit(r.notaCo)) {
+        parts.push(`<span class="sensible">Prof. ${fmtValor(r.notaProfessor)}${!esBuit(r.notaAuto) ? ' · Auto ' + fmtValor(r.notaAuto) : ''}${!esBuit(r.notaCo) ? ' · Co ' + fmtValor(r.notaCo) : ''}</span>`);
+      }
       return parts.join(' · ');
+    }
+
+    // ---- Autoavaluació i coavaluació (F8) ----
+    let avalAlumnes = null;       // configuració de la sessió oberta (null = no n'hi ha; 'desconegut' = code.gs antic)
+    let estatAvalAlumnes = null;  // { config, alumnes: [{ nom, cognoms, auto, coFetes, coRebudes, grup }] }
+    let avisAval = null;          // { text, classe }: missatge que es manté encara que el bloc es torni a pintar
+
+    function urlPaginaAlumne() { return new URL('alumne.html', location.href).href; }
+
+    function renderitzarAvalAlumnes() {
+      const cont = $('aval-alumnes');
+      if (!sessioOberta) { cont.innerHTML = ''; return; }
+      if (avalAlumnes === 'desconegut') {
+        cont.innerHTML = `<h2 class="titol-seccio">Autoavaluació i coavaluació</h2><p class="text-[14px] t2">Per fer-la servir cal actualitzar code.gs a Apps Script.</p>`;
+        return;
+      }
+      const c = avalAlumnes;
+      const teGrups = resultatsSessio.some(r => r.grup);
+      const auto = c ? c.auto : true, co = c ? c.co : teGrups;
+      const pesAuto = c ? c.pesAuto : 10, pesCo = c ? c.pesCo : 10;
+      const estat = c ? (c.obert ? '<span class="etiqueta t-ok" style="background:var(--ok-bg)">OBERTA</span>' : '<span class="etiqueta t2" style="background:var(--soft2)">TANCADA</span>') : '';
+      const e = estatAvalAlumnes;
+      const resum = e && e.alumnes.length ? (() => {
+        const n = e.alumnes.length;
+        const autos = e.alumnes.filter(a => a.auto).length;
+        const coAmbGrup = e.alumnes.filter(a => a.grup).length;
+        const coFets = e.alumnes.filter(a => a.grup && a.coFetes > 0).length;
+        return `<div class="text-[13px] t2">${c.auto ? `Autoavaluacions: <b>${autos}/${n}</b>` : ''}${c.auto && c.co ? ' · ' : ''}${c.co ? `Han avaluat companys: <b>${coFets}/${coAmbGrup}</b>` : ''}</div>
+          <details class="text-[13px]"><summary class="cursor-pointer t-accent font-semibold">Veure qui ha respost</summary>
+            <div class="mt-2 divisor rounded-xl" style="background:var(--field)">${e.alumnes.map(a => `
+              <div class="flex items-center gap-2 px-3 py-1.5"><span class="flex-1 truncate">${esc(a.cognoms)}, ${esc(a.nom)}</span>
+                ${c.auto ? `<span class="${a.auto ? 't-ok' : 't3'}" title="Autoavaluació">${a.auto ? '✓ auto' : '– auto'}</span>` : ''}
+                ${c.co ? `<span class="${a.coFetes ? 't-ok' : 't3'}" title="Companys avaluats / avaluacions rebudes">${a.grup ? `co ${a.coFetes} · rep ${a.coRebudes}` : 'sense grup'}</span>` : ''}
+              </div>`).join('')}</div></details>`;
+      })() : '';
+
+      cont.innerHTML = `
+        <div class="flex justify-between items-center gap-2">
+          <h2 class="titol-seccio">Autoavaluació i coavaluació</h2>${estat}
+        </div>
+        ${!c ? `<p class="text-[14px] t2">Els alumnes s'avaluen a ells mateixos i/o als companys del seu grup amb els mateixos ítems. Cadascú rep per correu un enllaç i un codi personal.</p>` : ''}
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 text-[15px]"><input type="checkbox" id="aa-auto" ${auto ? 'checked' : ''} onchange="actualitzarPesProfessor()"> Autoavaluació
+            <span class="ml-auto flex items-center gap-1"><input type="number" id="aa-pes-auto" min="0" max="99" value="${pesAuto}" oninput="actualitzarPesProfessor()" class="camp !w-16 !py-1 text-center" aria-label="Pes de l'autoavaluació">%</span></label>
+          <label class="flex items-center gap-2 text-[15px] ${teGrups ? '' : 'opacity-60'}"><input type="checkbox" id="aa-co" ${co ? 'checked' : ''} ${teGrups ? '' : 'disabled'} onchange="actualitzarPesProfessor()"> Coavaluació (grup)
+            <span class="ml-auto flex items-center gap-1"><input type="number" id="aa-pes-co" min="0" max="99" value="${pesCo}" oninput="actualitzarPesProfessor()" class="camp !w-16 !py-1 text-center" aria-label="Pes de la coavaluació">%</span></label>
+          ${teGrups ? '' : '<p class="text-[12px] t3">La coavaluació necessita grups: aquesta sessió no en té.</p>'}
+          <p id="aa-pes-prof" class="text-[13px] t2"></p>
+        </div>
+        ${c && c.obert ? `
+          <div class="flex gap-2"><input readonly value="${esc(urlPaginaAlumne() + '?s=' + c.token)}" class="camp !py-1.5 !text-[13px] flex-1 min-w-0" aria-label="Enllaç per als alumnes" onclick="this.select()">
+            <button onclick="copiarEnllacAlumnes()" class="btn btn-suau !py-1.5 text-[14px]">Copiar</button></div>` : ''}
+        ${resum}
+        <div class="grid grid-cols-2 gap-2">
+          ${!c ? `<button onclick="obrirAvalAlumnes(true)" class="btn btn-prim col-span-2">Obrir i enviar correus</button>` : ''}
+          ${c && c.obert ? `<button onclick="obrirAvalAlumnes(false)" class="btn btn-accent">Desar canvis</button>
+                             <button onclick="obrirAvalAlumnes(true)" class="btn btn-suau">Reenviar correus</button>
+                             <button onclick="tancarAvalAlumnes()" class="btn btn-perill col-span-2">Tancar (ja no es podrà respondre)</button>` : ''}
+          ${c && !c.obert ? `<button onclick="obrirAvalAlumnes(false)" class="btn btn-accent col-span-2">Tornar a obrir</button>` : ''}
+        </div>
+        <p id="aa-status" class="text-[14px] text-center ${avisAval ? avisAval.classe : ''}">${avisAval ? esc(avisAval.text) : ''}</p>`;
+      actualitzarPesProfessor();
+      if (c && !e) carregarEstatAvalAlumnes();
+    }
+
+    function llegirFormAval() {
+      const auto = $('aa-auto').checked, co = $('aa-co').checked && !$('aa-co').disabled;
+      return { auto, co, pesAuto: auto ? Number($('aa-pes-auto').value) || 0 : 0, pesCo: co ? Number($('aa-pes-co').value) || 0 : 0 };
+    }
+
+    function actualitzarPesProfessor() {
+      if (!$('aa-auto')) return;
+      const f = llegirFormAval();
+      $('aa-pes-auto').disabled = !f.auto;
+      $('aa-pes-co').disabled = !f.co;
+      const prof = 100 - f.pesAuto - f.pesCo;
+      const el = $('aa-pes-prof');
+      if (prof <= 0) { el.textContent = 'Entre tots dos han de sumar menys del 100%.'; el.className = 'text-[13px] t-ko'; return; }
+      el.textContent = (f.pesAuto + f.pesCo === 0 ? 'Només informativa: la nota final és la teva.' : `Nota final: ${prof}% la teva`) +
+        (f.pesAuto ? ` + ${f.pesAuto}% autoavaluació` : '') + (f.pesCo ? ` + ${f.pesCo}% mitjana dels companys` : '') + '.';
+      el.className = 'text-[13px] t2';
+    }
+
+    async function carregarEstatAvalAlumnes() {
+      try {
+        estatAvalAlumnes = await api('estatAvaluacioAlumnes', paramsSessio(sessioOberta));
+        renderitzarAvalAlumnes();
+      } catch (err) { /* l'estat és informatiu */ }
+    }
+
+    async function refrescarSessioOberta() {
+      const r = await api('obtenirResultatsSessio', paramsSessio(sessioOberta));
+      resultatsSessio = r.alumnes;
+      criterisSessio = r.criteris;
+      if (r.avaluacioAlumnes !== undefined) avalAlumnes = r.avaluacioAlumnes;
+      resultatsCercats = false;
+      renderitzarResumSessio();
+      renderitzarDetallSessio();
+    }
+
+    async function obrirAvalAlumnes(enviarCorreus) {
+      const f = llegirFormAval();
+      const el = $('aa-status');
+      if (!f.auto && !f.co) { mostrarAvis('Activa l\'autoavaluació, la coavaluació o totes dues.', 'error'); return; }
+      if (f.pesAuto + f.pesCo >= 100) { mostrarAvis('Entre tots dos han de sumar menys del 100%.', 'error'); return; }
+      if (enviarCorreus && !confirm(`S'enviarà un correu a cada alumne de la sessió amb l'enllaç i el seu codi personal. Continuar?`)) return;
+      el.textContent = enviarCorreus ? 'Enviant correus...' : 'Desant...';
+      el.className = 'text-[14px] text-center t-accent animate-pulse';
+      try {
+        const r = await api('obrirAvaluacioAlumnes', Object.assign(paramsSessio(sessioOberta), f, { enviarCorreus, urlAlumne: urlPaginaAlumne() }));
+        estatAvalAlumnes = null;
+        const missatge = enviarCorreus
+          ? `Correus enviats: ${r.enviats}.` + (r.senseCorreu.length ? ` Sense correu: ${r.senseCorreu.join(', ')} (dona'ls l'enllaç i el codi de «👤 Llistat»).` : '') + (r.errors.length ? ` Errors: ${r.errors.join('; ')}` : '')
+          : 'Canvis desats. Les notes finals s\'han recalculat.';
+        avisAval = { text: missatge, classe: r.senseCorreu.length || r.errors.length ? 't-warn' : 't-ok' };
+        await refrescarSessioOberta();
+      } catch (err) {
+        el.textContent = esAccioDesconeguda(err) ? 'Per fer-la servir cal actualitzar code.gs a Apps Script.' : err.message;
+        el.className = 'text-[14px] text-center t-ko';
+      }
+    }
+
+    async function tancarAvalAlumnes() {
+      if (!confirm('Tancar l\'autoavaluació i la coavaluació? Els alumnes ja no podran respondre ni canviar res (les notes que ja hi ha es mantenen).')) return;
+      try {
+        await api('tancarAvaluacioAlumnes', paramsSessio(sessioOberta));
+        await refrescarSessioOberta();
+        mostrarAvis('Tancada.', 'ok');
+      } catch (err) { mostrarAvis(err.message, 'error'); }
+    }
+
+    function copiarEnllacAlumnes() {
+      const text = urlPaginaAlumne() + '?s=' + avalAlumnes.token;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(
+        () => mostrarAvis('Enllaç copiat.', 'ok'),
+        () => mostrarAvis('No s\'ha pogut copiar: selecciona l\'enllaç i copia\'l a mà.', 'error'));
     }
 
     function renderitzarDetallSessio() {

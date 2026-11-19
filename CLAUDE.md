@@ -13,7 +13,9 @@
 - Despliegue: `index.html` está en GitHub Pages y se publica solo al llegar a la rama que publica Pages.
   `code.gs` y `appsscript.json` viven en Apps Script: no llegan a la app hasta que se copian al editor y
   se crea una nueva versión de la implementación (siempre editando la existente, para no cambiar la URL `/exec`).
-- Estilos: `index.html` usa `estils.css`, generado con Tailwind (`npm install` una vez y `npm run css`).
+- `alumne.html` es la página de los alumnos (autoevaluación/coevaluación); se publica igual que `index.html`
+  y usa la misma `API_URL`. Si cambia la URL `/exec`, cambiarla en los dos archivos.
+- Estilos: `index.html` y `alumne.html` usan `estils.css`, generado con Tailwind (`npm install` una vez y `npm run css`).
   Después de añadir o cambiar clases de Tailwind en `index.html`, regenerar `estils.css` y subirlo junto.
 - Compatibilidad: la página debe seguir funcionando aunque Apps Script tenga un `code.gs` anterior
   (si una acción nueva responde "Acció desconeguda", usar el camino antiguo).
