@@ -358,4 +358,38 @@ prova('comentaris ràpids: per defecte, desar, sense duplicats, per mòdul', () 
   assert.deepStrictEqual(e.call('inicialitzar').comentaris, [{ text: 'Molt bé', modul: '' }, { text: 'Bon salt', modul: 'Aigua' }]);
 });
 
+// ---------- Lot 4: quadern i informe per alumne ----------
+prova('quadern: alumnes × sessions en ordre cronològic, buits i filtre per mòdul', () => {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([
+    { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Objectiu: 10, Presentació: 10, Coordinació: 10 } },
+    { nom: 'Anna', cognoms: 'Ros', id: 'anna@x.cat', notes: { Objectiu: 0, Presentació: 5, Coordinació: 5 } }], 'S1'));
+  e.ss.getSheetByName('👥 Alumnat').data.slice(1).forEach(f => { f[0] = new Date(2026, 9, 1); });
+  e.call('exportarAGoogleSheets', dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Seguretat: 6 } }], 'S2'));
+  e.call('exportarAGoogleSheets', { dades: { curs: '26/27', modul: 'Terra', classe: '1A', desdoblament: 'General', sessioAvaluada: 'T1',
+    evaluacions: [{ nom: 'Anna', cognoms: 'Ros', id: 'anna@x.cat', notes: { Nota: 7 } }] } });
+  const q = e.call('obtenirQuadern', { classe: '1A', modul: 'Aigua' });
+  assert.deepStrictEqual(q.sessions.map(s => s.sessioAvaluada), ['S1', 'S2']);
+  assert.strictEqual(q.alumnes.length, 4, 'tots els alumnes de la classe, també els no avaluats');
+  const pau = q.alumnes.find(a => a.id === 'pau@x.cat');
+  assert.deepStrictEqual(pau.notes, [10, 6]);
+  assert.deepStrictEqual(q.alumnes.find(a => a.nom === 'Anna').notes, [4, '']);
+  assert.deepStrictEqual(q.alumnes.find(a => a.nom === 'Joan').notes, ['', '']);
+  const tot = e.call('obtenirQuadern', { classe: '1A', modul: '' });
+  assert.deepStrictEqual(tot.sessions.map(s => s.modul + '/' + s.sessioAvaluada), ['Aigua/S1', 'Aigua/S2', 'Terra/T1']);
+});
+
+prova('informe per alumne en PDF: sessions, ítems, observacions i mitjanes', () => {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Objectiu: 10, Presentació: 8, Coordinació: 7.5 }, observacioIndividual: 'Molt <b>bé</b>' }], 'S1'));
+  e.call('exportarAGoogleSheets', dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Seguretat: 6 } }], 'S2'));
+  const r = e.call('crearInformeAlumne', { classe: '1A', alumne: { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat' }, modul: '' });
+  assert.match(r.nom, /Informe - Puig, Pau - 1A/);
+  const html = e.fitxers[0].html;
+  assert.ok(html.includes('Presentació: <b>8</b>'));
+  assert.ok(html.includes('Molt &lt;b&gt;bé&lt;/b&gt;'), 'observacions escapades');
+  assert.ok(html.includes('Mitjana global: 7,08'), html.match(/Mitjana global[^<]*/));
+  assert.throws(() => e.call('crearInformeAlumne', { classe: '1A', alumne: { nom: 'Joan', cognoms: 'Mas', id: '' }, modul: '' }), /cap sessió/);
+});
+
 console.log(`\n${passats} proves superades`);
