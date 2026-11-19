@@ -85,7 +85,8 @@
     .seg .seg-tab { background: var(--card); color: var(--accent-text); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
 
     /* Nota final */
-    .pill { display: inline-flex; align-items: center; gap: .25rem; border-radius: .75rem; padding: .2rem .6rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* position:relative: el text ocult per a lectors de pantalla (.sr-only) queda dins de la nota i no desborda la pàgina */
+    .pill { position: relative; display: inline-flex; align-items: center; gap: .25rem; border-radius: .75rem; padding: .2rem .6rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .pill-ok { background: var(--ok-bg); color: var(--ok); }
     .pill-ko { background: var(--ko-bg); color: var(--ko); }
     .pill-buit { background: var(--soft); color: var(--text3); }
@@ -215,7 +216,11 @@
           <div class="text-lg font-bold">Resultats</div>
           <div class="flex items-center gap-1.5">
             <button onclick="canviarDiscret()" class="boto-discret shrink-0 xip !py-1.5 !px-2.5 flex items-center gap-1 font-semibold" aria-pressed="false" title="Mode ocult: amaga les notes per si hi ha alumnes a prop"></button>
-            <button id="boto-mode-resultats" onclick="canviarModeResultats(modeResultats === 'sessio' ? 'alumne' : 'sessio')" class="xip !py-1.5 font-semibold">Per alumne</button>
+            <select id="mode-resultats" onchange="canviarModeResultats(this.value)" aria-label="Vista" class="xip-select xip-select-actiu">
+              <option value="sessio">Per sessió</option>
+              <option value="alumne">Per alumne</option>
+              <option value="quadern">Quadern</option>
+            </select>
           </div>
         </div>
         <div class="flex flex-wrap gap-1.5 mt-2">
@@ -344,6 +349,9 @@
       </div>
       <div id="res-per-alumne" class="hidden">
         <section id="fitxa-wrap"><p class="text-center t3 py-6">Tria un alumne a dalt.</p></section>
+      </div>
+      <div id="res-quadern" class="hidden">
+        <section id="quadern-wrap"></section>
       </div>
     </div>
 
@@ -1964,16 +1972,19 @@
       modeResultats = mode;
       $('res-per-sessio').classList.toggle('hidden', mode !== 'sessio');
       $('res-per-alumne').classList.toggle('hidden', mode !== 'alumne');
-      $('resultats-modul').classList.toggle('hidden', mode !== 'sessio');
+      $('res-quadern').classList.toggle('hidden', mode !== 'quadern');
+      $('resultats-modul').classList.toggle('hidden', mode === 'alumne');
       $('fitxa-alumne').classList.toggle('hidden', mode !== 'alumne');
-      $('boto-mode-resultats').textContent = mode === 'sessio' ? 'Per alumne' : 'Per sessió';
+      $('mode-resultats').value = mode;
       if (vistaActual === 'resultats') cercarResultats();
     }
 
     function cercarResultats() {
       if (vistaActual !== 'resultats') { resultatsCercats = false; return; }
       resultatsCercats = true;
-      if (modeResultats === 'sessio') cercarSessions(); else veureFitxaAlumne();
+      if (modeResultats === 'sessio') cercarSessions();
+      else if (modeResultats === 'quadern') veureQuadern();
+      else veureFitxaAlumne();
     }
 
     async function cercarSessions() {
@@ -2433,6 +2444,10 @@
                 <div class="text-[13px] font-semibold t2 mb-1">Evolució (ordre cronològic)</div>
                 <div class="flex items-end gap-1 h-20 border-b linia">${evolucio}</div>
               </div>` : ''}
+            <button onclick="crearInformeAlumneUI()" class="btn btn-accent w-full">
+              <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg> Informe PDF de l'alumne
+            </button>
+            <p id="informe-alumne-status" class="text-[14px] text-center"></p>
           </article>
           <div class="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 mt-3">
             ${sessions.slice().reverse().map(s => `
@@ -2449,6 +2464,115 @@
       } catch (err) {
         cont.innerHTML = `<p class="text-center t-ko py-6">Error: ${esc(err.message)}</p>`;
       }
+    }
+
+    // ---- Informe PDF d'un alumne (F5) ----
+    async function crearInformeAlumneUI() {
+      const alumne = alumnesFitxa[Number($('fitxa-alumne').value)];
+      const el = $('informe-alumne-status');
+      if (!alumne) return;
+      el.textContent = 'Generant l\'informe...';
+      el.className = 'text-[14px] text-center t-accent animate-pulse';
+      try {
+        const r = await api('crearInformeAlumne', { classe: $('resultats-classe').value, alumne, modul: '' });
+        el.innerHTML = `Informe creat a Drive: <a href="${esc(r.url)}" target="_blank" rel="noopener" class="underline font-semibold">${esc(r.nom)}</a>`;
+        el.className = 'text-[14px] text-center t-ok';
+      } catch (err) {
+        el.textContent = esAccioDesconeguda(err) ? 'Per fer servir els informes cal actualitzar code.gs a Apps Script.' : 'Error: ' + err.message;
+        el.className = 'text-[14px] text-center t-ko';
+      }
+    }
+
+    // ---- Quadern: alumnes × sessions (F4) ----
+    let quadern = null;
+
+    function etiquetaSessioQuadern(s, ambModul) {
+      return (ambModul ? s.modul + ' · ' : '') + s.sessioAvaluada + (s.desdoblament && s.desdoblament !== 'General' ? ' (' + s.desdoblament + ')' : '');
+    }
+    function mitjanaDe(valors) {
+      const nums = valors.filter(v => v !== '' && v !== null && !isNaN(Number(v))).map(Number);
+      return nums.length ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length * 100) / 100 : '';
+    }
+
+    async function veureQuadern() {
+      const classe = $('resultats-classe').value;
+      const modul = $('resultats-modul').value;
+      const cont = $('quadern-wrap');
+      if (!classe) { cont.innerHTML = '<p class="text-center t3 py-6">Tria una classe a dalt.</p>'; return; }
+      cont.innerHTML = esquelet('resum');
+      try {
+        quadern = await api('obtenirQuadern', { classe, modul });
+      } catch (err) {
+        cont.innerHTML = `<p class="text-center t-ko py-6">${esAccioDesconeguda(err) ? 'Per veure el quadern cal actualitzar code.gs a Apps Script.' : 'Error: ' + esc(err.message)}</p>`;
+        return;
+      }
+      renderitzarQuadern();
+    }
+
+    function renderitzarQuadern() {
+      const q = quadern;
+      const cont = $('quadern-wrap');
+      if (!q.sessions.length) {
+        cont.innerHTML = `<div class="card p-6 text-center space-y-2"><div class="font-semibold">Encara no hi ha sessions avaluades${q.modul ? ' en aquest mòdul' : ''}</div>
+          <p class="text-[14px] t2">El quadern s'omple a mesura que exportes sessions des d'Avaluar.</p></div>`;
+        return;
+      }
+      const ambModul = !q.modul;
+      const mitjAlumne = q.alumnes.map(a => mitjanaDe(a.notes));
+      const mitjSessio = q.sessions.map((_, k) => mitjanaDe(q.alumnes.map(a => a.notes[k])));
+      const th = 'px-2.5 py-2 text-left text-[12px] font-semibold t2 align-bottom';
+      const td = 'px-2 py-1.5 text-center';
+      cont.innerHTML = `
+        <article class="card overflow-hidden">
+          <div class="p-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-[18px] font-bold">Quadern · ${esc(q.classe)}${q.modul ? ' · ' + esc(q.modul) : ''}</h2>
+              <div class="text-[13px] t3">${q.alumnes.length} alumnes · ${q.sessions.length} sessions · desplaça la taula cap al costat per veure-les totes</div>
+            </div>
+            <button onclick="descarregarQuadern()" class="btn btn-accent !py-2 text-[14px]">
+              <svg class="ico ico-s" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Excel (CSV)
+            </button>
+          </div>
+          <div class="relative overflow-x-auto border-t linia">
+            <table class="min-w-full text-[14px]" style="border-collapse:separate;border-spacing:0">
+              <thead style="background:var(--field)">
+                <tr>
+                  <th class="${th} sticky left-0 z-10" style="background:var(--field);min-width:11rem">Alumne</th>
+                  <th class="${th} text-center">Mitjana</th>
+                  ${q.sessions.map(s => `<th class="${th}" style="min-width:6.5rem" title="${esc(etiquetaSessioQuadern(s, true))} · ${esc(s.data)}">
+                    <div class="line-clamp-2">${esc(etiquetaSessioQuadern(s, ambModul))}</div><div class="font-normal t3">${esc(s.data)}</div></th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${q.alumnes.map((a, i) => `
+                  <tr class="border-t linia">
+                    <td class="px-2.5 py-1.5 sticky left-0 z-10 font-medium whitespace-nowrap" style="background:var(--card);border-top:1px solid var(--line)">${esc(a.cognoms)}, ${esc(a.nom)}</td>
+                    <td class="${td}" style="border-top:1px solid var(--line)">${mitjAlumne[i] === '' ? '<span class="t3">–</span>' : htmlNota(mitjAlumne[i])}</td>
+                    ${a.notes.map(n => `<td class="${td}" style="border-top:1px solid var(--line)">${n === '' ? '<span class="t3">·</span>' : htmlNota(n)}</td>`).join('')}
+                  </tr>`).join('')}
+              </tbody>
+              <tfoot style="background:var(--field)">
+                <tr>
+                  <td class="px-2.5 py-2 sticky left-0 z-10 text-[13px] font-semibold t2" style="background:var(--field);border-top:2px solid var(--line)">Mitjana de la sessió</td>
+                  <td class="${td}" style="border-top:2px solid var(--line)"></td>
+                  ${mitjSessio.map(m => `<td class="${td} sensible text-[13px] font-semibold" style="border-top:2px solid var(--line)">${m === '' ? '–' : fmt(m)}</td>`).join('')}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </article>`;
+    }
+
+    function descarregarQuadern() {
+      const q = quadern;
+      if (!q) return;
+      const cel = v => { const t = String(v === null || v === undefined ? '' : v); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+      const num = v => v === '' ? '' : String(v).replace('.', ',');
+      const capcalera = ['Cognoms', 'Nom', 'Desdoblament'].concat(q.sessions.map(s => etiquetaSessioQuadern(s, !q.modul) + ' (' + s.data + ')'), ['Mitjana']);
+      const files = q.alumnes.map(a => [a.cognoms, a.nom, a.desdoblament || ''].concat(a.notes.map(num), [num(mitjanaDe(a.notes))]));
+      const mitjanes = ['Mitjana de la sessió', '', ''].concat(q.sessions.map((_, k) => num(mitjanaDe(q.alumnes.map(a => a.notes[k])))), ['']);
+      const csv = '\uFEFF' + [capcalera].concat(files, [mitjanes]).map(f => f.map(cel).join(';')).join('\r\n');
+      descarregarFitxer(`Quadern - ${q.classe}${q.modul ? ' - ' + q.modul : ''}.csv`.replace(/[\\/:*?"<>|]/g, '_'), csv, 'text/csv;charset=utf-8');
     }
 
     // =====================================================================

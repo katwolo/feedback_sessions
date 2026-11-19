@@ -123,6 +123,8 @@ var ACCIONS = {
   actualitzarResultat: function(p) { return ambBloqueig(function() { return actualitzarResultat(p); }); },
   desarItemsResultat: function(p) { return ambBloqueig(function() { return desarItemsResultat(p); }); },
   enviarCorreus: function(p) { return ambBloqueig(function() { return enviarCorreus(p); }); },
+  obtenirQuadern: function(p) { return obtenirQuadern(p.classe, p.modul); },
+  crearInformeAlumne: function(p) { return crearInformeAlumne(p.classe, p.alumne, p.modul); },
   crearInformePdf: function(p) { return crearInformePdf(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada); },
   desarDesdoblaments: function(p) { return ambBloqueig(function() { return desarDesdoblaments(p.classe, p.assignacions); }); },
   desarComentaris: function(p) { return ambBloqueig(function() { return desarComentaris(p.comentaris); }); },
@@ -215,8 +217,13 @@ function escaparHtml(text) {
 }
 
 function formatarData(valor, patro) {
-  if (valor instanceof Date) return Utilities.formatDate(valor, Session.getScriptTimeZone(), patro || "dd/MM/yyyy HH:mm");
+  if (esData(valor)) return Utilities.formatDate(valor, Session.getScriptTimeZone(), patro || "dd/MM/yyyy HH:mm");
   return txt(valor);
+}
+
+// Funciona també amb dates que vinguin d'un altre context (més robust que "instanceof Date")
+function esData(valor) {
+  return Object.prototype.toString.call(valor) === '[object Date]' && !isNaN(valor.getTime());
 }
 
 function esBuit(valor) {
@@ -877,7 +884,7 @@ function desglossamentSessio(ss, curs, modul, classe, desdoblament, sessio) {
   files.forEach(function(f) {
     if (!mateixaSessio(f, H, curs, modul, classe, desdoblament, sessio)) return;
     var clau = clauAlumneServidor({ nom: f[H.NOM], cognoms: f[H.COGNOMS], id: f[H.ID] });
-    var data = f[H.DATA] instanceof Date ? f[H.DATA].getTime() : 0;
+    var data = esData(f[H.DATA]) ? f[H.DATA].getTime() : 0;
     var actual = perAlumne[clau];
     if (!actual || data > actual.data) {
       perAlumne[clau] = actual = { data: data, notes: {}, ordre: [] };
@@ -969,7 +976,7 @@ function obtenirFitxaAlumne(classe, alumne) {
     return txt(f[A.CLASSE]) === classe && mateixAlumne(f[A.NOM], f[A.COGNOMS], f[A.ID], alumne);
   }).map(function(f) {
     return {
-      ts: f[A.DATA] instanceof Date ? f[A.DATA].getTime() : 0, data: formatarData(f[A.DATA], 'dd/MM/yyyy'),
+      ts: esData(f[A.DATA]) ? f[A.DATA].getTime() : 0, data: formatarData(f[A.DATA], 'dd/MM/yyyy'),
       curs: txt(f[A.CURS]), modul: txt(f[A.MODUL]), desdoblament: txt(f[A.DESD]), sessioAvaluada: txt(f[A.SESSIO]),
       notaFinal: esBuit(f[A.NOTA]) ? '' : Number(f[A.NOTA]), grup: txt(f[A.GRUP]),
       observacioGrup: txt(f[A.OBS_GRUP]), observacioIndividual: txt(f[A.OBS_INDIV])
@@ -1072,6 +1079,120 @@ function crearInformePdf(curs, modul, classe, desdoblament, sessioAvaluada) {
       '</table><p style="color:#64748b;margin-top:8px">* Nota final ajustada manualment.</p></body></html>';
 
   var nomFitxer = 'Informe - ' + sessioAvaluada + ' - ' + classe + ' (' + curs + ').pdf';
+  var pdf = Utilities.newBlob(html, 'text/html', 'informe.html').getAs('application/pdf').setName(nomFitxer);
+  var fitxer = DriveApp.createFile(pdf);
+  return { url: fitxer.getUrl(), nom: nomFitxer };
+}
+
+// ============ QUADERN (alumne × sessió) ============
+
+// Totes les notes finals d'una classe (i, si es tria, d'un mòdul) en forma de taula.
+// Files: tots els alumnes del llistat de la classe (i els avaluats que ja no hi siguin).
+// Columnes: les sessions avaluades, de la més antiga a la més recent.
+function obtenirQuadern(classe, modul) {
+  classe = txt(classe);
+  modul = txt(modul);
+  var files = llegirFiles(asegurarAlumnat(obrirFull()), CAPCALERA_ALUMNAT.length).filter(function(f) {
+    return txt(f[A.CLASSE]) === classe && (!modul || txt(f[A.MODUL]) === modul);
+  });
+
+  var sessions = [];
+  var indexSessio = {};
+  files.forEach(function(f) {
+    var clau = [txt(f[A.CURS]), txt(f[A.MODUL]), txt(f[A.DESD]), txt(f[A.SESSIO])].join('|');
+    var ts = esData(f[A.DATA]) ? f[A.DATA].getTime() : 0;
+    if (indexSessio[clau] === undefined) {
+      indexSessio[clau] = sessions.length;
+      sessions.push({ curs: txt(f[A.CURS]), modul: txt(f[A.MODUL]), desdoblament: txt(f[A.DESD]),
+                      sessioAvaluada: txt(f[A.SESSIO]), ts: ts });
+    } else if (ts && (!sessions[indexSessio[clau]].ts || ts < sessions[indexSessio[clau]].ts)) {
+      sessions[indexSessio[clau]].ts = ts;
+    }
+  });
+  var ordre = sessions.map(function(s, i) { return i; }).sort(function(a, b) { return sessions[a].ts - sessions[b].ts; });
+  var posicio = {};
+  ordre.forEach(function(i, k) { posicio[i] = k; });
+  var sessionsOrdenades = ordre.map(function(i) {
+    var s = sessions[i];
+    return { curs: s.curs, modul: s.modul, desdoblament: s.desdoblament, sessioAvaluada: s.sessioAvaluada,
+             data: s.ts ? Utilities.formatDate(new Date(s.ts), Session.getScriptTimeZone(), 'dd/MM/yyyy') : '' };
+  });
+
+  var alumnes = obtenirAlumnes(classe, DESDOBLAMENT_GENERAL).map(function(a) {
+    return { nom: a.nom, cognoms: a.cognoms, id: a.id, desdoblament: a.desdoblament, notes: sessionsOrdenades.map(function() { return ''; }) };
+  });
+  files.forEach(function(f) {
+    var alumne = { nom: txt(f[A.NOM]), cognoms: txt(f[A.COGNOMS]), id: txt(f[A.ID]) };
+    var fila = alumnes.filter(function(a) { return mateixAlumne(a.nom, a.cognoms, a.id, alumne); })[0];
+    if (!fila) {
+      fila = { nom: alumne.nom, cognoms: alumne.cognoms, id: alumne.id, desdoblament: '', notes: sessionsOrdenades.map(function() { return ''; }) };
+      alumnes.push(fila);
+    }
+    var k = posicio[indexSessio[[txt(f[A.CURS]), txt(f[A.MODUL]), txt(f[A.DESD]), txt(f[A.SESSIO])].join('|')]];
+    fila.notes[k] = esBuit(f[A.NOTA]) ? '' : Number(f[A.NOTA]);
+  });
+
+  return { classe: classe, modul: modul, sessions: sessionsOrdenades, alumnes: ordenarAlumnes(alumnes) };
+}
+
+// ============ INFORME PER ALUMNE (PDF) ============
+
+// Informe d'un alumne amb totes les seves sessions (o només les d'un mòdul): notes, desglossament
+// per ítem, observacions i mitjanes. Es desa a Drive en PDF i se'n retorna l'enllaç.
+function crearInformeAlumne(classe, alumne, modul) {
+  modul = txt(modul);
+  var files = llegirFiles(asegurarAlumnat(obrirFull()), CAPCALERA_ALUMNAT.length).filter(function(f) {
+    return txt(f[A.CLASSE]) === txt(classe) && (!modul || txt(f[A.MODUL]) === modul) &&
+        mateixAlumne(f[A.NOM], f[A.COGNOMS], f[A.ID], alumne);
+  });
+  if (!files.length) throw new Error('Aquest alumne no té cap sessió avaluada' + (modul ? ' en aquest mòdul.' : '.'));
+  files.sort(function(a, b) { return (esData(a[A.DATA]) ? a[A.DATA].getTime() : 0) - (esData(b[A.DATA]) ? b[A.DATA].getTime() : 0); });
+
+  var perModul = {};
+  var ordreModuls = [];
+  files.forEach(function(f) {
+    var m = txt(f[A.MODUL]);
+    if (!perModul[m]) { perModul[m] = []; ordreModuls.push(m); }
+    perModul[m].push(f);
+  });
+
+  function mitjana(llista) {
+    var notes = llista.map(function(f) { return f[A.NOTA]; }).filter(function(n) { return !esBuit(n) && !isNaN(Number(n)); }).map(Number);
+    return notes.length ? Math.round(notes.reduce(function(a, b) { return a + b; }, 0) / notes.length * 100) / 100 : '';
+  }
+  function fmtNota(n) { return esBuit(n) ? '–' : String(n).replace('.', ','); }
+
+  var css = 'body{font-family:Arial,sans-serif;font-size:10pt;color:#1e293b}h1{font-size:16pt;margin:0}' +
+      'h2{font-size:12pt;margin:18px 0 6px;color:#3730a3}p{margin:3px 0}' +
+      'table{border-collapse:collapse;width:100%;margin-top:6px}th,td{border:1px solid #cbd5e1;padding:4px 6px;text-align:left;vertical-align:top}' +
+      'th{background:#eef2ff}td.n{text-align:center;white-space:nowrap}.petit{color:#64748b;font-size:9pt}';
+  var global = mitjana(files);
+  var html = '<html><head><meta charset="utf-8"><style>' + css + '</style></head><body>' +
+      '<h1>' + escaparHtml(txt(alumne.nom) + ' ' + txt(alumne.cognoms)) + '</h1>' +
+      '<p>Classe ' + escaparHtml(classe) + (modul ? ' · ' + escaparHtml(modul) : '') + ' · ' + files.length + ' sessions avaluades' +
+      (global !== '' ? ' · <b>Mitjana global: ' + fmtNota(global) + '</b>' : '') + '</p>' +
+      '<p class="petit">Informe generat el ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy') + '</p>';
+
+  ordreModuls.forEach(function(m) {
+    var llista = perModul[m];
+    var mitj = mitjana(llista);
+    html += '<h2>' + escaparHtml(m) + (mitj !== '' ? ' · mitjana ' + fmtNota(mitj) : '') + '</h2>' +
+        '<table><tr><th>Data</th><th>Sessió</th><th>Ítems</th><th>Nota</th><th>Observacions</th></tr>' +
+        llista.map(function(f) {
+          var detall = llegirDetallFila(f);
+          var items = detall ? detall.ordre.map(function(c) {
+            return escaparHtml(c.nom) + ': <b>' + fmtNota(detall.notes[c.nom]) + '</b>';
+          }).join('<br>') : '<span class="petit">—</span>';
+          var obs = [txt(f[A.OBS_GRUP]) ? 'Grup: ' + escaparHtml(f[A.OBS_GRUP]) : '', txt(f[A.OBS_INDIV]) ? escaparHtml(f[A.OBS_INDIV]) : '']
+              .filter(function(o) { return o; }).join('<br>');
+          return '<tr><td class="n">' + formatarData(f[A.DATA], 'dd/MM/yyyy') + '</td><td>' + escaparHtml(f[A.SESSIO]) +
+              (txt(f[A.GRUP]) ? '<br><span class="petit">Grup ' + escaparHtml(f[A.GRUP]) + '</span>' : '') + '</td><td>' + items +
+              '</td><td class="n"><b>' + fmtNota(f[A.NOTA]) + '</b>' + (txt(f[A.ORIGEN]) === 'Manual' ? ' *' : '') + '</td><td>' + obs + '</td></tr>';
+        }).join('') + '</table>';
+  });
+  html += '<p class="petit" style="margin-top:10px">* Nota final ajustada manualment.</p></body></html>';
+
+  var nomFitxer = 'Informe - ' + txt(alumne.cognoms) + ', ' + txt(alumne.nom) + ' - ' + classe + (modul ? ' - ' + modul : '') + '.pdf';
   var pdf = Utilities.newBlob(html, 'text/html', 'informe.html').getAs('application/pdf').setName(nomFitxer);
   var fitxer = DriveApp.createFile(pdf);
   return { url: fitxer.getUrl(), nom: nomFitxer };
