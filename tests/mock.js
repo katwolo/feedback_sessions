@@ -100,6 +100,7 @@ function crearEntorn(opts = {}) {
     Utilities: {
       formatDate: (d, tz, p) => p.replace('yyyy', d.getFullYear()).replace('MM', pad(d.getMonth() + 1)).replace('dd', pad(d.getDate()))
         .replace('HH', pad(d.getHours())).replace('mm', pad(d.getMinutes())),
+      getUuid: () => require('crypto').randomUUID(),
       newBlob: (html) => ({ getAs: () => ({ setName(n) { this.name = n; this.html = html; return this; } }) })
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },

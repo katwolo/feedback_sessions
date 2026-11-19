@@ -17,6 +17,8 @@ var NOM_SUPOSITS = "📋 Supòsits";
 var NOM_ALUMNAT = "👥 Alumnat";
 var NOM_HISTORIAL = "🗄 Historial";
 var NOM_COMENTARIS = "💬 Comentaris";
+var NOM_AVAL_ALUMNES = "🔑 Avaluació alumnes";
+var NOM_RESPOSTES = "📝 Respostes alumnes";
 
 var COLOR_CAPCALERA = "#4f46e5";
 var DESDOBLAMENT_GENERAL = "General";
@@ -31,12 +33,13 @@ var TIPUS_CRITERI = ['numeric', 'sino', 'rubrica'];
 
 // Capçaleres completes de cada pestanya. Les columnes noves s'han afegit sempre AL FINAL perquè
 // els fulls que ja tenien dades continuïn funcionant (assegurarCapcaleres les completa).
-var CAPCALERA_LLISTAT = ["Nom", "Cognoms", "Correu corporatiu", "Curs", "Classe", "Desdoblament", "ID alumne"];
+var CAPCALERA_LLISTAT = ["Nom", "Cognoms", "Correu corporatiu", "Curs", "Classe", "Desdoblament", "ID alumne", "Codi alumne"];
 var CAPCALERA_CONFIGURACIO = ["Mòdul", "Criteri", "Pes (%)", "Supòsit", "Tipus", "Nivells", "Imprescindible"];
 var CAPCALERA_SUPOSITS = ["Mòdul", "Supòsit", "Data", "Descripció", "Actiu"];
 var CAPCALERA_ALUMNAT = ["Data", "Curs", "Mòdul", "Classe", "Desdobl.", "Nom", "Cognoms",
     "Sessió avaluada", "Observacions grup", "Observacions individual", "Nota final",
-    "Grup", "Origen nota", "ID alumne", "Correu enviat", "Detall ítems"];
+    "Grup", "Origen nota", "ID alumne", "Correu enviat", "Detall ítems",
+    "Nota professor", "Nota autoavaluació", "Nota coavaluació"];
 var CAPCALERA_COMENTARIS = ["Comentari", "Mòdul"];
 var COMENTARIS_PER_DEFECTE = ["Bona actitud", "Molt bona participació", "Bona comunicació amb el grup",
     "Ha de millorar la puntualitat", "Cal revisar les normes de seguretat"];
@@ -45,7 +48,17 @@ var CAPCALERA_HISTORIAL = ["Data", "Curs", "Mòdul", "Classe", "Desd.", "Nom", "
 
 // Índexs (base 0) de les columnes d'Alumnat
 var A = { DATA: 0, CURS: 1, MODUL: 2, CLASSE: 3, DESD: 4, NOM: 5, COGNOMS: 6, SESSIO: 7,
-    OBS_GRUP: 8, OBS_INDIV: 9, NOTA: 10, GRUP: 11, ORIGEN: 12, ID: 13, CORREU_ENVIAT: 14, DETALL: 15 };
+    OBS_GRUP: 8, OBS_INDIV: 9, NOTA: 10, GRUP: 11, ORIGEN: 12, ID: 13, CORREU_ENVIAT: 14, DETALL: 15,
+    NOTA_PROF: 16, NOTA_AUTO: 17, NOTA_CO: 18 };
+// Configuració de l'autoavaluació / coavaluació de cada sessió
+var CAPCALERA_AVAL_ALUMNES = ["Token", "Curs", "Mòdul", "Classe", "Desdobl.", "Sessió avaluada",
+    "Autoavaluació", "Coavaluació", "Pes autoavaluació (%)", "Pes coavaluació (%)", "Obert", "Data obertura"];
+var AV = { TOKEN: 0, CURS: 1, MODUL: 2, CLASSE: 3, DESD: 4, SESSIO: 5, AUTO: 6, CO: 7, PES_AUTO: 8, PES_CO: 9, OBERT: 10, DATA: 11 };
+// Respostes dels alumnes: una fila per avaluador, avaluat i tipus
+var CAPCALERA_RESPOSTES = ["Data", "Token", "Tipus", "Avaluador nom", "Avaluador cognoms", "Avaluador ID",
+    "Avaluat nom", "Avaluat cognoms", "Avaluat ID", "Notes", "Nota", "Comentari"];
+var R = { DATA: 0, TOKEN: 1, TIPUS: 2, AV_NOM: 3, AV_COGNOMS: 4, AV_ID: 5, AT_NOM: 6, AT_COGNOMS: 7, AT_ID: 8, NOTES: 9, NOTA: 10, COMENTARI: 11 };
+var MAX_INTENTS_CODI = 30; // intents fallits de codi permesos per sessió cada 10 minuts
 // Índexs (base 0) de les columnes d'Historial
 var H = { DATA: 0, CURS: 1, MODUL: 2, CLASSE: 3, DESD: 4, NOM: 5, COGNOMS: 6, SESSIO: 7,
     CRITERI: 8, NOTA: 9, PES: 10, TIPUS: 11, ID: 12 };
@@ -101,6 +114,7 @@ var ACCIONS = {
   obtenirResultatsSessio: function(p) {
     var r = obtenirResultatsSessio(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada);
     if (p.ambCriteris) { try { r.criterisActuals = obtenirCriteris(p.modul, p.sessioAvaluada); } catch (err) { r.criterisActuals = []; } }
+    try { r.avaluacioAlumnes = configAvalDeSessio(obrirFull(), p); } catch (err) { r.avaluacioAlumnes = null; }
     return r;
   },
   obtenirDetallAlumne: function(p) { return obtenirDetallAlumne(p.curs, p.modul, p.classe, p.desdoblament, p.alumne, p.sessioAvaluada); },
@@ -123,6 +137,13 @@ var ACCIONS = {
   actualitzarResultat: function(p) { return ambBloqueig(function() { return actualitzarResultat(p); }); },
   desarItemsResultat: function(p) { return ambBloqueig(function() { return desarItemsResultat(p); }); },
   enviarCorreus: function(p) { return ambBloqueig(function() { return enviarCorreus(p); }); },
+  // Autoavaluació i coavaluació (professor)
+  obrirAvaluacioAlumnes: function(p) { return ambBloqueig(function() { return obrirAvaluacioAlumnes(p); }); },
+  tancarAvaluacioAlumnes: function(p) { return ambBloqueig(function() { return tancarAvaluacioAlumnes(p); }); },
+  estatAvaluacioAlumnes: function(p) { return estatAvaluacioAlumnes(p); },
+  // Autoavaluació i coavaluació (alumnes, amb enllaç + codi personal)
+  alumneEntrar: function(p) { return alumneEntrar(p.token, p.codi); },
+  alumneEnviar: function(p) { return ambBloqueig(function() { return alumneEnviar(p); }); },
   obtenirQuadern: function(p) { return obtenirQuadern(p.classe, p.modul); },
   crearInformeAlumne: function(p) { return crearInformeAlumne(p.classe, p.alumne, p.modul); },
   crearInformePdf: function(p) { return crearInformePdf(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada); },
@@ -735,6 +756,8 @@ function configurarRegistre() {
   asegurarAlumnat(ss);
   asegurarHistorial(ss);
   asegurarComentaris(ss);
+  asegurarAvalAlumnes(ss);
+  asegurarRespostes(ss);
   netejarFullDefecte(ss);
 }
 
@@ -793,11 +816,15 @@ function exportarAGoogleSheets(dades, confirmat) {
     var fila = [ara, dades.curs, dades.modul, dades.classe, dades.desdoblament, av.nom, av.cognoms, dades.sessioAvaluada,
         av.observacioGrup, av.observacioIndividual, calcul.nota, av.grup,
         calcul.limitada ? 'Calculada (limitada per imprescindible)' : 'Calculada',
-        av.id, anterior ? anterior[A.CORREU_ENVIAT] : '', JSON.stringify(detall)];
+        av.id, anterior ? anterior[A.CORREU_ENVIAT] : '', JSON.stringify(detall),
+        calcul.nota, anterior ? anterior[A.NOTA_AUTO] : '', anterior ? anterior[A.NOTA_CO] : ''];
 
     if (anterior) files[indexs[k]] = fila; else files.push(fila);
   });
 
+  // Si la sessió té autoavaluació o coavaluació amb pes, la nota final la combina
+  combinarNotesSessio(ss, files, { curs: dades.curs, modul: dades.modul, classe: dades.classe,
+      desdoblament: dades.desdoblament, sessioAvaluada: dades.sessioAvaluada });
   reescriureFiles(fullAlumnat, files, amplada);
   assegurarAlumnesAlLlistat(ss, dades, avaluacions);
   registrarHistorial(ss, dades, avaluacions, criteris, ara);
@@ -815,7 +842,7 @@ function assegurarAlumnesAlLlistat(ss, dades, avaluacions) {
     var existeix = files.some(function(f) {
       return txt(f[4]) === txt(dades.classe) && mateixAlumne(f[0], f[1], txt(f[6]) || txt(f[2]), av);
     });
-    if (!existeix) nous.push([av.nom, av.cognoms, "", dades.curs, dades.classe, dades.desdoblament, av.id]);
+    if (!existeix) nous.push([av.nom, av.cognoms, "", dades.curs, dades.classe, dades.desdoblament, av.id, ""]);
   });
 
   if (nous.length) {
@@ -950,6 +977,9 @@ function obtenirResultatsSessio(curs, modul, classe, desdoblament, sessioAvaluad
       notaFinal: esBuit(f[A.NOTA]) ? '' : Number(f[A.NOTA]),
       grup: txt(f[A.GRUP]), origen: txt(f[A.ORIGEN]) || 'Calculada',
       correuEnviat: formatarData(f[A.CORREU_ENVIAT]),
+      notaProfessor: esBuit(f[A.NOTA_PROF]) ? '' : Number(f[A.NOTA_PROF]),
+      notaAuto: esBuit(f[A.NOTA_AUTO]) ? '' : Number(f[A.NOTA_AUTO]),
+      notaCo: esBuit(f[A.NOTA_CO]) ? '' : Number(f[A.NOTA_CO]),
       notes: detall ? detall.notes : {}
     };
   });
@@ -1028,6 +1058,7 @@ function actualitzarResultat(p) {
       hoja.getRange(i + 2, A.DATA + 1).setValue(new Date());
       hoja.getRange(i + 2, A.OBS_GRUP + 1, 1, 3).setValues([[p.observacioGrup || '', p.observacioIndividual || '', valorNota]]);
       hoja.getRange(i + 2, A.ORIGEN + 1).setValue(origen);
+      if (origen === 'Manual') hoja.getRange(i + 2, A.NOTA_PROF + 1).setValue(valorNota);
       return { success: true, origen: origen };
     }
   }
@@ -1082,6 +1113,351 @@ function crearInformePdf(curs, modul, classe, desdoblament, sessioAvaluada) {
   var pdf = Utilities.newBlob(html, 'text/html', 'informe.html').getAs('application/pdf').setName(nomFitxer);
   var fitxer = DriveApp.createFile(pdf);
   return { url: fitxer.getUrl(), nom: nomFitxer };
+}
+
+// ============ AUTOAVALUACIÓ I COAVALUACIÓ ============
+// El professor l'obre per a una sessió ja exportada. Cada alumne rep per correu un enllaç i el seu
+// codi personal; s'avalua a si mateix i/o als companys del seu grup amb els mateixos ítems.
+// Nota final = professor × (100 − auto − co)% + auto × auto% + mitjana dels companys × co%.
+// Si falta una part (l'alumne no s'ha autoavaluat, ningú l'ha avaluat), el seu pes es reparteix
+// proporcionalment entre les parts que sí que hi són. Les notes "Manual" no es toquen.
+
+var ALFABET_CODI = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sense lletres i números que es confonen
+
+function nouCodiAlumne() {
+  var hex = Utilities.getUuid().replace(/-/g, '');
+  var codi = '';
+  for (var i = 0; i < 6; i++) codi += ALFABET_CODI.charAt(parseInt(hex.substr(i * 2, 2), 16) % ALFABET_CODI.length);
+  return codi;
+}
+function nouToken() { return Utilities.getUuid().replace(/-/g, '').slice(0, 20); }
+
+function clauSessio(s) { return [txt(s.curs), txt(s.modul), txt(s.classe), txt(s.desdoblament), txt(s.sessioAvaluada)].join('|'); }
+
+function llegirConfigsAval(ss) {
+  return llegirFiles(asegurarAvalAlumnes(ss), CAPCALERA_AVAL_ALUMNES.length).filter(function(f) { return txt(f[AV.TOKEN]); });
+}
+
+function configAvalDeFila(f) {
+  return {
+    token: txt(f[AV.TOKEN]), curs: txt(f[AV.CURS]), modul: txt(f[AV.MODUL]), classe: txt(f[AV.CLASSE]),
+    desdoblament: txt(f[AV.DESD]), sessioAvaluada: txt(f[AV.SESSIO]),
+    auto: esSi(f[AV.AUTO]), co: esSi(f[AV.CO]),
+    pesAuto: Number(f[AV.PES_AUTO]) || 0, pesCo: Number(f[AV.PES_CO]) || 0,
+    obert: esSi(f[AV.OBERT]), dataObertura: formatarData(f[AV.DATA])
+  };
+}
+
+function configAvalDeSessio(ss, sessio) {
+  var clau = clauSessio(sessio);
+  var fila = llegirConfigsAval(ss).filter(function(f) {
+    return clauSessio({ curs: f[AV.CURS], modul: f[AV.MODUL], classe: f[AV.CLASSE], desdoblament: f[AV.DESD], sessioAvaluada: f[AV.SESSIO] }) === clau;
+  })[0];
+  return fila ? configAvalDeFila(fila) : null;
+}
+
+function configAvalDeToken(ss, token) {
+  var fila = llegirConfigsAval(ss).filter(function(f) { return txt(f[AV.TOKEN]) === txt(token); })[0];
+  return fila ? configAvalDeFila(fila) : null;
+}
+
+function llegirRespostes(ss, token) {
+  return llegirFiles(asegurarRespostes(ss), CAPCALERA_RESPOSTES.length).filter(function(f) { return txt(f[R.TOKEN]) === txt(token); });
+}
+
+function arrodonir(n) { return Math.round(n * 100) / 100; }
+
+// Combina la nota del professor amb l'autoavaluació i la coavaluació segons els pesos
+function combinarNota(prof, auto, co, pesAuto, pesCo) {
+  if (esBuit(prof)) return '';
+  var parts = [{ v: Number(prof), p: Math.max(0, 100 - pesAuto - pesCo) }];
+  if (pesAuto > 0 && !esBuit(auto)) parts.push({ v: Number(auto), p: pesAuto });
+  if (pesCo > 0 && !esBuit(co)) parts.push({ v: Number(co), p: pesCo });
+  var total = parts.reduce(function(a, x) { return a + x.p; }, 0);
+  if (total <= 0) return Number(prof);
+  return arrodonir(parts.reduce(function(a, x) { return a + x.v * x.p; }, 0) / total);
+}
+
+// Recalcula, sobre les files d'Alumnat en memòria, les notes d'auto/coavaluació i la nota final
+// de tots els alumnes d'una sessió. No escriu al full: ho fa qui la crida.
+function combinarNotesSessio(ss, files, sessio) {
+  var config = configAvalDeSessio(ss, sessio);
+  if (!config) return false;
+  var respostes = llegirRespostes(ss, config.token);
+  files.forEach(function(f) {
+    if (!mateixaSessio(f, A, sessio.curs, sessio.modul, sessio.classe, sessio.desdoblament, sessio.sessioAvaluada)) return;
+    var alumne = { nom: f[A.NOM], cognoms: f[A.COGNOMS], id: f[A.ID] };
+    var auto = '', co = [];
+    respostes.forEach(function(r) {
+      if (esBuit(r[R.NOTA]) || !mateixAlumne(r[R.AT_NOM], r[R.AT_COGNOMS], r[R.AT_ID], alumne)) return;
+      if (txt(r[R.TIPUS]) === 'auto' && config.auto) auto = Number(r[R.NOTA]);
+      if (txt(r[R.TIPUS]) === 'co' && config.co) co.push(Number(r[R.NOTA]));
+    });
+    var notaCo = co.length ? arrodonir(co.reduce(function(a, b) { return a + b; }, 0) / co.length) : '';
+    if (esBuit(f[A.NOTA_PROF]) && txt(f[A.ORIGEN]) !== 'Manual') f[A.NOTA_PROF] = f[A.NOTA];
+    f[A.NOTA_AUTO] = auto;
+    f[A.NOTA_CO] = notaCo;
+    if (txt(f[A.ORIGEN]) === 'Manual') return; // una nota posada a mà no es toca
+    var nota = combinarNota(f[A.NOTA_PROF], auto, notaCo, config.pesAuto, config.pesCo);
+    if (nota !== '' && txt(f[A.ORIGEN]).indexOf('limitada') !== -1) nota = Math.min(nota, NOTA_MAX_SI_SUSPEN_IMPRESCINDIBLE);
+    f[A.NOTA] = nota;
+  });
+  return true;
+}
+
+function recombinarSessio(ss, sessio) {
+  var hoja = asegurarAlumnat(ss);
+  var files = llegirFiles(hoja, CAPCALERA_ALUMNAT.length);
+  if (combinarNotesSessio(ss, files, sessio)) reescriureFiles(hoja, files, CAPCALERA_ALUMNAT.length);
+}
+
+// Alumnes avaluats en una sessió (files d'Alumnat), amb el seu grup
+function alumnesDeSessio(ss, sessio) {
+  return llegirFiles(asegurarAlumnat(ss), CAPCALERA_ALUMNAT.length).filter(function(f) {
+    return mateixaSessio(f, A, sessio.curs, sessio.modul, sessio.classe, sessio.desdoblament, sessio.sessioAvaluada);
+  }).map(function(f) { return { nom: txt(f[A.NOM]), cognoms: txt(f[A.COGNOMS]), id: txt(f[A.ID]), grup: txt(f[A.GRUP]) }; });
+}
+
+// Assegura que tots els alumnes indicats tenen codi personal a "👤 Llistat" i retorna { clau: { codi, correu } }
+function assegurarCodis(ss, classe, alumnes) {
+  var hoja = asegurarLlistat(ss);
+  var amplada = CAPCALERA_LLISTAT.length;
+  var files = llegirFiles(hoja, amplada);
+  var usats = {};
+  files.forEach(function(f) { if (txt(f[7])) usats[txt(f[7]).toUpperCase()] = true; });
+  var canvis = false;
+  var resultat = {};
+  alumnes.forEach(function(a) {
+    var fila = files.filter(function(f) { return txt(f[4]) === txt(classe) && txt(f[0]) && mateixAlumne(f[0], f[1], txt(f[6]) || txt(f[2]), a); })[0];
+    if (!fila) return;
+    if (!txt(fila[7])) {
+      var codi;
+      do { codi = nouCodiAlumne(); } while (usats[codi]);
+      usats[codi] = true;
+      fila[7] = codi;
+      canvis = true;
+    }
+    resultat[clauAlumneServidor(a)] = { codi: txt(fila[7]), correu: txt(fila[2]) };
+  });
+  if (canvis) {
+    hoja.getRange(2, 8, files.length, 1).setValues(files.map(function(f) { return [f[7]]; }));
+    invalidarCache(['llistat']);
+  }
+  return resultat;
+}
+
+function validarPesos(p) {
+  var pesAuto = p.auto ? Math.round(Number(p.pesAuto) || 0) : 0;
+  var pesCo = p.co ? Math.round(Number(p.pesCo) || 0) : 0;
+  if (pesAuto < 0 || pesCo < 0 || pesAuto > 100 || pesCo > 100) throw new Error('Els percentatges han d\'estar entre 0 i 100.');
+  if (pesAuto + pesCo >= 100) throw new Error('Entre autoavaluació i coavaluació han de sumar menys del 100% (la resta és la nota del professor).');
+  return { pesAuto: pesAuto, pesCo: pesCo };
+}
+
+// Obre (o actualitza) l'autoavaluació/coavaluació d'una sessió i, si es demana, envia els correus
+// p: { curs, modul, classe, desdoblament, sessioAvaluada, auto, co, pesAuto, pesCo, enviarCorreus, urlAlumne, nomesNous }
+function obrirAvaluacioAlumnes(p) {
+  if (!p.auto && !p.co) throw new Error('Activa l\'autoavaluació, la coavaluació o totes dues.');
+  var pesos = validarPesos(p);
+  var ss = obrirFull();
+  var alumnes = alumnesDeSessio(ss, p);
+  if (!alumnes.length) throw new Error('Aquesta sessió encara no té cap alumne avaluat.');
+  if (p.co && !alumnes.some(function(a) { return a.grup; })) {
+    throw new Error('La coavaluació es fa entre companys del mateix grup i aquesta sessió no té grups.');
+  }
+
+  var hoja = asegurarAvalAlumnes(ss);
+  var amplada = CAPCALERA_AVAL_ALUMNES.length;
+  var files = llegirFiles(hoja, amplada).filter(function(f) { return txt(f[AV.TOKEN]); });
+  var clau = clauSessio(p);
+  var index = -1;
+  files.forEach(function(f, i) {
+    if (clauSessio({ curs: f[AV.CURS], modul: f[AV.MODUL], classe: f[AV.CLASSE], desdoblament: f[AV.DESD], sessioAvaluada: f[AV.SESSIO] }) === clau) index = i;
+  });
+  var token = index >= 0 ? txt(files[index][AV.TOKEN]) : nouToken();
+  var fila = [token, p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada, p.auto ? 'Sí' : 'No', p.co ? 'Sí' : 'No',
+      pesos.pesAuto, pesos.pesCo, 'Sí', index >= 0 && files[index][AV.DATA] ? files[index][AV.DATA] : new Date()];
+  if (index >= 0) files[index] = fila; else files.push(fila);
+  reescriureFiles(hoja, files, amplada);
+
+  // Els pesos poden haver canviat: es recalculen les notes
+  recombinarSessio(ss, p);
+
+  var codis = assegurarCodis(ss, p.classe, alumnes);
+  var enllac = txt(p.urlAlumne) ? txt(p.urlAlumne) + (txt(p.urlAlumne).indexOf('?') === -1 ? '?' : '&') + 's=' + token : '';
+  var resultat = { token: token, enllac: enllac, enviats: 0, senseCorreu: [], errors: [] };
+  if (!p.enviarCorreus) return resultat;
+  if (!enllac) throw new Error('Falta l\'adreça de la pàgina dels alumnes.');
+
+  var destinataris = alumnes.filter(function(a) { return codis[clauAlumneServidor(a)]; });
+  var ambCorreu = destinataris.filter(function(a) { return codis[clauAlumneServidor(a)].correu; });
+  resultat.senseCorreu = destinataris.filter(function(a) { return !codis[clauAlumneServidor(a)].correu; })
+      .map(function(a) { return a.nom + ' ' + a.cognoms; });
+  var quota = MailApp.getRemainingDailyQuota();
+  if (ambCorreu.length > quota) {
+    throw new Error('Només et queden ' + quota + ' correus per avui i en calen ' + ambCorreu.length + '. Prova-ho demà.');
+  }
+  var que = p.auto && p.co ? 'autoavaluar-te i avaluar els companys del teu grup' : (p.auto ? 'autoavaluar-te' : 'avaluar els companys del teu grup');
+  ambCorreu.forEach(function(a) {
+    var dades = codis[clauAlumneServidor(a)];
+    var text = 'Hola ' + a.nom + ',\n\nJa pots ' + que + ' a "' + p.sessioAvaluada + '" (' + p.modul + ').\n\n' +
+        'Entra a: ' + enllac + '\nEl teu codi personal: ' + dades.codi + '\n\nNo comparteixis el codi amb ningú.';
+    var html = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5">' +
+        '<p>Hola ' + escaparHtml(a.nom) + ',</p><p>Ja pots ' + escaparHtml(que) + ' a <b>' + escaparHtml(p.sessioAvaluada) + '</b> (' + escaparHtml(p.modul) + ').</p>' +
+        '<p><a href="' + escaparHtml(enllac) + '" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Obrir l\'avaluació</a></p>' +
+        '<p>El teu codi personal: <b style="font-size:20px;letter-spacing:2px">' + escaparHtml(dades.codi) + '</b></p>' +
+        '<p style="color:#64748b">No comparteixis el codi amb ningú.</p></div>';
+    try {
+      MailApp.sendEmail({ to: dades.correu, subject: (p.auto ? 'Autoavaluació' : 'Coavaluació') + ': ' + p.sessioAvaluada, body: text, htmlBody: html });
+      resultat.enviats++;
+    } catch (err) {
+      resultat.errors.push(a.nom + ' ' + a.cognoms + ': ' + err.message);
+    }
+  });
+  return resultat;
+}
+
+function tancarAvaluacioAlumnes(p) {
+  var ss = obrirFull();
+  var hoja = asegurarAvalAlumnes(ss);
+  var amplada = CAPCALERA_AVAL_ALUMNES.length;
+  var files = llegirFiles(hoja, amplada).filter(function(f) { return txt(f[AV.TOKEN]); });
+  var clau = clauSessio(p);
+  var trobat = false;
+  files.forEach(function(f) {
+    if (clauSessio({ curs: f[AV.CURS], modul: f[AV.MODUL], classe: f[AV.CLASSE], desdoblament: f[AV.DESD], sessioAvaluada: f[AV.SESSIO] }) === clau) {
+      f[AV.OBERT] = 'No';
+      trobat = true;
+    }
+  });
+  if (!trobat) throw new Error('Aquesta sessió no té autoavaluació ni coavaluació.');
+  reescriureFiles(hoja, files, amplada);
+  return { success: true };
+}
+
+// Estat per al professor: configuració i què ha fet cada alumne
+function estatAvaluacioAlumnes(p) {
+  var ss = obrirFull();
+  var config = configAvalDeSessio(ss, p);
+  if (!config) return { config: null, alumnes: [] };
+  var respostes = llegirRespostes(ss, config.token);
+  var alumnes = alumnesDeSessio(ss, p).map(function(a) {
+    var fetaAuto = false, coFetes = 0, coRebudes = 0;
+    respostes.forEach(function(r) {
+      var esAvaluador = mateixAlumne(r[R.AV_NOM], r[R.AV_COGNOMS], r[R.AV_ID], a);
+      var esAvaluat = mateixAlumne(r[R.AT_NOM], r[R.AT_COGNOMS], r[R.AT_ID], a);
+      if (txt(r[R.TIPUS]) === 'auto' && esAvaluador) fetaAuto = true;
+      if (txt(r[R.TIPUS]) === 'co' && esAvaluador) coFetes++;
+      if (txt(r[R.TIPUS]) === 'co' && esAvaluat) coRebudes++;
+    });
+    return { nom: a.nom, cognoms: a.cognoms, id: a.id, grup: a.grup, auto: fetaAuto, coFetes: coFetes, coRebudes: coRebudes };
+  });
+  return { config: config, alumnes: ordenarAlumnes(alumnes) };
+}
+
+// ---- Accions de l'alumne ----
+
+// Comprova el token i el codi; limita els intents fallits per evitar que s'endevinin codis
+function identificarAlumne(ss, token, codi) {
+  var config = configAvalDeToken(ss, token);
+  if (!config) throw new Error('Aquest enllaç no és vàlid. Demana-li un de nou al professor.');
+  var cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (err) { cache = null; }
+  var clauIntents = 'intents:' + config.token;
+  var intents = cache ? Number(cache.get(clauIntents) || 0) : 0;
+  if (intents >= MAX_INTENTS_CODI) throw new Error('Massa intents amb codis incorrectes. Torna-ho a provar d\'aquí a uns minuts.');
+
+  codi = txt(codi).toUpperCase().replace(/\s/g, '');
+  var fila = codi ? filesLlistat().filter(function(f) { return txt(f[4]) === config.classe && txt(f[7]).toUpperCase() === codi; })[0] : null;
+  var alumne = fila ? { nom: txt(fila[0]), cognoms: txt(fila[1]), id: txt(fila[6]) || txt(fila[2]) } : null;
+  var avaluats = alumnesDeSessio(ss, config);
+  var jo = alumne ? avaluats.filter(function(a) { return mateixAlumne(a.nom, a.cognoms, a.id, alumne); })[0] : null;
+  if (!jo) {
+    if (cache) cache.put(clauIntents, String(intents + 1), 600);
+    throw new Error(alumne ? 'No consta que hagis fet aquesta sessió.' : 'El codi no és correcte. Revisa\'l al correu que has rebut.');
+  }
+  return { config: config, jo: jo, avaluats: avaluats };
+}
+
+function alumneEntrar(token, codi) {
+  var ss = obrirFull();
+  var id = identificarAlumne(ss, token, codi);
+  var config = id.config, jo = id.jo;
+  var companys = config.co && jo.grup ? id.avaluats.filter(function(a) {
+    return a.grup === jo.grup && !mateixAlumne(a.nom, a.cognoms, a.id, jo);
+  }) : [];
+  var respostes = llegirRespostes(ss, config.token).filter(function(r) { return mateixAlumne(r[R.AV_NOM], r[R.AV_COGNOMS], r[R.AV_ID], jo); });
+  function notesDe(tipus, avaluat) {
+    var r = respostes.filter(function(x) { return txt(x[R.TIPUS]) === tipus && mateixAlumne(x[R.AT_NOM], x[R.AT_COGNOMS], x[R.AT_ID], avaluat); })[0];
+    if (!r) return null;
+    try { return { notes: JSON.parse(txt(r[R.NOTES]) || '{}'), comentari: txt(r[R.COMENTARI]) }; } catch (err) { return null; }
+  }
+  return {
+    obert: config.obert, sessio: config.sessioAvaluada, modul: config.modul, classe: config.classe,
+    auto: config.auto, co: config.co, grup: jo.grup,
+    alumne: { nom: jo.nom, cognoms: jo.cognoms },
+    criteris: obtenirCriteris(config.modul, config.sessioAvaluada),
+    meva: config.auto ? notesDe('auto', jo) : null,
+    companys: ordenarAlumnes(companys.map(function(c) {
+      return { nom: c.nom, cognoms: c.cognoms, id: c.id, resposta: notesDe('co', c) };
+    })),
+    senseGrup: config.co && !jo.grup
+  };
+}
+
+// p: { token, codi, auto: { notes, comentari }, co: [{ alumne: { nom, cognoms, id }, notes, comentari }] }
+function alumneEnviar(p) {
+  var ss = obrirFull();
+  var id = identificarAlumne(ss, p.token, p.codi);
+  var config = id.config, jo = id.jo;
+  if (!config.obert) throw new Error('L\'avaluació ja està tancada. Parla amb el professor.');
+  var criteris = obtenirCriteris(config.modul, config.sessioAvaluada);
+
+  function netejar(notes) {
+    var net = {};
+    criteris.forEach(function(c) {
+      var v = notes ? notes[c.nom] : undefined;
+      if (!esBuit(v) && !isNaN(Number(v))) net[c.nom] = Math.min(NOTA_MAXIMA, Math.max(0, Number(v)));
+    });
+    return net;
+  }
+  var noves = [];
+  var ara = new Date();
+  if (config.auto && p.auto) {
+    var notesAuto = netejar(p.auto.notes);
+    if (Object.keys(notesAuto).length) {
+      noves.push(['auto', jo, notesAuto, txt(p.auto.comentari)]);
+    }
+  }
+  if (config.co && jo.grup) {
+    (p.co || []).forEach(function(x) {
+      var company = id.avaluats.filter(function(a) {
+        return a.grup === jo.grup && !mateixAlumne(a.nom, a.cognoms, a.id, jo) && mateixAlumne(a.nom, a.cognoms, a.id, x.alumne || {});
+      })[0];
+      if (!company) return; // només companys del seu grup
+      var notes = netejar(x.notes);
+      if (Object.keys(notes).length) noves.push(['co', company, notes, txt(x.comentari)]);
+    });
+  }
+  if (!noves.length) throw new Error('No has posat cap nota.');
+
+  var hoja = asegurarRespostes(ss);
+  var amplada = CAPCALERA_RESPOSTES.length;
+  var files = llegirFiles(hoja, amplada).filter(function(f) { return txt(f[R.TOKEN]); });
+  noves.forEach(function(n) {
+    var tipus = n[0], avaluat = n[1], notes = n[2];
+    var fila = [ara, config.token, tipus, jo.nom, jo.cognoms, jo.id, avaluat.nom, avaluat.cognoms, avaluat.id,
+        JSON.stringify(notes), calcularNotaFinal(criteris, notes).nota, n[3]];
+    var index = -1;
+    files.forEach(function(f, i) {
+      if (txt(f[R.TOKEN]) === config.token && txt(f[R.TIPUS]) === tipus &&
+          mateixAlumne(f[R.AV_NOM], f[R.AV_COGNOMS], f[R.AV_ID], jo) && mateixAlumne(f[R.AT_NOM], f[R.AT_COGNOMS], f[R.AT_ID], avaluat)) index = i;
+    });
+    if (index >= 0) files[index] = fila; else files.push(fila);
+  });
+  reescriureFiles(hoja, files, amplada);
+  recombinarSessio(ss, config);
+  return { success: true, desades: noves.length };
 }
 
 // ============ QUADERN (alumne × sessió) ============
@@ -1245,7 +1621,7 @@ function importarAlumnesClassroom(courseId, curs, classe, desdoblament) {
       if (txt(f[4]) === classe && mateixAlumne(f[0], f[1], txt(f[6]) || txt(f[2]), al)) { index = i; break; }
     }
     var desdoblamentFila = index >= 0 ? (txt(files[index][5]) || desdoblament) : desdoblament;
-    var fila = [al.nom, al.cognoms, al.correu, curs, classe, desdoblamentFila, al.id];
+    var fila = [al.nom, al.cognoms, al.correu, curs, classe, desdoblamentFila, al.id, index >= 0 ? txt(files[index][7]) : ''];
     if (index >= 0) { files[index] = fila; actualitzats++; } else { files.push(fila); importats++; }
   });
 
@@ -1412,9 +1788,9 @@ function asegurarLlistat(ss) {
   aplicarEstilCapcalera(hoja, CAPCALERA_LLISTAT);
 
   var exemple = [
-    ["María", "Álvarez Gómez", "", "26/27", "1º A", "General", ""],
-    ["Javier", "Bernal Ruiz", "", "26/27", "1º A", "Desdoble 1", ""],
-    ["Sofía", "Castro Peña", "", "26/27", "1º A", "Desdoble 2", ""]
+    ["María", "Álvarez Gómez", "", "26/27", "1º A", "General", "", ""],
+    ["Javier", "Bernal Ruiz", "", "26/27", "1º A", "Desdoble 1", "", ""],
+    ["Sofía", "Castro Peña", "", "26/27", "1º A", "Desdoble 2", "", ""]
   ];
   hoja.getRange(2, 1, exemple.length, CAPCALERA_LLISTAT.length).setValues(exemple)
       .setFontColor("#94a3b8").setFontStyle("italic");
@@ -1425,6 +1801,7 @@ function asegurarLlistat(ss) {
   hoja.setColumnWidth(5, 80);
   hoja.setColumnWidth(6, 110);
   hoja.setColumnWidth(7, 200);
+  hoja.setColumnWidth(8, 110);
   hoja.setFrozenRows(1);
   aplicarFiltre(hoja, CAPCALERA_LLISTAT.length);
   return hoja;
@@ -1501,7 +1878,7 @@ function asegurarAlumnat(ss) {
   hoja = ss.insertSheet(NOM_ALUMNAT);
   aplicarEstilCapcalera(hoja, CAPCALERA_ALUMNAT);
 
-  [120, 70, 150, 80, 90, 120, 140, 170, 220, 220, 90, 60, 130, 200, 120, 260].forEach(function(amplada, i) {
+  [120, 70, 150, 80, 90, 120, 140, 170, 220, 220, 90, 60, 130, 200, 120, 260, 100, 120, 120].forEach(function(amplada, i) {
     hoja.setColumnWidth(i + 1, amplada);
   });
   hoja.setFrozenRows(1);
@@ -1529,6 +1906,28 @@ function asegurarHistorial(ss) {
   aplicarFiltre(hoja, CAPCALERA_HISTORIAL.length);
   aplicarEscalaColor(hoja, H.NOTA + 1);
   aplicarFormatData(hoja, H.DATA + 1);
+  return hoja;
+}
+
+function asegurarAvalAlumnes(ss) {
+  var hoja = ss.getSheetByName(NOM_AVAL_ALUMNES);
+  if (hoja) { assegurarCapcaleres(hoja, CAPCALERA_AVAL_ALUMNES); return hoja; }
+  hoja = ss.insertSheet(NOM_AVAL_ALUMNES);
+  aplicarEstilCapcalera(hoja, CAPCALERA_AVAL_ALUMNES);
+  hoja.setColumnWidths(1, CAPCALERA_AVAL_ALUMNES.length, 120);
+  hoja.setFrozenRows(1);
+  return hoja;
+}
+
+function asegurarRespostes(ss) {
+  var hoja = ss.getSheetByName(NOM_RESPOSTES);
+  if (hoja) { assegurarCapcaleres(hoja, CAPCALERA_RESPOSTES); return hoja; }
+  hoja = ss.insertSheet(NOM_RESPOSTES);
+  aplicarEstilCapcalera(hoja, CAPCALERA_RESPOSTES);
+  hoja.setColumnWidths(1, CAPCALERA_RESPOSTES.length, 120);
+  hoja.setColumnWidth(R.NOTES + 1, 260);
+  hoja.setFrozenRows(1);
+  aplicarFormatData(hoja, R.DATA + 1);
   return hoja;
 }
 

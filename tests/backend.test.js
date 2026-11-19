@@ -392,4 +392,105 @@ prova('informe per alumne en PDF: sessions, ítems, observacions i mitjanes', ()
   assert.throws(() => e.call('crearInformeAlumne', { classe: '1A', alumne: { nom: 'Joan', cognoms: 'Mas', id: '' }, modul: '' }), /cap sessió/);
 });
 
+// ---------- Lot 5: autoavaluació i coavaluació ----------
+function entornAval() {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([
+    { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', grup: 1, notes: { Objectiu: 10, Presentació: 6, Coordinació: 5 } },   // 6.3
+    { nom: 'Anna', cognoms: 'Ros', id: 'anna@x.cat', grup: 1, notes: { Objectiu: 10, Presentació: 10, Coordinació: 10 } }, // 10
+    { nom: 'Joan', cognoms: 'Mas', id: '', grup: 2, notes: { Objectiu: 0, Presentació: 5, Coordinació: 5 } }]));          // 4
+  return e;
+}
+const obrirAval = (e, extra) => e.call('obrirAvaluacioAlumnes', Object.assign({}, sessioS1,
+  { auto: true, co: true, pesAuto: 10, pesCo: 20, enviarCorreus: true, urlAlumne: 'https://x.github.io/app/alumne.html' }, extra || {}));
+const codiDe = (e, nom) => e.ss.getSheetByName('👤 Llistat').data.find(f => f[0] === nom)[7];
+
+prova('obrir: codis personals, correus amb enllaç i codi, validacions', () => {
+  const e = entornAval();
+  assert.throws(() => obrirAval(e, { pesAuto: 60, pesCo: 40 }), /menys del 100%/);
+  assert.throws(() => obrirAval(e, { auto: false, co: false }), /Activa/);
+  const r = obrirAval(e);
+  assert.match(r.enllac, /^https:\/\/x\.github\.io\/app\/alumne\.html\?s=[0-9a-f]{20}$/);
+  assert.strictEqual(r.enviats, 2);
+  assert.deepStrictEqual(r.senseCorreu, ['Joan Mas']);
+  const codiPau = codiDe(e, 'Pau');
+  assert.match(codiPau, /^[A-HJ-NP-Z2-9]{6}$/);
+  const correu = e.enviats.find(m => m.to === 'pau@x.cat');
+  assert.ok(correu.body.includes(codiPau) && correu.body.includes(r.enllac));
+  // Tornar a obrir manté el mateix token i el mateix codi
+  const r2 = obrirAval(e, { enviarCorreus: false });
+  assert.strictEqual(r2.token, r.token);
+  assert.strictEqual(codiDe(e, 'Pau'), codiPau);
+  // Coavaluació sense grups
+  const e2 = entornAmbConfig();
+  e2.call('exportarAGoogleSheets', dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Objectiu: 10 } }]));
+  assert.throws(() => obrirAval(e2, { auto: false }), /no té grups/);
+});
+
+prova('alumne: codi incorrecte, entrar, companys del grup i ítems', () => {
+  const e = entornAval();
+  const { token } = obrirAval(e);
+  assert.throws(() => e.call('alumneEntrar', { token: 'xxxx', codi: 'AAAAAA' }), /enllaç no és vàlid/);
+  assert.throws(() => e.call('alumneEntrar', { token, codi: 'ZZZZZZ' }), /codi no és correcte/);
+  const r = e.call('alumneEntrar', { token, codi: codiDe(e, 'Pau').toLowerCase() });
+  assert.strictEqual(r.alumne.nom, 'Pau');
+  assert.deepStrictEqual(r.companys.map(c => c.nom), ['Anna'], 'només els del seu grup, sense ell mateix');
+  assert.deepStrictEqual(r.criteris.map(c => c.nom), ['Objectiu', 'Presentació', 'Coordinació']);
+  assert.strictEqual(r.meva, null);
+});
+
+prova('alumne: enviar, nota final combinada amb pesos i redistribució', () => {
+  const e = entornAval();
+  const { token } = obrirAval(e); // professor 70%, auto 10%, co 20%
+  const codiPau = codiDe(e, 'Pau'), codiAnna = codiDe(e, 'Anna');
+  // Pau s'autoavalua (10) i avalua Anna (8)
+  e.call('alumneEnviar', { token, codi: codiPau,
+    auto: { notes: { Objectiu: 10, Presentació: 10, Coordinació: 10 } },
+    co: [{ alumne: { nom: 'Anna', cognoms: 'Ros', id: 'anna@x.cat' }, notes: { Objectiu: 10, Presentació: 10, Coordinació: 6 } }] });
+  let res = e.call('obtenirResultatsSessio', sessioS1).alumnes;
+  let pau = res.find(a => a.nom === 'Pau'), anna = res.find(a => a.nom === 'Anna');
+  assert.strictEqual(pau.notaProfessor, 6.3);
+  assert.strictEqual(pau.notaAuto, 10);
+  assert.strictEqual(pau.notaCo, '');
+  // Pau: sense co → pesos 70 i 10 → (6.3*70 + 10*10)/80 = 6.76
+  assert.strictEqual(pau.notaFinal, 6.76);
+  // Anna: sense auto → (10*70 + 8*20)/90 = 9.56
+  assert.strictEqual(anna.notaCo, 8);
+  assert.strictEqual(anna.notaFinal, 9.56);
+  // Anna avalua Pau (4) i es torna a enviar (substitueix, no duplica)
+  e.call('alumneEnviar', { token, codi: codiAnna, co: [{ alumne: { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat' }, notes: { Objectiu: 0, Presentació: 5, Coordinació: 5 } }] });
+  e.call('alumneEnviar', { token, codi: codiAnna, co: [{ alumne: { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat' }, notes: { Objectiu: 10, Presentació: 5, Coordinació: 5 } }] });
+  pau = e.call('obtenirResultatsSessio', sessioS1).alumnes.find(a => a.nom === 'Pau');
+  assert.strictEqual(pau.notaCo, 6);
+  assert.strictEqual(pau.notaFinal, 6.61); // 6.3*0.7 + 10*0.1 + 6*0.2
+  // Un alumne no pot avaluar algú d'un altre grup
+  e.call('alumneEnviar', { token, codi: codiPau, co: [{ alumne: { nom: 'Joan', cognoms: 'Mas', id: '' }, notes: { Objectiu: 10 } }],
+    auto: { notes: { Objectiu: 10, Presentació: 10, Coordinació: 10 } } });
+  assert.strictEqual(e.call('obtenirResultatsSessio', sessioS1).alumnes.find(a => a.nom === 'Joan').notaCo, '');
+  // Pesos a 0 → només informativa
+  obrirAval(e, { pesAuto: 0, pesCo: 0, enviarCorreus: false });
+  pau = e.call('obtenirResultatsSessio', sessioS1).alumnes.find(a => a.nom === 'Pau');
+  assert.strictEqual(pau.notaFinal, 6.3);
+  assert.strictEqual(pau.notaAuto, 10, 'la nota d\'autoavaluació es veu igualment');
+  // Reexportar la sessió manté la combinació
+  obrirAval(e, { enviarCorreus: false });
+  e.call('exportarAGoogleSheets', Object.assign(dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', grup: 1, notes: { Objectiu: 10, Presentació: 6, Coordinació: 5 } }]), { confirmat: true }));
+  assert.strictEqual(e.call('obtenirResultatsSessio', sessioS1).alumnes.find(a => a.nom === 'Pau').notaFinal, 6.61);
+  // Estat per al professor
+  const estat = e.call('estatAvaluacioAlumnes', sessioS1);
+  const ePau = estat.alumnes.find(a => a.nom === 'Pau');
+  assert.deepStrictEqual([ePau.auto, ePau.coFetes, ePau.coRebudes], [true, 1, 1]);
+  // Tancar: ja no es pot enviar
+  e.call('tancarAvaluacioAlumnes', sessioS1);
+  assert.throws(() => e.call('alumneEnviar', { token, codi: codiPau, auto: { notes: { Objectiu: 1 } } }), /tancada/);
+  assert.strictEqual(e.call('alumneEntrar', { token, codi: codiPau }).obert, false);
+});
+
+prova('alumne: massa intents fallits bloquegen temporalment', () => {
+  const e = entornAval();
+  const { token } = obrirAval(e, { enviarCorreus: false });
+  for (let i = 0; i < 30; i++) { try { e.call('alumneEntrar', { token, codi: 'ZZZZZ' + i }); } catch (err) { /* esperat */ } }
+  assert.throws(() => e.call('alumneEntrar', { token, codi: codiDe(e, 'Pau') }), /Massa intents/);
+});
+
 console.log(`\n${passats} proves superades`);

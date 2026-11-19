@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Autoavaluació i coavaluació</title>
+  <link rel="stylesheet" href="estils.css">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --text2: #475569; --text3: #64748b;
+      --line: #e2e8f0; --field: #f8fafc; --soft: #f1f5f9; --soft2: #e2e8f0;
+      --accent: #4f46e5; --accent-soft: #eef2ff; --accent-text: #4338ca; --hdr: #4f46e5;
+      --ok-bg: #ecfdf5; --ok: #047857; --ok-fort: #059669; --ko-bg: #fef2f2; --ko: #b91c1c; --warn-bg: #fffbeb; --warn: #b45309;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #020617; --card: #0f172a; --text: #f1f5f9; --text2: #cbd5e1; --text3: #94a3b8;
+        --line: #1e293b; --field: #1e293b; --soft: #1e293b; --soft2: #334155;
+        --accent: #6366f1; --accent-soft: #1e1b4b; --accent-text: #a5b4fc; --hdr: #1e1b4b;
+        --ok-bg: #022c22; --ok: #6ee7b7; --ko-bg: #450a0a; --ko: #fca5a5; --warn-bg: #451a03; --warn: #fcd34d;
+      }
+    }
+    .hidden { display: none !important; }
+    body { background: var(--bg); color: var(--text); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           font-size: 16px; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    .card { background: var(--card); border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.06); }
+    .t2 { color: var(--text2); } .t3 { color: var(--text3); } .t-ok { color: var(--ok); } .t-ko { color: var(--ko); } .t-warn { color: var(--warn); }
+    .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 4px; }
+    .titol-seccio { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text3); }
+    .camp { width: 100%; background: var(--field); color: var(--text); border: 1px solid var(--line); border-radius: .75rem; padding: .6rem .75rem; font-size: 16px; }
+    .camp:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--card); }
+    textarea.camp { font-size: 15px; resize: vertical; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: .75rem; font-weight: 600; padding: .7rem .9rem; font-size: 16px; }
+    .btn:disabled { opacity: .5; }
+    .btn-prim { background: var(--accent); color: #fff; } .btn-ok { background: var(--ok-fort); color: #fff; }
+    .opcio { background: var(--soft); color: var(--text); border-radius: .75rem; font-weight: 600; min-height: 44px; }
+    .opcio-activa { background: var(--accent) !important; color: #fff !important; }
+    .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; padding: 3px; border-radius: .9rem; background: var(--soft); }
+    .seg button { min-height: 42px; border-radius: .7rem; font-weight: 600; color: var(--text3); }
+    .seg .seg-si { background: var(--card); color: var(--ok); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .seg .seg-no { background: var(--card); color: var(--ko); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+    .capcalera { background: var(--hdr); color: #fff; padding-top: env(safe-area-inset-top); }
+    .codi { letter-spacing: .35em; text-transform: uppercase; text-align: center; font-size: 26px; font-weight: 800; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="capcalera shadow-md">
+    <div class="max-w-xl mx-auto px-4 py-4">
+      <div class="text-[12px] uppercase tracking-wider opacity-75" id="cap-etiqueta">Avaluació</div>
+      <h1 class="text-xl font-bold leading-tight" id="cap-titol">Autoavaluació i coavaluació</h1>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto p-4 space-y-4 pb-32">
+    <!-- Entrar amb el codi -->
+    <section id="pantalla-codi" class="card p-5 space-y-4">
+      <p class="t2">Escriu el <b>codi personal</b> que has rebut per correu.</p>
+      <input id="codi" class="camp codi" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="······" aria-label="Codi personal"
+             onkeydown="if (event.key === 'Enter') entrar()">
+      <button id="boto-entrar" onclick="entrar()" class="btn btn-prim w-full">Entrar</button>
+      <p id="error-codi" class="text-[14px] t-ko text-center"></p>
+    </section>
+
+    <!-- Formulari -->
+    <div id="pantalla-form" class="hidden space-y-4"></div>
+
+    <!-- Enviat -->
+    <section id="pantalla-enviat" class="hidden card p-6 text-center space-y-3">
+      <div class="mx-auto w-14 h-14 rounded-full grid place-items-center text-2xl" style="background:var(--ok-bg);color:var(--ok)">✓</div>
+      <h2 class="text-lg font-bold">Enviat! Gràcies.</h2>
+      <p class="t2">Mentre l'avaluació estigui oberta, pots tornar a entrar amb el mateix codi per canviar les teves respostes.</p>
+      <button onclick="tornarAlFormulari()" class="btn w-full" style="background:var(--soft)">Revisar les respostes</button>
+      <button onclick="sortir()" class="btn w-full btn-prim">Sortir</button>
+    </section>
+  </main>
+
+  <div id="barra-enviar" class="hidden fixed inset-x-0 bottom-0 px-4 pb-4" style="padding-bottom:calc(1rem + env(safe-area-inset-bottom))">
+    <div class="max-w-xl mx-auto card p-3 flex items-center gap-3" style="border:1px solid var(--soft2);box-shadow:0 8px 24px rgba(15,23,42,.25)">
+      <div class="flex-1 text-[14px]"><b id="progres-text"></b><div id="estat-enviar" class="text-[13px] t3"></div></div>
+      <button id="boto-enviar" onclick="enviar()" class="btn btn-ok">Enviar</button>
+    </div>
+  </div>
+
+  <script>
+    // URL /exec de la implementació de Apps Script (la mateixa que a index.html)
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz-hUG84Bwtu8n8iefOE1LqDEXO-Bq0ybMw4At1kd_jLtJrtOwblgu-BwD1u_qlo9vC/exec';
+    const NOTA_MAXIMA = 10;
+    const TOKEN = new URLSearchParams(location.search).get('s') || '';
+
+    async function api(action, params) {
+      let resposta;
+      try {
+        resposta = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, params: params || {} }) });
+      } catch (err) { throw new Error('No hi ha connexió. Torna-ho a provar en un moment.'); }
+      let dades;
+      try { dades = await resposta.json(); } catch (err) { throw new Error('El servidor no ha respost bé (' + resposta.status + ').'); }
+      if (dades.error) throw new Error(dades.message);
+      return dades.resultat;
+    }
+
+    function $(id) { return document.getElementById(id); }
+    function esc(t) { return String(t === null || t === undefined ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+    function esBuit(v) { return v === undefined || v === null || v === ''; }
+    function llegirLocal(k) { try { const t = localStorage.getItem(k); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+    function escriureLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* res */ } }
+
+    let codi = '';
+    let dades = null;          // resposta d'alumneEntrar
+    let respostes = null;      // { auto: { notes, comentari }, co: { idx: { notes, comentari } } }
+    const clauEsborrany = () => 'avaluacio_alumne_' + TOKEN + '_' + codi;
+
+    async function entrar() {
+      codi = $('codi').value.trim().toUpperCase();
+      $('error-codi').textContent = '';
+      if (codi.length < 4) { $('error-codi').textContent = 'Escriu el codi complet.'; return; }
+      $('boto-entrar').disabled = true;
+      $('boto-entrar').textContent = 'Comprovant...';
+      try {
+        dades = await api('alumneEntrar', { token: TOKEN, codi });
+        prepararRespostes();
+        mostrarFormulari();
+      } catch (err) {
+        $('error-codi').textContent = err.message;
+      } finally {
+        $('boto-entrar').disabled = false;
+        $('boto-entrar').textContent = 'Entrar';
+      }
+    }
+
+    function prepararRespostes() {
+      respostes = { auto: { notes: {}, comentari: '' }, co: {} };
+      if (dades.meva) respostes.auto = { notes: Object.assign({}, dades.meva.notes), comentari: dades.meva.comentari || '' };
+      dades.companys.forEach((c, k) => {
+        respostes.co[k] = c.resposta ? { notes: Object.assign({}, c.resposta.notes), comentari: c.resposta.comentari || '' } : { notes: {}, comentari: '' };
+      });
+      // Respostes a mitges d'abans (si la pàgina s'havia tancat sense enviar)
+      const esborrany = llegirLocal(clauEsborrany());
+      if (esborrany && esborrany.respostes) respostes = esborrany.respostes;
+    }
+    function desarEsborrany() { escriureLocal(clauEsborrany(), { respostes }); }
+
+    function htmlItem(clau, j, c, valor) {
+      const cap = `<div class="flex justify-between items-baseline gap-2 mb-1.5"><span class="font-medium text-[15px]">${esc(c.nom)}</span><span class="t3 text-[13px]">${esc(c.pes)}%</span></div>`;
+      if (c.tipus === 'sino') {
+        const si = !esBuit(valor) && Number(valor) === NOTA_MAXIMA, no = !esBuit(valor) && Number(valor) === 0;
+        return `<div>${cap}<div class="seg"><button type="button" class="${si ? 'seg-si' : ''}" aria-pressed="${si}" onclick="posar('${clau}', ${j}, ${NOTA_MAXIMA})">✓ Sí</button>
+          <button type="button" class="${no ? 'seg-no' : ''}" aria-pressed="${no}" onclick="posar('${clau}', ${j}, 0)">✕ No</button></div></div>`;
+      }
+      if (c.tipus === 'rubrica') {
+        return `<div>${cap}<div class="grid gap-1.5" style="grid-template-columns:repeat(${Math.min(c.nivells.length, 4)},minmax(0,1fr))">${c.nivells.map(n => {
+          const actiu = !esBuit(valor) && Number(valor) === Number(n.valor);
+          return `<button type="button" class="opcio ${actiu ? 'opcio-activa' : ''} px-1 py-1.5 text-[14px] leading-tight" aria-pressed="${actiu}" onclick="posar('${clau}', ${j}, ${Number(n.valor)})">${esc(n.nom)}</button>`;
+        }).join('')}</div></div>`;
+      }
+      return `<div>${cap}<div class="grid grid-cols-6 gap-1.5">${[0, 2, 4, 6, 8, 10].map(v => {
+        const actiu = !esBuit(valor) && Number(valor) === v;
+        return `<button type="button" class="opcio ${actiu ? 'opcio-activa' : ''}" aria-pressed="${actiu}" onclick="posar('${clau}', ${j}, ${v})">${v}</button>`;
+      }).join('')}</div>
+        <label class="flex items-center gap-2 mt-1.5 text-[14px] t3">o escriu-la:
+          <input type="number" inputmode="decimal" min="0" max="10" step="0.5" value="${esBuit(valor) ? '' : esc(valor)}" aria-label="${esc(c.nom)}"
+                 oninput="escriure('${clau}', ${j}, this)" class="camp !w-20 !py-1 text-center font-bold"></label></div>`;
+    }
+
+    // clau: 'auto' o 'co-<índex>'
+    function respostaDe(clau) { return clau === 'auto' ? respostes.auto : respostes.co[Number(clau.slice(3))]; }
+    function posar(clau, j, valor) {
+      const r = respostaDe(clau), nom = dades.criteris[j].nom;
+      if (!esBuit(r.notes[nom]) && Number(r.notes[nom]) === valor) delete r.notes[nom]; else r.notes[nom] = valor;
+      desarEsborrany();
+      mostrarFormulari();
+    }
+    function escriure(clau, j, input) {
+      const r = respostaDe(clau), nom = dades.criteris[j].nom;
+      let v = input.value;
+      if (v === '') { delete r.notes[nom]; } else {
+        v = Math.min(NOTA_MAXIMA, Math.max(0, Number(v)));
+        if (isNaN(v)) return;
+        r.notes[nom] = v;
+      }
+      desarEsborrany();
+      actualitzarProgres();
+    }
+    function comentar(clau, text) { respostaDe(clau).comentari = text; desarEsborrany(); }
+
+    function completa(r) { return dades.criteris.every(c => !esBuit(r.notes[c.nom])); }
+
+    function htmlBloc(clau, titol, subtitol, r) {
+      return `<section class="card p-4 space-y-4">
+          <div><h2 class="text-[17px] font-bold">${titol}</h2>${subtitol ? `<p class="text-[13px] t3">${subtitol}</p>` : ''}</div>
+          ${dades.criteris.map((c, j) => htmlItem(clau, j, c, r.notes[c.nom])).join('')}
+          <div><label class="lbl">Comentari (opcional)</label>
+            <textarea rows="2" class="camp" oninput="comentar('${clau}', this.value)" placeholder="Què ha anat bé? Què es pot millorar?">${esc(r.comentari)}</textarea></div>
+        </section>`;
+    }
+
+    function mostrarFormulari() {
+      $('pantalla-codi').classList.add('hidden');
+      $('pantalla-enviat').classList.add('hidden');
+      $('cap-etiqueta').textContent = dades.modul + ' · ' + dades.classe;
+      $('cap-titol').textContent = dades.sessio;
+      const form = $('pantalla-form');
+      form.classList.remove('hidden');
+      if (!dades.obert) {
+        form.innerHTML = `<section class="card p-6 text-center space-y-2"><h2 class="text-lg font-bold">L'avaluació està tancada</h2>
+          <p class="t2">Ja no es poden enviar ni canviar respostes. Si creus que és un error, parla amb el professor.</p></section>`;
+        $('barra-enviar').classList.add('hidden');
+        return;
+      }
+      let html = `<section class="card p-4 flex items-center gap-3"><p class="flex-1">Hola <b>${esc(dades.alumne.nom)}</b>! Puntua amb sinceritat: la teva valoració ajuda a millorar.</p>
+        <button onclick="sortir()" class="text-[14px] font-semibold t3 shrink-0" title="No ets tu? Surt i entra amb el teu codi">Sortir</button></section>`;
+      if (dades.auto) html += htmlBloc('auto', 'La teva autoavaluació', 'Com creus que ho has fet tu?', respostes.auto);
+      if (dades.co) {
+        if (dades.senseGrup) html += `<section class="card p-4 t2">No tens grup assignat en aquesta sessió, així que no has d'avaluar cap company.</section>`;
+        dades.companys.forEach((c, k) => {
+          html += htmlBloc('co-' + k, esc(c.nom + ' ' + c.cognoms), 'Company/a del grup ' + esc(dades.grup), respostes.co[k]);
+        });
+      }
+      form.innerHTML = html;
+      $('barra-enviar').classList.remove('hidden');
+      actualitzarProgres();
+    }
+
+    function actualitzarProgres() {
+      const blocs = (dades.auto ? [respostes.auto] : []).concat(dades.co ? dades.companys.map((_, k) => respostes.co[k]) : []);
+      const fets = blocs.filter(completa).length;
+      $('progres-text').textContent = `${fets} de ${blocs.length} completats`;
+      $('estat-enviar').textContent = fets < blocs.length ? 'Pots enviar-ho encara que no estigui tot complet.' : 'Tot a punt!';
+    }
+
+    async function enviar() {
+      const boto = $('boto-enviar');
+      boto.disabled = true;
+      boto.textContent = 'Enviant...';
+      try {
+        await api('alumneEnviar', {
+          token: TOKEN, codi,
+          auto: dades.auto ? respostes.auto : null,
+          co: dades.co ? dades.companys.map((c, k) => ({ alumne: { nom: c.nom, cognoms: c.cognoms, id: c.id }, notes: respostes.co[k].notes, comentari: respostes.co[k].comentari })) : []
+        });
+        try { localStorage.removeItem(clauEsborrany()); } catch (e) { /* res */ }
+        dades = await api('alumneEntrar', { token: TOKEN, codi }).catch(() => dades);
+        prepararRespostes();
+        $('pantalla-form').classList.add('hidden');
+        $('barra-enviar').classList.add('hidden');
+        $('pantalla-enviat').classList.remove('hidden');
+        window.scrollTo(0, 0);
+      } catch (err) {
+        $('estat-enviar').textContent = err.message;
+        $('estat-enviar').className = 'text-[13px] t-ko';
+      } finally {
+        boto.disabled = false;
+        boto.textContent = 'Enviar';
+      }
+    }
+
+    function tornarAlFormulari() { mostrarFormulari(); window.scrollTo(0, 0); }
+
+    // Tornar a la pantalla del codi (el codi no es guarda: en un ordinador compartit, el següent alumne no entra com a tu)
+    function sortir() {
+      codi = ''; dades = null; respostes = null;
+      $('codi').value = '';
+      ['pantalla-form', 'pantalla-enviat', 'barra-enviar'].forEach(id => $(id).classList.add('hidden'));
+      $('pantalla-codi').classList.remove('hidden');
+      $('cap-etiqueta').textContent = 'Avaluació';
+      $('cap-titol').textContent = 'Autoavaluació i coavaluació';
+      window.scrollTo(0, 0);
+    }
+
+    // Inici
+    if (!TOKEN) {
+      $('pantalla-codi').innerHTML = '<p class="t2 text-center">Aquest enllaç no és complet. Obre\'l des del correu que t\'ha enviat el professor.</p>';
+    }
+  </script>
+</body>
+</html>
