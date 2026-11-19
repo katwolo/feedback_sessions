@@ -114,6 +114,32 @@
     body.discret .seg .seg-si, body.discret .seg .seg-no { color: var(--text) !important; }
     body.discret [data-nota-titol] { pointer-events: none; }
 
+    /* ---------- Disseny adaptable: mòbil (base), tauleta (≥768px) i ordinador (≥1024px) ---------- */
+    .contenidor { max-width: 28rem; margin-left: auto; margin-right: auto; }
+    .nav-marca { display: none; }
+    @media (min-width: 768px) {
+      .contenidor { max-width: 48rem; }
+    }
+    @media (min-width: 1024px) {
+      .contenidor { max-width: 76rem; }
+      body { padding-left: 15rem; }
+      /* La navegació passa a una barra lateral */
+      .nav-inferior { top: 0; bottom: 0 !important; right: auto !important; width: 15rem; border-top: 0; border-right: 1px solid var(--line); padding-top: 1.1rem; }
+      .nav-marca { display: flex !important; }
+      .nav-botons { display: flex !important; flex-direction: column; gap: .25rem; padding: 0 .75rem; max-width: none !important; }
+      .nav-botons button { flex-direction: row !important; justify-content: flex-start; gap: .75rem !important; padding: .7rem .9rem !important; border-radius: .75rem; font-size: 15px !important; }
+      .nav-botons button[aria-current="page"] { background: var(--accent-soft); }
+      .nav-botons button:hover { background: var(--soft); }
+      /* La barra d'exportar queda a baix, al costat de la barra lateral */
+      #barra-exportar { left: 15rem !important; bottom: 1rem !important; }
+      #barra-exportar > .contenidor { max-width: 46rem; }
+      /* A l'ordinador hi ha espai: la configuració de la sessió no es plega */
+      #panell-config.hidden { display: block !important; }
+      #boto-canviar-sessio { display: none !important; }
+      /* Columna lateral que acompanya el desplaçament */
+      .columna-fixa { position: sticky; top: 8.5rem; max-height: calc(100vh - 10rem); overflow-y: auto; }
+    }
+
     .full-inferior { background: var(--card); border-radius: 1.25rem 1.25rem 0 0; }
     @media (min-width: 640px) { .full-inferior { border-radius: 1.25rem; } }
     .previ { background: var(--field); border: 1px solid var(--line); }
@@ -125,7 +151,7 @@
 
   <!-- ============================ CAPÇALERA ============================ -->
   <header class="capcalera sticky top-0 z-30 shadow-md">
-    <div class="max-w-md mx-auto px-4 py-3">
+    <div class="contenidor px-4 py-3">
 
       <!-- Avaluar: resum de la sessió -->
       <div id="cap-avaluar">
@@ -167,11 +193,12 @@
     </div>
   </header>
 
-  <main class="max-w-md mx-auto p-3 space-y-3 pb-48">
+  <main class="contenidor p-3 md:p-5 space-y-3 pb-48 lg:pb-36">
 
     <!-- ============================ AVALUAR ============================ -->
-    <div id="vista-avaluar" class="space-y-3">
+    <div id="vista-avaluar" class="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[22rem_1fr] lg:gap-5 lg:items-start">
 
+      <aside class="space-y-3 columna-fixa">
       <section id="panell-config" class="card p-4 space-y-3">
         <div id="llista-esborranys" class="hidden space-y-2 pb-3 border-b linia"></div>
         <h2 class="titol-seccio">Configuració de la sessió</h2>
@@ -228,7 +255,9 @@
           <div id="llista-assignacio-grups" class="divisor"></div>
         </div>
       </section>
+      </aside>
 
+      <div class="space-y-3 min-w-0">
       <div id="eines-panell" class="hidden space-y-2">
         <div class="flex gap-2">
         <label class="card flex-1 min-w-0 flex items-center gap-2 px-3">
@@ -239,7 +268,7 @@
         </div>
         <div class="flex items-center gap-2">
           <span class="text-[13px] t3 shrink-0">Ordenar per</span>
-          <div class="seg flex-1 text-[14px]" role="group" aria-label="Ordre de la llista">
+          <div class="seg flex-1 md:flex-none md:w-72 text-[14px]" role="group" aria-label="Ordre de la llista">
             <button id="ordre-cognoms" onclick="canviarOrdre('cognoms')">Cognoms</button>
             <button id="ordre-grups" onclick="canviarOrdre('grups')">Grups</button>
           </div>
@@ -247,22 +276,27 @@
         <p id="avis-sense-grups" class="hidden text-[13px] t3 px-1">Encara no hi ha grups: crea'ls a «Grups temporals» i la llista s'ordenarà per grup.</p>
       </div>
 
-      <div id="llista-alumnes" class="space-y-2.5">
-        <p class="text-center t3 py-6">Tria la sessió i prem "Carregar alumnes" per començar.</p>
+      <div id="llista-alumnes" class="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 md:items-start">
+        <p class="text-center t3 py-6 md:col-span-2">Tria la sessió i prem "Carregar alumnes" per començar.</p>
+      </div>
       </div>
     </div>
 
     <!-- ============================ RESULTATS ============================ -->
     <div id="vista-resultats" class="hidden space-y-3">
       <div id="res-per-sessio" class="space-y-3">
-        <section id="llista-sessions-wrap" class="space-y-2.5">
+        <section id="llista-sessions-wrap" class="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3">
           <p class="text-center t3 py-6">Tria una classe per veure'n les sessions.</p>
         </section>
         <section id="detall-sessio-wrap" class="hidden space-y-3">
           <button onclick="tancarDetallSessio()" class="btn btn-suau !py-1.5 !px-3 text-[14px]">‹ Totes les sessions</button>
-          <div id="detall-sessio-resum"></div>
-          <p id="pdf-status" class="text-[14px] text-center"></p>
-          <div id="detall-sessio-alumnes" class="card divisor overflow-hidden"></div>
+          <div class="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[24rem_1fr] lg:gap-5 lg:items-start">
+            <div class="space-y-3 columna-fixa">
+              <div id="detall-sessio-resum"></div>
+              <p id="pdf-status" class="text-[14px] text-center"></p>
+            </div>
+            <div id="detall-sessio-alumnes" class="card divisor overflow-hidden min-w-0"></div>
+          </div>
         </section>
       </div>
       <div id="res-per-alumne" class="hidden">
@@ -272,12 +306,13 @@
 
     <!-- ============================ CONFIGURAR ============================ -->
     <div id="vista-configurar" class="hidden space-y-3">
-      <div class="seg text-[14px]" role="tablist">
+      <div class="seg text-[14px] md:max-w-md" role="tablist">
         <button id="cfg-tab-moduls" role="tab" onclick="canviarSubConfig('moduls')">Mòduls i supòsits</button>
         <button id="cfg-tab-desd" role="tab" onclick="canviarSubConfig('desd')">Desdoblaments</button>
       </div>
 
-      <div id="cfg-desdoblaments" class="hidden space-y-3">
+      <div id="cfg-desdoblaments" class="hidden flex flex-col gap-3 lg:grid lg:grid-cols-[24rem_1fr] lg:gap-5 lg:items-start">
+        <div class="contents lg:block lg:space-y-3 columna-fixa">
         <section class="card p-4 space-y-3">
           <label for="desd-classe" class="titol-seccio block">Classe</label>
           <select id="desd-classe" onchange="carregarDesdoblamentsClasse()" class="camp"><option value="">Carregant...</option></select>
@@ -288,20 +323,21 @@
             <button onclick="repartirPerMeitats()" class="btn btn-suau">Repartir per meitats</button>
           </div>
         </section>
-        <section id="desd-llista" class="card divisor overflow-hidden"></section>
-        <button id="boto-desar-desd" onclick="desarDesdoblamentsClasse()" class="btn btn-ok w-full" disabled>Desar desdoblaments</button>
+        <button id="boto-desar-desd" onclick="desarDesdoblamentsClasse()" class="btn btn-ok w-full order-last lg:order-none" disabled>Desar desdoblaments</button>
+        </div>
+        <section id="desd-llista" class="card divisor overflow-hidden min-w-0"></section>
       </div>
 
-      <div id="cfg-moduls" class="space-y-3">
-      <section class="card p-4 space-y-3">
+      <div id="cfg-moduls" class="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+      <section class="card p-4 space-y-3 lg:col-span-2">
         <label for="cfg-modul" class="titol-seccio block">Mòdul</label>
-        <select id="cfg-modul" onchange="renderitzarConfiguracio()" class="camp"><option value="">Carregant...</option></select>
-        <div class="grid grid-cols-3 gap-2">
+        <select id="cfg-modul" onchange="renderitzarConfiguracio()" class="camp lg:max-w-md"><option value="">Carregant...</option></select>
+        <div class="grid grid-cols-3 lg:grid-cols-5 gap-2">
           <button onclick="nouModul()" class="btn btn-accent">+ Nou</button>
           <button onclick="renomenarModulActual()" class="btn btn-suau">Reanomenar</button>
           <button onclick="eliminarModulActual()" class="btn btn-perill">Eliminar</button>
           <button onclick="exportarPlantilla()" class="btn btn-suau">⬇ Plantilla</button>
-          <label class="btn btn-suau col-span-2 cursor-pointer">⬆ Importar plantilla
+          <label class="btn btn-suau col-span-2 lg:col-span-1 cursor-pointer">⬆ Importar plantilla
             <input type="file" accept=".json,application/json" class="hidden" onchange="importarPlantillaFitxer(this)">
           </label>
         </div>
@@ -312,7 +348,7 @@
     </div>
 
     <!-- ============================ ALUMNAT (importar) ============================ -->
-    <div id="vista-importar" class="hidden space-y-3">
+    <div id="vista-importar" class="hidden space-y-3 md:max-w-xl">
       <section class="card p-4 space-y-3">
         <h2 class="titol-seccio">Importar de Google Classroom</h2>
         <p class="text-[14px] t2">Porta l'alumnat (amb el seu correu) d'un curs de Classroom cap a la pestanya "👤 Llistat". El correu identifica cada alumne, així dos alumnes amb el mateix nom no es barregen. Si tornes a importar una classe, els alumnes que ja hi eren conserven el seu desdoblament; per canviar-los, ves a Configurar → Desdoblaments.</p>
@@ -343,7 +379,7 @@
 
   <!-- ============================ BARRA FIXA D'EXPORTAR ============================ -->
   <div id="barra-exportar" class="hidden fixed inset-x-0 z-20 px-3" style="bottom: calc(64px + env(safe-area-inset-bottom))">
-    <div class="max-w-md mx-auto card p-2.5 space-y-1.5" style="border:1px solid var(--soft2);box-shadow:0 8px 24px rgba(15,23,42,.25)">
+    <div class="contenidor card p-2.5 space-y-1.5" style="border:1px solid var(--soft2);box-shadow:0 8px 24px rgba(15,23,42,.25)">
       <div class="flex items-center gap-3">
         <div class="flex-1 min-w-0">
           <div id="progres" class="text-[14px] font-semibold"></div>
@@ -360,7 +396,11 @@
 
   <!-- ============================ NAVEGACIÓ INFERIOR ============================ -->
   <nav id="pestanyes" class="nav-inferior fixed bottom-0 inset-x-0 z-30">
-    <div class="max-w-md mx-auto grid grid-cols-4 text-[12px] font-semibold">
+    <div class="nav-marca items-center gap-2.5 px-6 pb-5 font-bold text-[17px]">
+      <svg class="ico t-accent" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Sessions/Supòsits
+    </div>
+    <div class="nav-botons contenidor grid grid-cols-4 text-[12px] font-semibold">
       <button data-vista="avaluar" onclick="canviarVista('avaluar')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
         <svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Avaluar</button>
       <button data-vista="resultats" onclick="canviarVista('resultats')" class="flex flex-col items-center gap-0.5 pt-2 pb-2.5">
@@ -374,7 +414,7 @@
 
   <!-- ============================ MODAL CORREU ============================ -->
   <div id="modal-correu" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
-    <div class="full-inferior w-full max-w-md p-4 space-y-3 max-h-[94vh] overflow-y-auto">
+    <div class="full-inferior w-full max-w-md md:max-w-xl p-4 md:p-5 space-y-3 max-h-[94vh] overflow-y-auto">
       <div class="flex justify-between items-start gap-2">
         <h3 id="modal-correu-titol" class="font-bold">Enviar correu</h3>
         <button onclick="tancarModalCorreu()" class="t3 text-xl leading-none" aria-label="Tancar">✕</button>
@@ -413,7 +453,7 @@
 
   <!-- ============================ MODAL EDITOR D'ÍTEMS ============================ -->
   <div id="modal-editor" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
-    <div class="full-inferior w-full max-w-md p-4 space-y-3 max-h-[94vh] overflow-y-auto">
+    <div class="full-inferior w-full max-w-md md:max-w-xl p-4 md:p-5 space-y-3 max-h-[94vh] overflow-y-auto">
       <div class="flex justify-between items-start gap-2">
         <h3 id="editor-titol" class="font-bold"></h3>
         <button onclick="tancarEditor()" class="t3 text-xl leading-none" aria-label="Tancar">✕</button>
@@ -967,7 +1007,7 @@
       return `${cap}
         <div class="px-4 pb-4 space-y-4">
           <div class="barra"><div id="barra-${i}" style="width:${percent}%"></div></div>
-          ${criteris.map((c, j) => htmlCriteri(i, j, c, clau)).join('')}
+          <div class="grid gap-4 lg:grid-cols-2 lg:gap-x-6">${criteris.map((c, j) => htmlCriteri(i, j, c, clau)).join('')}</div>
           ${obsHtml}
           ${esCoordinador ? `
             <div>
@@ -1012,7 +1052,7 @@
     }
 
     function htmlCapGrup(g) {
-      return `<div class="cap-grup flex items-center gap-2 px-1 pt-2" data-grup="${esc(g)}">
+      return `<div class="cap-grup md:col-span-2 flex items-center gap-2 px-1 pt-2" data-grup="${esc(g)}">
           <span class="av ${classeGrup(g)}" style="width:26px;height:26px;font-size:12px" aria-hidden="true">${g ? esc(g) : '–'}</span>
           <span class="font-bold">${g ? 'Grup ' + esc(g) : 'Sense grup'}</span>
           <span class="compte-grup text-[13px] t3 ml-auto"></span>
@@ -1036,7 +1076,7 @@
       actualitzarCapcaleraAvaluar();
 
       if (estudiants.length === 0) {
-        contenidor.innerHTML = '<p class="text-center t3 py-6">No hi ha alumnes en aquesta classe / desdoblament.</p>';
+        contenidor.innerHTML = '<p class="text-center t3 py-6 md:col-span-2">No hi ha alumnes en aquesta classe / desdoblament.</p>';
         actualitzarProgres();
         return;
       }
@@ -1053,7 +1093,7 @@
         const a = estudiants[i];
         const g = String(grupDe(i));
         if (perGrups && hiHaGrups && g !== grupAnterior) { html += htmlCapGrup(g); grupAnterior = g; }
-        html += `<article id="tarjeta-${i}" data-grup="${esc(g)}" data-cerca="${esc(normalitzar(a.nom + ' ' + a.cognoms))}" class="card ${i === alumneObert ? 'card-activa' : ''}">${htmlTarjeta(i)}</article>`;
+        html += `<article id="tarjeta-${i}" data-grup="${esc(g)}" data-cerca="${esc(normalitzar(a.nom + ' ' + a.cognoms))}" class="card ${i === alumneObert ? 'card-activa md:col-span-2' : ''}">${htmlTarjeta(i)}</article>`;
       });
       contenidor.innerHTML = html;
       aplicarVisibilitat();
@@ -1065,6 +1105,7 @@
       if (!el) return;
       el.innerHTML = htmlTarjeta(i);
       el.classList.toggle('card-activa', i === alumneObert);
+      el.classList.toggle('md:col-span-2', i === alumneObert);
     }
 
     // Actualitza només la capçalera d'una targeta (sense tocar els camps que s'estan escrivint)
@@ -2017,7 +2058,7 @@
                 <div class="flex items-end gap-1 h-20 border-b linia">${evolucio}</div>
               </div>` : ''}
           </article>
-          <div class="space-y-2.5 mt-3">
+          <div class="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 mt-3">
             ${sessions.slice().reverse().map(s => `
               <div class="card p-4 space-y-1">
                 <div class="flex justify-between items-center gap-2">
