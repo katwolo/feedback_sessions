@@ -1,6 +1,41 @@
 // ID del Google Sheet on s'exporten les avaluacions
 var SPREADSHEET_ID = '1CBaAA7ew3zWmthPP8Xba5prZDJ8_IdNfLj8mIUONylg';
 
+// ============ FUNCIONS PER EXECUTAR A MÀ (surten les primeres al desplegable de l'editor) ============
+// A l'editor de Apps Script: tria la funció al desplegable del costat de "Depura" i prem "Executa" ▶.
+
+// Executa-la un cop manualment per organitzar el full (o actualitzar-ne les columnes)
+function configurarRegistre() {
+  var ss = obrirFull();
+  asegurarLlistat(ss);
+  asegurarConfiguracio(ss);
+  asegurarSuposits(ss);
+  asegurarAlumnat(ss);
+  asegurarHistorial(ss);
+  asegurarComentaris(ss);
+  asegurarAvalAlumnes(ss);
+  asegurarRespostes(ss);
+  netejarFullDefecte(ss);
+}
+
+// Executa aquesta funció UN COP manualment des de l'editor (desplegable de funcions > autoritzarTot
+// > Executar ▶) per forçar que Google et demani autoritzar TOTS els permisos que fa servir
+// l'app (Sheets, Classroom, Drive i enviar correu) en una sola finestra.
+function autoritzarTot() {
+  var ss = obrirFull();
+  Logger.log('Sheets OK: ' + ss.getName());
+
+  var cursos = Classroom.Courses.list({ pageSize: 1 });
+  Logger.log('Classroom OK: ' + ((cursos.courses || []).length) + ' curs(os) de prova llegit(s)');
+
+  Logger.log('Drive OK: ' + DriveApp.getRootFolder().getName());
+
+  var correuPropi = Session.getActiveUser().getEmail();
+  MailApp.sendEmail(correuPropi, 'Avaluador Docent: autorització completada',
+      'Si reps aquest correu, els permisos de Google Sheets, Classroom, Drive i correu ja estan autoritzats correctament.');
+  Logger.log('Mail OK: correu de prova enviat a ' + correuPropi + ' (quota restant: ' + MailApp.getRemainingDailyQuota() + ')');
+}
+
 // ============ ARQUITECTURA I ACCÉS ============
 // - La pàgina (index.html) està allotjada a GitHub Pages: qualsevol canvi a GitHub es publica sol.
 // - Aquest script només fa d'API: la pàgina li envia peticions POST amb { action, params } i rep JSON.
@@ -729,37 +764,6 @@ function importarPlantilla(plantilla, nomModul) {
 
 // ============ EXPORTACIÓ ============
 
-// Executa aquesta funció UN COP manualment des de l'editor (desplegable de funcions > autoritzarTot
-// > Executar ▶) per forçar que Google et demani autoritzar TOTS els permisos que fa servir
-// l'app (Sheets, Classroom, Drive i enviar correu) en una sola finestra.
-function autoritzarTot() {
-  var ss = obrirFull();
-  Logger.log('Sheets OK: ' + ss.getName());
-
-  var cursos = Classroom.Courses.list({ pageSize: 1 });
-  Logger.log('Classroom OK: ' + ((cursos.courses || []).length) + ' curs(os) de prova llegit(s)');
-
-  Logger.log('Drive OK: ' + DriveApp.getRootFolder().getName());
-
-  var correuPropi = Session.getActiveUser().getEmail();
-  MailApp.sendEmail(correuPropi, 'Avaluador Docent: autorització completada',
-      'Si reps aquest correu, els permisos de Google Sheets, Classroom, Drive i correu ja estan autoritzats correctament.');
-  Logger.log('Mail OK: correu de prova enviat a ' + correuPropi + ' (quota restant: ' + MailApp.getRemainingDailyQuota() + ')');
-}
-
-// Executa-la un cop manualment per organitzar el full (o actualitzar-ne les columnes)
-function configurarRegistre() {
-  var ss = obrirFull();
-  asegurarLlistat(ss);
-  asegurarConfiguracio(ss);
-  asegurarSuposits(ss);
-  asegurarAlumnat(ss);
-  asegurarHistorial(ss);
-  asegurarComentaris(ss);
-  asegurarAvalAlumnes(ss);
-  asegurarRespostes(ss);
-  netejarFullDefecte(ss);
-}
 
 // Exporta les notes d'una sessió avaluada. Fa "upsert" a "👥 Alumnat" (actualitza si ja existeix,
 // si no l'afegeix) i sempre afegeix el desglossament per criteri (amb el pes usat) a "🗄 Historial".
