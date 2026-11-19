@@ -35,13 +35,13 @@ var CAPCALERA_CONFIGURACIO = ["Mòdul", "Criteri", "Pes (%)", "Supòsit", "Tipus
 var CAPCALERA_SUPOSITS = ["Mòdul", "Supòsit", "Data", "Descripció", "Actiu"];
 var CAPCALERA_ALUMNAT = ["Data", "Curs", "Mòdul", "Classe", "Desdobl.", "Nom", "Cognoms",
     "Sessió avaluada", "Observacions grup", "Observacions individual", "Nota final",
-    "Grup", "Origen nota", "ID alumne", "Correu enviat"];
+    "Grup", "Origen nota", "ID alumne", "Correu enviat", "Detall ítems"];
 var CAPCALERA_HISTORIAL = ["Data", "Curs", "Mòdul", "Classe", "Desd.", "Nom", "Cognoms", "Sessió avaluada",
     "Criteri", "Nota", "Pes (%)", "Tipus", "ID alumne"];
 
 // Índexs (base 0) de les columnes d'Alumnat
 var A = { DATA: 0, CURS: 1, MODUL: 2, CLASSE: 3, DESD: 4, NOM: 5, COGNOMS: 6, SESSIO: 7,
-    OBS_GRUP: 8, OBS_INDIV: 9, NOTA: 10, GRUP: 11, ORIGEN: 12, ID: 13, CORREU_ENVIAT: 14 };
+    OBS_GRUP: 8, OBS_INDIV: 9, NOTA: 10, GRUP: 11, ORIGEN: 12, ID: 13, CORREU_ENVIAT: 14, DETALL: 15 };
 // Índexs (base 0) de les columnes d'Historial
 var H = { DATA: 0, CURS: 1, MODUL: 2, CLASSE: 3, DESD: 4, NOM: 5, COGNOMS: 6, SESSIO: 7,
     CRITERI: 8, NOTA: 9, PES: 10, TIPUS: 11, ID: 12 };
@@ -74,6 +74,7 @@ function respostaJson(text) {
 // Executa una acció i retorna sempre un JSON en text: { error, resultat } o { error, message }
 function api(action, params) {
   params = params || {};
+  _full = null; _memo = {}; _marcaFull = undefined; // cada petició comença de zero
   try {
     var accio = ACCIONS.hasOwnProperty(action) ? ACCIONS[action] : null;
     if (!accio) throw new Error('Acció desconeguda: ' + action);
@@ -85,6 +86,7 @@ function api(action, params) {
 
 var ACCIONS = {
   // Lectura
+  inicialitzar: function() { return inicialitzar(); },
   listarModuls: function() { return listarModuls(); },
   listarClasses: function() { return listarClasses(); },
   listarDesdoblaments: function(p) { return listarDesdoblaments(p.classe); },
@@ -92,7 +94,11 @@ var ACCIONS = {
   obtenirAlumnes: function(p) { return obtenirAlumnes(p.classe, p.desdoblament); },
   obtenirCriteris: function(p) { return obtenirCriteris(p.modul, p.suposit); },
   llistarSessions: function(p) { return llistarSessions(p.classe, p.modul); },
-  obtenirResultatsSessio: function(p) { return obtenirResultatsSessio(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada); },
+  obtenirResultatsSessio: function(p) {
+    var r = obtenirResultatsSessio(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada);
+    if (p.ambCriteris) { try { r.criterisActuals = obtenirCriteris(p.modul, p.sessioAvaluada); } catch (err) { r.criterisActuals = []; } }
+    return r;
+  },
   obtenirDetallAlumne: function(p) { return obtenirDetallAlumne(p.curs, p.modul, p.classe, p.desdoblament, p.alumne, p.sessioAvaluada); },
   obtenirFitxaAlumne: function(p) { return obtenirFitxaAlumne(p.classe, p.alumne); },
   quotaCorreu: function() { return MailApp.getRemainingDailyQuota(); },
@@ -111,6 +117,7 @@ var ACCIONS = {
   eliminarResultat: function(p) { return ambBloqueig(function() { return eliminarResultat(p.curs, p.modul, p.classe, p.desdoblament, p.alumne, p.sessioAvaluada); }); },
   eliminarSessio: function(p) { return ambBloqueig(function() { return eliminarSessio(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada); }); },
   actualitzarResultat: function(p) { return ambBloqueig(function() { return actualitzarResultat(p); }); },
+  desarItemsResultat: function(p) { return ambBloqueig(function() { return desarItemsResultat(p); }); },
   enviarCorreus: function(p) { return ambBloqueig(function() { return enviarCorreus(p); }); },
   crearInformePdf: function(p) { return crearInformePdf(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada); },
   desarDesdoblaments: function(p) { return ambBloqueig(function() { return desarDesdoblaments(p.classe, p.assignacions); }); },
@@ -132,8 +139,64 @@ function ambBloqueig(funcio) {
 
 // ============ UTILITATS ============
 
+// El full s'obre una sola vegada per petició
+var _full = null;
 function obrirFull() {
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
+  if (!_full) _full = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return _full;
+}
+
+// ---- Memòria cau (CacheService) de la configuració i del llistat d'alumnes ----
+// Cada entrada guarda la "marca" de l'última modificació del full (segons Drive). Si el full ha canviat
+// (des de l'app o editant-lo a mà), la marca ja no coincideix i es torna a llegir. Així no es fan servir
+// mai dades antigues i, mentre ningú toqui el full, les lectures són instantànies.
+var VERSIO_CACHE = 'v3:';
+var _memo = {};
+var _marcaFull;
+
+function marcaFull() {
+  if (_marcaFull === undefined) {
+    try { _marcaFull = DriveApp.getFileById(SPREADSHEET_ID).getLastUpdated().getTime(); } catch (err) { _marcaFull = null; }
+  }
+  return _marcaFull;
+}
+
+function llegirAmbCache(clau, funcio) {
+  if (_memo.hasOwnProperty(clau)) return _memo[clau];
+  var marca = marcaFull();
+  var cache = null;
+  if (marca !== null) {
+    try { cache = CacheService.getScriptCache(); } catch (err) { cache = null; }
+  }
+  if (cache) {
+    var text = cache.get(VERSIO_CACHE + clau);
+    if (text) {
+      try {
+        var desat = JSON.parse(text);
+        if (desat.m === marca) return (_memo[clau] = desat.v);
+      } catch (err) { /* entrada malmesa: es torna a llegir */ }
+    }
+  }
+  var valor = funcio();
+  if (cache) {
+    var json = JSON.stringify({ m: marca, v: valor });
+    if (json.length < 95000) { try { cache.put(VERSIO_CACHE + clau, json, 21600); } catch (err) { /* massa gran */ } }
+  }
+  return (_memo[clau] = valor);
+}
+
+// Després d'escriure al full: s'esborra la memòria cau afectada
+function invalidarCache(claus) {
+  claus.forEach(function(k) { delete _memo[k]; });
+  _marcaFull = undefined;
+  try { CacheService.getScriptCache().removeAll(claus.map(function(k) { return VERSIO_CACHE + k; })); } catch (err) { /* sense cache */ }
+}
+
+// Files de "👤 Llistat" (lectura amb memòria cau; per escriure, llegir sempre el full directament)
+function filesLlistat() {
+  return llegirAmbCache('llistat', function() {
+    return llegirFiles(asegurarLlistat(obrirFull()), CAPCALERA_LLISTAT.length).map(function(f) { return f.map(txt); });
+  });
 }
 
 function txt(valor) {
@@ -290,7 +353,11 @@ function calcularNotaFinal(criteris, notes) {
 
 // ============ LECTURA DE CONFIGURACIÓ / LLISTAT ============
 
-function llegirConfiguracio(ss) {
+function llegirConfiguracio() {
+  return llegirAmbCache('config', function() { return llegirConfiguracioDelFull(obrirFull()); });
+}
+
+function llegirConfiguracioDelFull(ss) {
   var hoja = asegurarConfiguracio(ss);
   return llegirFiles(hoja, CAPCALERA_CONFIGURACIO.length).map(function(f) {
     var tipus = txt(f[4]).toLowerCase();
@@ -302,7 +369,11 @@ function llegirConfiguracio(ss) {
   }).filter(function(c) { return c.modul && c.nom && !isNaN(c.pes); });
 }
 
-function llegirSuposits(ss) {
+function llegirSuposits() {
+  return llegirAmbCache('suposits', function() { return llegirSupositsDelFull(obrirFull()); });
+}
+
+function llegirSupositsDelFull(ss) {
   var hoja = asegurarSuposits(ss);
   return llegirFiles(hoja, CAPCALERA_SUPOSITS.length).map(function(f) {
     return {
@@ -312,24 +383,35 @@ function llegirSuposits(ss) {
   }).filter(function(s) { return s.modul && s.nom; });
 }
 
+// Tot el que l'app necessita per arrencar, en una sola petició
+function inicialitzar() {
+  var classes = listarClasses();
+  var desdoblaments = {};
+  classes.forEach(function(c) { desdoblaments[c] = listarDesdoblaments(c); });
+  var moduls = listarModuls();
+  var suposits = {};
+  moduls.forEach(function(m) { suposits[m] = listarSuposits(m, true); });
+  return { moduls: moduls, classes: classes, desdoblaments: desdoblaments, suposits: suposits };
+}
+
 // Llista els mòduls configurats (a "🔧 Configuració" o a "📋 Supòsits")
 function listarModuls() {
   var ss = obrirFull();
   var moduls = {};
-  llegirConfiguracio(ss).forEach(function(c) { moduls[c.modul] = true; });
-  llegirSuposits(ss).forEach(function(s) { moduls[s.modul] = true; });
+  llegirConfiguracio().forEach(function(c) { moduls[c.modul] = true; });
+  llegirSuposits().forEach(function(s) { moduls[s.modul] = true; });
   return Object.keys(moduls).sort(function(a, b) { return a.localeCompare(b); });
 }
 
 // Llista els supòsits d'un mòdul (per defecte només els actius), ordenats per data i nom
 function listarSuposits(modul, nomesActius) {
-  return llegirSuposits(obrirFull())
+  return llegirSuposits()
       .filter(function(s) { return s.modul === modul && (!nomesActius || s.actiu); })
       .sort(function(a, b) { return (a.data || '9999').localeCompare(b.data || '9999') || a.nom.localeCompare(b.nom); });
 }
 
 function listarClasses() {
-  var files = llegirFiles(asegurarLlistat(obrirFull()), CAPCALERA_LLISTAT.length);
+  var files = filesLlistat();
   var classes = {};
   files.forEach(function(f) { if (txt(f[4])) classes[txt(f[4])] = true; });
   return Object.keys(classes).sort(function(a, b) { return a.localeCompare(b); });
@@ -337,7 +419,7 @@ function listarClasses() {
 
 // Llista els desdoblaments existents per a una classe, sempre amb "General" com a primera opció
 function listarDesdoblaments(classe) {
-  var files = llegirFiles(asegurarLlistat(obrirFull()), CAPCALERA_LLISTAT.length);
+  var files = filesLlistat();
   var desdoblaments = {};
   files.forEach(function(f) {
     var d = txt(f[5]);
@@ -349,7 +431,7 @@ function listarDesdoblaments(classe) {
 // Llista els alumnes d'una classe/desdoblament. "General" inclou tota la classe.
 // L'ID és el de la columna "ID alumne" o, si no n'hi ha, el correu corporatiu.
 function obtenirAlumnes(classe, desdoblament) {
-  var files = llegirFiles(asegurarLlistat(obrirFull()), CAPCALERA_LLISTAT.length);
+  var files = filesLlistat();
   var alumnes = [];
   files.forEach(function(f) {
     var nom = txt(f[0]);
@@ -384,13 +466,14 @@ function desarDesdoblaments(classe, assignacions) {
   });
 
   hoja.getRange(2, 6, Math.max(files.length, 1), 1).setValues(files.length ? files.map(function(f) { return [f[5]]; }) : [['']]);
+  invalidarCache(['llistat']);
   return { actualitzats: actualitzats, noTrobats: noTrobats };
 }
 
 // Criteris aplicables a un supòsit: els propis del supòsit si en té; si no, els del mòdul.
 // Si el mòdul no té cap criteri configurat, una sola "Nota" del 100%.
 function obtenirCriteris(modul, suposit) {
-  var config = llegirConfiguracio(obrirFull()).filter(function(c) { return c.modul === modul; });
+  var config = llegirConfiguracio().filter(function(c) { return c.modul === modul; });
 
   var propis = suposit ? config.filter(function(c) { return c.suposit === txt(suposit); }) : [];
   var criteris = propis.length > 0 ? propis : config.filter(function(c) { return !c.suposit; });
@@ -410,8 +493,8 @@ function obtenirCriteris(modul, suposit) {
 // Tota la configuració agrupada per mòdul (per a la pestanya "Configurar")
 function obtenirConfiguracio() {
   var ss = obrirFull();
-  var config = llegirConfiguracio(ss);
-  var suposits = llegirSuposits(ss);
+  var config = llegirConfiguracio();
+  var suposits = llegirSuposits();
   var moduls = {};
 
   function modulPerNom(nom) {
@@ -471,6 +554,7 @@ function desarCriteris(modul, suposit, criteris) {
 
   netejarFormatExemple(hoja, amplada);
   reescriureFiles(hoja, files, amplada);
+  invalidarCache(['config']);
   return { success: true };
 }
 
@@ -505,6 +589,7 @@ function desarSuposit(modul, nomOriginal, suposit) {
     reescriureFiles(hojaConfig, config, ampladaConfig);
   }
 
+  invalidarCache(['config', 'suposits']);
   if (suposit.criteris !== undefined) {
     desarCriteris(modul, nom, suposit.criteris);
   }
@@ -512,9 +597,9 @@ function desarSuposit(modul, nomOriginal, suposit) {
 }
 
 function duplicarSuposit(modul, nom, nouNom) {
-  var original = llegirSuposits(obrirFull()).filter(function(s) { return s.modul === modul && s.nom === nom; })[0];
+  var original = llegirSuposits().filter(function(s) { return s.modul === modul && s.nom === nom; })[0];
   if (!original) throw new Error('No s\'ha trobat el supòsit "' + nom + '".');
-  var criteris = llegirConfiguracio(obrirFull()).filter(function(c) { return c.modul === modul && c.suposit === nom; });
+  var criteris = llegirConfiguracio().filter(function(c) { return c.modul === modul && c.suposit === nom; });
   return desarSuposit(modul, '', {
     nom: nouNom, data: '', descripcio: original.descripcio, actiu: true, criteris: criteris
   });
@@ -532,6 +617,7 @@ function eliminarSuposit(modul, nom) {
   reescriureFiles(hojaConfig, llegirFiles(hojaConfig, CAPCALERA_CONFIGURACIO.length).filter(function(f) {
     return txt(f[0]) && !(txt(f[0]) === modul && txt(f[3]) === nom);
   }), CAPCALERA_CONFIGURACIO.length);
+  invalidarCache(['config', 'suposits']);
   return { success: true };
 }
 
@@ -549,6 +635,7 @@ function renomenarModul(antic, nou) {
         files.forEach(function(f) { if (txt(f[0]) === antic) f[0] = nou; });
         reescriureFiles(par[0], files, par[1]);
       });
+  invalidarCache(['config', 'suposits']);
   return { success: true };
 }
 
@@ -561,6 +648,7 @@ function eliminarModul(modul) {
           return txt(f[0]) && txt(f[0]) !== modul;
         }), par[1]);
       });
+  invalidarCache(['config', 'suposits']);
   return { success: true };
 }
 
@@ -572,7 +660,7 @@ function importarPlantilla(plantilla, nomModul) {
 
   if ((plantilla.criteris || []).length > 0) desarCriteris(modul, '', plantilla.criteris);
   (plantilla.suposits || []).forEach(function(s) {
-    var existeix = llegirSuposits(obrirFull()).some(function(x) { return x.modul === modul && x.nom === txt(s.nom); });
+    var existeix = llegirSuposits().some(function(x) { return x.modul === modul && x.nom === txt(s.nom); });
     desarSuposit(modul, existeix ? txt(s.nom) : '', {
       nom: s.nom, data: s.data || '', descripcio: s.descripcio || '', actiu: s.actiu !== false,
       criteris: s.criterisPropis ? s.criteris : []
@@ -662,10 +750,12 @@ function exportarAGoogleSheets(dades, confirmat) {
     if (calcul.limitada) limitades.push(av.nom + ' ' + av.cognoms);
     var anterior = indexs[k] >= 0 ? files[indexs[k]] : null;
 
+    var detall = criteris.filter(function(c) { return av.notes[c.nom] !== undefined; })
+        .map(function(c) { return [c.nom, av.notes[c.nom], c.pes]; });
     var fila = [ara, dades.curs, dades.modul, dades.classe, dades.desdoblament, av.nom, av.cognoms, dades.sessioAvaluada,
         av.observacioGrup, av.observacioIndividual, calcul.nota, av.grup,
         calcul.limitada ? 'Calculada (limitada per imprescindible)' : 'Calculada',
-        av.id, anterior ? anterior[A.CORREU_ENVIAT] : ''];
+        av.id, anterior ? anterior[A.CORREU_ENVIAT] : '', JSON.stringify(detall)];
 
     if (anterior) files[indexs[k]] = fila; else files.push(fila);
   });
@@ -690,7 +780,10 @@ function assegurarAlumnesAlLlistat(ss, dades, avaluacions) {
     if (!existeix) nous.push([av.nom, av.cognoms, "", dades.curs, dades.classe, dades.desdoblament, av.id]);
   });
 
-  afegirFiles(hoja, nous, CAPCALERA_LLISTAT.length);
+  if (nous.length) {
+    afegirFiles(hoja, nous, CAPCALERA_LLISTAT.length);
+    invalidarCache(['llistat']);
+  }
 }
 
 // Afegeix una fila per cada alumne i criteri exportat (amb el pes i el tipus usats), sense
@@ -772,19 +865,42 @@ function buscarDesglossament(perAlumne, alumne) {
       perAlumne[clauAlumneServidor({ nom: alumne.nom, cognoms: alumne.cognoms })] || null;
 }
 
-// Retorna els resultats d'una sessió (una fila per alumne) amb el desglossament per criteri
+// Desglossament desat a la columna "Detall ítems" d'Alumnat: [[criteri, nota, pes], ...].
+// Retorna null per a les files antigues (exportades abans d'existir la columna).
+function llegirDetallFila(f) {
+  var text = txt(f[A.DETALL]);
+  if (!text) return null;
+  try {
+    var llista = JSON.parse(text);
+    var detall = { notes: {}, ordre: [] };
+    llista.forEach(function(e) {
+      detall.notes[e[0]] = e[1];
+      detall.ordre.push({ nom: e[0], pes: esBuit(e[2]) ? '' : Number(e[2]) });
+    });
+    return detall;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Retorna els resultats d'una sessió (una fila per alumne) amb el desglossament per criteri.
+// Només llegeix "🗄 Historial" si hi ha files antigues sense la columna "Detall ítems".
 function obtenirResultatsSessio(curs, modul, classe, desdoblament, sessioAvaluada) {
   var ss = obrirFull();
-  var files = llegirFiles(asegurarAlumnat(ss), CAPCALERA_ALUMNAT.length);
-  var perAlumne = desglossamentSessio(ss, curs, modul, classe, desdoblament, sessioAvaluada);
+  var files = llegirFiles(asegurarAlumnat(ss), CAPCALERA_ALUMNAT.length).filter(function(f) {
+    return mateixaSessio(f, A, curs, modul, classe, desdoblament, sessioAvaluada);
+  });
+  var perAlumne = null;
   var criterisVistos = {};
   var criteris = [];
 
-  var alumnes = files.filter(function(f) {
-    return mateixaSessio(f, A, curs, modul, classe, desdoblament, sessioAvaluada);
-  }).map(function(f) {
+  var alumnes = files.map(function(f) {
     var alumne = { nom: txt(f[A.NOM]), cognoms: txt(f[A.COGNOMS]), id: txt(f[A.ID]) };
-    var detall = buscarDesglossament(perAlumne, alumne);
+    var detall = llegirDetallFila(f);
+    if (!detall) {
+      if (!perAlumne) perAlumne = desglossamentSessio(ss, curs, modul, classe, desdoblament, sessioAvaluada);
+      detall = buscarDesglossament(perAlumne, alumne);
+    }
     if (detall) {
       detall.ordre.forEach(function(c) {
         if (!criterisVistos[c.nom]) { criterisVistos[c.nom] = true; criteris.push(c); }
@@ -805,6 +921,11 @@ function obtenirResultatsSessio(curs, modul, classe, desdoblament, sessioAvaluad
 
 // Notes per criteri de l'última exportació d'un alumne en una sessió
 function obtenirDetallAlumne(curs, modul, classe, desdoblament, alumne, sessioAvaluada) {
+  var fila = llegirFiles(asegurarAlumnat(obrirFull()), CAPCALERA_ALUMNAT.length).filter(function(f) {
+    return mateixaSessio(f, A, curs, modul, classe, desdoblament, sessioAvaluada) && mateixAlumne(f[A.NOM], f[A.COGNOMS], f[A.ID], alumne);
+  })[0];
+  var detallFila = fila ? llegirDetallFila(fila) : null;
+  if (detallFila) return detallFila.notes;
   var perAlumne = desglossamentSessio(obrirFull(), curs, modul, classe, desdoblament, sessioAvaluada);
   var detall = buscarDesglossament(perAlumne, alumne);
   return detall ? detall.notes : {};
@@ -873,6 +994,21 @@ function actualitzarResultat(p) {
     }
   }
   throw new Error('No s\'ha trobat aquest resultat per actualitzar.');
+}
+
+// Desa els ítems (i observacions) d'un alumne d'una sessió ja exportada i, si cal, la nota manual.
+// Retorna la sessió actualitzada, així el client no ha de tornar-la a demanar.
+function desarItemsResultat(p) {
+  exportarAGoogleSheets({
+    curs: p.curs, modul: p.modul, classe: p.classe, desdoblament: p.desdoblament, sessioAvaluada: p.sessioAvaluada,
+    evaluacions: [{ nom: p.alumne.nom, cognoms: p.alumne.cognoms, id: p.alumne.id || '', grup: p.grup || '',
+                    notes: p.notes || {}, observacioGrup: p.observacioGrup || '', observacioIndividual: p.observacioIndividual || '' }]
+  }, true);
+  if (!esBuit(p.notaManual)) {
+    actualitzarResultat({ curs: p.curs, modul: p.modul, classe: p.classe, desdoblament: p.desdoblament, sessioAvaluada: p.sessioAvaluada,
+        alumne: p.alumne, notaFinal: p.notaManual, observacioGrup: p.observacioGrup, observacioIndividual: p.observacioIndividual });
+  }
+  return obtenirResultatsSessio(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada);
 }
 
 // ============ INFORME PDF ============
@@ -963,6 +1099,7 @@ function importarAlumnesClassroom(courseId, curs, classe, desdoblament) {
 
   netejarFormatExemple(hoja, amplada);
   reescriureFiles(hoja, files, amplada);
+  invalidarCache(['llistat']);
   return { importats: importats, actualitzats: actualitzats, total: alumnesClassroom.length };
 }
 
@@ -970,7 +1107,7 @@ function importarAlumnesClassroom(courseId, curs, classe, desdoblament) {
 
 // Mapa de correus de "👤 Llistat" per a una classe, consultable per ID o per nom+cognoms
 function mapaCorreus(classe) {
-  var files = llegirFiles(asegurarLlistat(obrirFull()), CAPCALERA_LLISTAT.length);
+  var files = filesLlistat();
   var mapa = {};
   files.forEach(function(f) {
     if (txt(f[4]) !== classe || !txt(f[2])) return;
@@ -1019,6 +1156,7 @@ function enviarCorreus(p) {
   var ara = new Date();
   var enviats = 0;
   var errors = [];
+  var marcats = false;
 
   ambCorreu.forEach(function(a) {
     var desglossamentText = dades.criteris.map(function(c) {
@@ -1051,7 +1189,8 @@ function enviarCorreus(p) {
       for (var i = 0; i < files.length; i++) {
         if (mateixaSessio(files[i], A, p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada) &&
             mateixAlumne(files[i][A.NOM], files[i][A.COGNOMS], files[i][A.ID], a)) {
-          hoja.getRange(i + 2, A.CORREU_ENVIAT + 1).setValue(ara);
+          files[i][A.CORREU_ENVIAT] = ara;
+          marcats = true;
         }
       }
     } catch (err) {
@@ -1059,7 +1198,11 @@ function enviarCorreus(p) {
     }
   });
 
-  return { enviats: enviats, senseCorreu: senseCorreu, errors: errors, quotaRestant: MailApp.getRemainingDailyQuota() };
+  if (marcats && files.length) {
+    hoja.getRange(2, A.CORREU_ENVIAT + 1, files.length, 1).setValues(files.map(function(f) { return [f[A.CORREU_ENVIAT]]; }));
+  }
+  return { enviats: enviats, senseCorreu: senseCorreu, errors: errors, quotaRestant: MailApp.getRemainingDailyQuota(),
+           resultats: obtenirResultatsSessio(p.curs, p.modul, p.classe, p.desdoblament, p.sessioAvaluada) };
 }
 
 // ============ FORMAT I ESTRUCTURA DE PESTANYES ============
@@ -1206,7 +1349,7 @@ function asegurarAlumnat(ss) {
   hoja = ss.insertSheet(NOM_ALUMNAT);
   aplicarEstilCapcalera(hoja, CAPCALERA_ALUMNAT);
 
-  [120, 70, 150, 80, 90, 120, 140, 170, 220, 220, 90, 60, 130, 200, 120].forEach(function(amplada, i) {
+  [120, 70, 150, 80, 90, 120, 140, 170, 220, 220, 90, 60, 130, 200, 120, 260].forEach(function(amplada, i) {
     hoja.setColumnWidth(i + 1, amplada);
   });
   hoja.setFrozenRows(1);

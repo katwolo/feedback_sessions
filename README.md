@@ -47,10 +47,19 @@ reprenderlas o descartarlas. Al exportar al Sheet, la copia del móvil se borra.
 
 Lo más cómodo es editar la configuración desde la pestaña **Configurar** de la app.
 
+## Estilos
+
+`index.html` carga `estils.css`, que se genera con Tailwind a partir de las clases que usa la página:
+
+```
+npm install      # una sola vez
+npm run css      # después de cambiar clases en index.html
+```
+
 ## Tests
 
 ```
-node tests/backend.test.js
+npm test
 ```
 
 Ejecutan `code.gs` contra un Google Sheet simulado en memoria.

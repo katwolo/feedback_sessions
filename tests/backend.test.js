@@ -263,4 +263,89 @@ prova('desdoblaments: assignar, filtrar i no trepitjar-los en reimportar', () =>
   assert.deepStrictEqual(e.call('obtenirAlumnes', { classe: '1B', desdoblament: 'Desdoblament 2' }).map(a => a.nom), ['Anna']);
 });
 
+// ---------- Lot 1: velocitat ----------
+prova('inicialitzar: tot en una sola petició', () => {
+  const e = entornAmbConfig();
+  const r = e.call('inicialitzar');
+  assert.ok(r.moduls.includes('Aigua'));
+  assert.deepStrictEqual(r.classes, ['1A']);
+  assert.deepStrictEqual(r.desdoblaments['1A'], ['General', 'D1']);
+  assert.deepStrictEqual(r.suposits.Aigua.map(x => x.nom), ['S1', 'S2']);
+});
+
+prova('memòria cau: la segona lectura no toca el full i una edició a mà es veu al moment', () => {
+  const e = entornAmbConfig();
+  e.call('inicialitzar');
+  const abans = e.estat.lecturesFull;
+  e.call('inicialitzar');
+  assert.strictEqual(e.estat.lecturesFull, abans, 'la segona vegada surt de la memòria cau');
+  // Edició manual del full (com si el professor l'editès al navegador)
+  const ll = e.ss.getSheetByName('👤 Llistat');
+  ll.data = ll.data.concat([['Nou', 'Alumne', '', '26/27', '2C', 'General', '']]);
+  assert.ok(e.call('inicialitzar').classes.includes('2C'), 'el canvi manual es veu');
+  // Canvi des de l'app
+  e.call('desarSuposit', { modul: 'Aigua', nomOriginal: '', suposit: { nom: 'S3' } });
+  assert.deepStrictEqual(e.call('inicialitzar').suposits.Aigua.map(x => x.nom), ['S1', 'S2', 'S3']);
+});
+
+prova('resultats: es llegeixen de la columna "Detall ítems" sense tocar l\'Historial', () => {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Objectiu: 0, Presentació: 8, Coordinació: 7.5 } }]));
+  // Buidem l'Historial: els resultats han de sortir igualment
+  const hist = e.ss.getSheetByName('🗄 Historial');
+  hist.data = [hist.data[0]];
+  const res = e.call('obtenirResultatsSessio', sessioS1);
+  assert.deepStrictEqual(res.alumnes[0].notes, { Objectiu: 0, Presentació: 8, Coordinació: 7.5 });
+  assert.deepStrictEqual(res.criteris.map(c => c.pes), [20, 30, 50]);
+  const det = e.call('obtenirDetallAlumne', Object.assign({}, sessioS1, { alumne: { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat' } }));
+  assert.strictEqual(det.Objectiu, 0);
+});
+
+prova('resultats antics (sense "Detall ítems") es llegeixen de l\'Historial', () => {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Objectiu: 10, Presentació: 6, Coordinació: 5 } }]));
+  const alum = e.ss.getSheetByName('👥 Alumnat');
+  alum.data = alum.data.map((f, i) => i === 0 ? f : f.slice(0, 15)); // com un full d'abans
+  const res = e.call('obtenirResultatsSessio', sessioS1);
+  assert.deepStrictEqual(res.alumnes[0].notes, { Objectiu: 10, Presentació: 6, Coordinació: 5 });
+});
+
+prova('obtenirResultatsSessio amb ambCriteris inclou els ítems actuals', () => {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([{ nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Objectiu: 10 } }]));
+  const r = e.call('obtenirResultatsSessio', Object.assign({ ambCriteris: true }, sessioS1));
+  assert.deepStrictEqual(r.criterisActuals.map(c => c.nom), ['Objectiu', 'Presentació', 'Coordinació']);
+});
+
+prova('desarItemsResultat: una sola petició, nota manual opcional, la resta no canvia', () => {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([
+    { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', grup: 1, notes: { Objectiu: 10, Presentació: 10, Coordinació: 10 }, observacioIndividual: 'ok' },
+    { nom: 'Anna', cognoms: 'Ros', id: 'anna@x.cat', notes: { Objectiu: 10, Presentació: 5, Coordinació: 5 } }]));
+  const p1 = { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat' };
+  let r = e.call('desarItemsResultat', Object.assign({}, sessioS1, { alumne: p1, grup: '1',
+    notes: { Objectiu: 0, Presentació: 10, Coordinació: 10 }, observacioGrup: '', observacioIndividual: 'ok2', notaManual: '' }));
+  let pau = r.alumnes.find(a => a.nom === 'Pau');
+  assert.strictEqual(pau.notaFinal, 8);
+  assert.strictEqual(pau.origen, 'Calculada');
+  assert.strictEqual(pau.observacioIndividual, 'ok2');
+  assert.strictEqual(r.alumnes.find(a => a.nom === 'Anna').notaFinal, 6);
+  r = e.call('desarItemsResultat', Object.assign({}, sessioS1, { alumne: p1, grup: '1',
+    notes: { Objectiu: 0, Presentació: 10, Coordinació: 10 }, observacioGrup: '', observacioIndividual: 'ok2', notaManual: '9' }));
+  pau = r.alumnes.find(a => a.nom === 'Pau');
+  assert.strictEqual(pau.notaFinal, 9);
+  assert.strictEqual(pau.origen, 'Manual');
+});
+
+prova('enviarCorreus retorna la sessió actualitzada amb la marca d\'enviat', () => {
+  const e = entornAmbConfig();
+  e.call('exportarAGoogleSheets', dadesExport([
+    { nom: 'Pau', cognoms: 'Puig', id: 'pau@x.cat', notes: { Objectiu: 10 } },
+    { nom: 'Anna', cognoms: 'Ros', id: 'anna@x.cat', notes: { Objectiu: 10 } }]));
+  const r = e.call('enviarCorreus', Object.assign({}, sessioS1, { assumpte: 'a', cos: 'b', destinataris: [{ nom: 'Anna', cognoms: 'Ros', id: 'anna@x.cat' }] }));
+  assert.strictEqual(r.enviats, 1);
+  assert.ok(r.resultats.alumnes.find(a => a.nom === 'Anna').correuEnviat);
+  assert.ok(!r.resultats.alumnes.find(a => a.nom === 'Pau').correuEnviat);
+});
+
 console.log(`\n${passats} proves superades`);
